@@ -1,0 +1,26 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Flutter Web (Chrome)",
+            "type": "dart",
+            "request": "launch",
+            "program": "${workspaceFolder}/flutter/lib/main.dart",
+            "cwd": "${workspaceFolder}/flutter",
+            "deviceId": "chrome"
+        },
+        {
+            "name": "FastAPI Backend Server",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "module": "uvicorn",
+            "args": [
+                "main:app",
+                "--reload",
+                "--port",
+                "8000"
+            ]
+        }
+    ]
+}

@@ -18,9 +18,6 @@ def sync_flutter_web():
     """Tự động kiểm tra và đồng bộ bản build của Flutter Web sang thư mục static"""
     base_dir = os.path.dirname(__file__)
     flutter_dir = os.path.join(base_dir, "flutter")
-    if not os.path.exists(flutter_dir):
-        flutter_dir = os.path.join(base_dir, "flutter_app")
-
     flutter_build_dir = os.path.join(flutter_dir, "build", "web")
     static_dir = os.path.join(base_dir, "static")
 
