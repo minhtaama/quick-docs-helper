@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  quick_docs_helper:
+    build: .
+    container_name: quick_docs_helper_app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./templates:/app/templates
+      - ./temp_outputs:/app/temp_outputs
+    restart: always
