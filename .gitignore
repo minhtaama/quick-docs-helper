@@ -1,29 +1,87 @@
-# Python environment & cache
+# ==========================================
+# Comprehensive .gitignore for quick-docs-helper
+# ==========================================
+
+# 1. Python Environment & Byte-compiled files
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+.Python
 .venv/
-env/
 venv/
+env/
 ENV/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+eggs/
+.eggs/
 
-# Environment variable files
+# 2. Environment Variables & Secrets
 .env
+.env.local
+.env.*.local
 
-# IDE & Editor files
-.vscode/
+# 3. Project Specific Outputs & Logs
+temp_outputs/
+*.log
+*.tmp
+
+# 4. Flutter & Dart Sub-Project (flutter_app)
+flutter_app/.dart_tool/
+flutter_app/.pub/
+flutter_app/.pub-cache/
+flutter_app/build/
+flutter_app/.flutter-plugins
+flutter_app/.flutter-plugins-dependencies
+flutter_app/.packages
+flutter_app/ephemeral/
+flutter_app/windows/flutter/ephemeral/
+flutter_app/android/.gradle/
+flutter_app/android/local.properties
+
+# 5. IDEs & Editors
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 .idea/
 *.swp
 *.swo
+*.sublime-project
+*.sublime-workspace
 
-# Distribution / packaging
-build/
-devel/
-dist/
-downloads/
-eggs/
-.eggs/
-*.egg-info/
+# 6. Operating System Files
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
 
-# Logs
-*.log
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Generated static files (built automatically by main.py from Flutter)
+static/
+
+# Flutter specific IDE & metadata files
+flutter/*.iml
+flutter_app/*.iml
+flutter/.idea/
+flutter_app/.idea/
+flutter/.metadata
