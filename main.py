@@ -3,7 +3,6 @@ import os
 import shutil
 import subprocess
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from src.config import load_config
@@ -50,24 +49,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 1. Đăng ký các API Routers trước
+app.include_router(document_router)
+
+# 2. Đăng ký StaticFiles tại gốc "/" với html=True để phục vụ trọn bộ Flutter Web
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(static_dir, exist_ok=True)
 
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-app.include_router(document_router)
-
-@app.get("/", response_class=HTMLResponse)
-async def read_index():
-    index_path = os.path.join(static_dir, "index.html")
-    if os.path.exists(index_path):
-        with open(index_path, "r", encoding="utf-8") as f:
-            return f.read()
-    return """<!DOCTYPE html>
-<html>
-<head><meta charset='utf-8'><title>Quick Docs Helper</title></head>
-<body>
-<h1>Quick Docs Helper API đang hoạt động!</h1>
-<p>Vui lòng mở ứng dụng Flutter Web để điền thông tin và xuất file Word.</p>
-</body>
-</html>"""
+app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
