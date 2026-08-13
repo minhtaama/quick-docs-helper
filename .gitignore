@@ -1,0 +1,29 @@
+# Python environment & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+
+# Environment variable files
+.env
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Distribution / packaging
+build/
+devel/
+dist/
+downloads/
+eggs/
+.eggs/
+*.egg-info/
+
+# Logs
+*.log
