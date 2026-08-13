@@ -85,3 +85,13 @@ flutter_app/*.iml
 flutter/.idea/
 flutter_app/.idea/
 flutter/.metadata
+
+# Flutter Sub-Project (flutter)
+flutter/.dart_tool/
+flutter/.pub/
+flutter/.pub-cache/
+flutter/build/
+flutter/.flutter-plugins
+flutter/.flutter-plugins-dependencies
+flutter/.packages
+flutter/ephemeral/
