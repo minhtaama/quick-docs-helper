@@ -33,18 +33,21 @@ Dự án gồm 2 phần chính: Backend (Python) và Frontend (Flutter).
 ### a. Cài đặt Backend (Python FastAPI)
 
 1. Tạo và kích hoạt môi trường ảo (Virtual Environment):
+
    - Trên Windows:
+
      ```bash
      python -m venv venv
      .\venv\Scripts\activate
      ```
    - Trên macOS / Linux:
+
      ```bash
      python3 -m venv venv
      source venv/bin/activate
      ```
+1. Cài đặt các gói thư viện Python từ `requirements.txt`:
 
-2. Cài đặt các gói thư viện Python từ `requirements.txt`:
    ```bash
    pip install -r requirements.txt
    ```
@@ -52,17 +55,19 @@ Dự án gồm 2 phần chính: Backend (Python) và Frontend (Flutter).
 ### b. Cài đặt Frontend (Flutter)
 
 1. Di chuyển vào thư mục ứng dụng Flutter:
+
    ```bash
    cd flutter
    ```
+1. Tải các package phụ thuộc của Flutter:
 
-2. Tải các package phụ thuộc của Flutter:
    ```bash
    flutter pub get
    ```
-   *(Lưu ý: Nếu gặp lỗi xung đột phiên bản Dart SDK trong file `pubspec.yaml`, bạn có thể điều chỉnh giá trị `sdk: ^3.9.0` cho phù hợp với bản Dart SDK trên máy).*
 
-3. Trở lại thư mục gốc dự án:
+   *(Lưu ý: Nếu gặp lỗi xung đột phiên bản Dart SDK trong file `pubspec.yaml`, bạn có thể điều chỉnh giá trị `sdk: ^3.9.0` cho phù hợp với bản Dart SDK trên máy).*
+1. Trở lại thư mục gốc dự án:
+
    ```bash
    cd ..
    ```
@@ -76,10 +81,11 @@ Dự án gồm 2 phần chính: Backend (Python) và Frontend (Flutter).
 Chạy trực tiếp Backend Python với Uvicorn:
 
 ```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 Sau khi khởi chạy thành công:
+
 - Trang chủ ứng dụng / API: `http://localhost:8000`
 - Tài liệu API tương tác (Swagger UI): `http://localhost:8000/docs`
 
@@ -123,6 +129,5 @@ quick-docs-helper/
 
 - **Lỗi SDK version solving failed trong Flutter:**
   Mở file `flutter/pubspec.yaml`, tìm dòng `environment:` -> `sdk:` và đổi phiên bản thành `^3.9.0` để khớp với Dart SDK local.
-
 - **Lỗi thiếu thư viện Python:**
   Đảm bảo bạn đã kích hoạt môi trường ảo `venv` trước khi chạy `pip install -r requirements.txt`.

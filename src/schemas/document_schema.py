@@ -1,9 +1,13 @@
-from pydantic import BaseModel
+import uuid
+from typing import Optional
+from datetime import datetime
+from pydantic import BaseModel, Field
 
 class PersonData(BaseModel):
     """
     Schema chứa thông tin con người trong vụ án/vụ việc
     """
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     ho_ten: str = ""
     gioi_tinh: str = ""
     ngay_sinh: str = ""
@@ -28,8 +32,24 @@ class PersonData(BaseModel):
     chuc_vu: str = ""
     doan_the: str = ""
     tien_an_tien_su: str = "Chưa có tiền án, tiền sự"
+    image_path: Optional[str] = None
+
+class CaseCreate(BaseModel):
+    """Schema khi tạo mới hoặc cập nhật một vụ án/vụ việc"""
+    id: Optional[str] = None
+    ten_vu: str
+    mo_ta: str = ""
+
+CaseSave = CaseCreate
 
 class CaseData(BaseModel):
-    ten_vu_an: str = ""
-    con_nguoi: list[PersonData] = []
+    """
+    Schema chứa thông tin tổng thể của một vụ án/vụ việc
+    """
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    ten_vu: str = ""
+    mo_ta: str = ""
+    created_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    updated_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    con_nguoi_list: list[PersonData] = []
     

@@ -1,10 +1,10 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:file_picker/file_picker.dart' as fp;
-import 'package:universal_html/html.dart' as html;
-import 'widgets/text_input.dart';
+import 'services/api_service.dart';
+import 'widgets/welcome_view.dart';
+import 'widgets/case_list_panel.dart';
+import 'widgets/case_detail_panel.dart';
+import 'case_detail_screen.dart';
+import 'person_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,96 +14,48 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final _formKey = GlobalKey<FormState>();
+  List<Map<String, dynamic>> _cases = [];
+  String? _selectedCaseId;
+  Map<String, dynamic>? _selectedCaseDetails;
 
-  // 5 trường thông tin đầu tiên khớp chính xác với template ly-lich-ca-nhan.docx
-  final _hoTenController = TextEditingController();
-  final _gioiTinhController = TextEditingController();
-  final _ngaySinhController = TextEditingController();
-  final _thangSinhController = TextEditingController();
-  final _namSinhController = TextEditingController();
-
-  bool _isLoading = false;
+  bool _isLoadingCases = false;
+  bool _isLoadingDetails = false;
 
   @override
-  void dispose() {
-    _hoTenController.dispose();
-    _gioiTinhController.dispose();
-    _ngaySinhController.dispose();
-    _thangSinhController.dispose();
-    _namSinhController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadCases();
   }
 
-  // 1. XUẤT 5 TRƯỜNG THÔNG TIN THÀNH FILE .JSON
-  void _exportJson() {
-    if (!_formKey.currentState!.validate()) return;
-
-    final dataMap = {
-      'ho_ten': _hoTenController.text.trim(),
-      'gioi_tinh': _gioiTinhController.text.trim(),
-      'ngay_sinh': _ngaySinhController.text.trim(),
-      'thang_sinh': _thangSinhController.text.trim(),
-      'nam_sinh': _namSinhController.text.trim(),
-    };
-
-    final jsonString = const JsonEncoder.withIndent('  ').convert(dataMap);
-    final bytes = utf8.encode(jsonString);
-
-    if (kIsWeb) {
-      final blob = html.Blob([bytes], 'application/json');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final filename = 'HoSo_${_hoTenController.text.trim().isEmpty ? 'CaNhan' : _hoTenController.text.trim()}.json';
-
-      html.AnchorElement(href: url)
-        ..setAttribute("download", filename)
-        ..click();
-      html.Url.revokeObjectUrl(url);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Đã xuất file hồ sơ JSON thành công: $filename'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
-  }
-
-  // 2. NẠP DỮ LIỆU TỪ FILE .JSON VÀO 5 TRƯỜNG INPUT
-  Future<void> _importJson() async {
+  /// Tải danh sách vụ việc từ Backend
+  Future<void> _loadCases() async {
+    setState(() => _isLoadingCases = true);
     try {
-      final fp.FilePickerResult? result = await fp.FilePicker.platform.pickFiles(
-        type: fp.FileType.custom,
-        allowedExtensions: ['json'],
-        withData: true,
-      );
-
-      if (result != null && result.files.isNotEmpty && result.files.first.bytes != null) {
-        final jsonContent = utf8.decode(result.files.first.bytes!);
-        final Map<String, dynamic> dataMap = jsonDecode(jsonContent);
-
+      final cases = await ApiService.getCases();
+      if (mounted) {
         setState(() {
-          _hoTenController.text = dataMap['ho_ten'] ?? '';
-          _gioiTinhController.text = dataMap['gioi_tinh'] ?? '';
-          _ngaySinhController.text = dataMap['ngay_sinh'] ?? '';
-          _thangSinhController.text = dataMap['thang_sinh'] ?? '';
-          _namSinhController.text = dataMap['nam_sinh'] ?? '';
-        });
+          _cases = cases;
+          _isLoadingCases = false;
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Đã nạp hồ sơ từ file: ${result.files.first.name}'),
-              backgroundColor: Colors.blueAccent,
-            ),
-          );
-        }
+          // Nếu vụ án đang chọn bị xóa hoặc chưa có, xử lý lại
+          if (_selectedCaseId != null) {
+            final exists = _cases.any((c) => c['id'] == _selectedCaseId);
+            if (!exists) {
+              _selectedCaseId = null;
+              _selectedCaseDetails = null;
+            }
+          }
+        });
       }
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _cases = [];
+          _isLoadingCases = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi đọc file JSON: $e'),
+            content: Text('Lỗi kết nối máy chủ: $e'),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -111,188 +63,424 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // 3. GỬI 5 TRƯỜNG DỮ LIỆU SANG PYTHON BACKEND ĐỂ XUẤT FILE WORD (.DOCX)
-  Future<void> _generateDocx() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
+  /// Tải chi tiết của vụ việc đang chọn
+  Future<void> _loadCaseDetails(String caseId) async {
+    setState(() => _isLoadingDetails = true);
     try {
-      final uri = Uri.parse('/api/documents/generate-ly-lich');
-      final request = http.MultipartRequest('POST', uri);
-
-      request.fields['ho_ten'] = _hoTenController.text;
-      request.fields['gioi_tinh'] = _gioiTinhController.text;
-      request.fields['ngay_sinh'] = _ngaySinhController.text;
-      request.fields['thang_sinh'] = _thangSinhController.text;
-      request.fields['nam_sinh'] = _namSinhController.text;
-
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        final Uint8List bytes = response.bodyBytes;
-        final filename = 'LyLich_${_hoTenController.text.trim().isEmpty ? 'CaNhan' : _hoTenController.text.trim()}.docx';
-
-        if (kIsWeb) {
-          final blob = html.Blob([bytes], 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-          final url = html.Url.createObjectUrlFromBlob(blob);
-          html.AnchorElement(href: url)
-            ..setAttribute("download", filename)
-            ..click();
-          html.Url.revokeObjectUrl(url);
-        }
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Tạo file Word thành công: $filename'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } else {
-        throw Exception('Lỗi server (${response.statusCode}): ${response.body}');
+      final details = await ApiService.getCaseDetails(caseId);
+      if (mounted) {
+        setState(() {
+          _selectedCaseDetails = details;
+          _isLoadingDetails = false;
+        });
       }
     } catch (e) {
       if (mounted) {
+        setState(() => _isLoadingDetails = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi gửi dữ liệu: $e'),
+            content: Text('Lỗi tải chi tiết vụ việc: $e'),
             backgroundColor: Colors.redAccent,
           ),
         );
       }
-    } finally {
-      setState(() => _isLoading = false);
+    }
+  }
+
+  /// Xử lý chọn vụ việc
+  void _onSelectCase(String caseId, bool isMobile) {
+    if (isMobile) {
+      // Trên Mobile: Chuyển màn hình riêng biệt
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CaseDetailScreen(caseId: caseId),
+        ),
+      ).then((_) => _loadCases());
+    } else {
+      // Trên Web/Desktop: Cập nhật vùng chi tiết bên phải
+      setState(() => _selectedCaseId = caseId);
+      _loadCaseDetails(caseId);
+    }
+  }
+
+  /// Hộp thoại tạo mới vụ việc
+  void _showCreateCaseDialog() {
+    final tenVuController = TextEditingController();
+    final moTaController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Tạo Vụ Việc Mới'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: tenVuController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Tên vụ việc / Vụ án (*)',
+                  hintText: 'Ví dụ: Vụ án buôn lậu A...',
+                  isDense: true,
+                ),
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) {
+                    return 'Vui lòng nhập tên vụ việc';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: moTaController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Mô tả / Ghi chú',
+                  hintText: 'Nhập thông tin tóm tắt về vụ việc...',
+                  isDense: true,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              final tenVu = tenVuController.text.trim();
+              final moTa = moTaController.text.trim();
+              Navigator.pop(ctx);
+
+              try {
+                final newCase = await ApiService.saveCase(tenVu: tenVu, moTa: moTa);
+                await _loadCases();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Đã tạo vụ việc "$tenVu" thành công!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  // Tự động chọn vụ án vừa tạo trên màn hình rộng
+                  if (newCase['id'] != null) {
+                    setState(() => _selectedCaseId = newCase['id']);
+                    _loadCaseDetails(newCase['id']);
+                  }
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Lỗi tạo vụ việc: $e'), backgroundColor: Colors.redAccent),
+                  );
+                }
+              }
+            },
+            child: const Text('Tạo'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Hộp thoại chỉnh sửa tên / mô tả vụ việc
+  void _showEditCaseDialog(String caseId, String currentTenVu, String currentMoTa) {
+    final tenVuController = TextEditingController(text: currentTenVu);
+    final moTaController = TextEditingController(text: currentMoTa);
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Chỉnh Sửa Vụ Việc'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: tenVuController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Tên vụ việc / Vụ án (*)',
+                  isDense: true,
+                ),
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) {
+                    return 'Vui lòng nhập tên vụ việc';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: moTaController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Mô tả / Ghi chú',
+                  isDense: true,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              final tenVu = tenVuController.text.trim();
+              final moTa = moTaController.text.trim();
+              Navigator.pop(ctx);
+
+              try {
+                await ApiService.saveCase(
+                  id: caseId,
+                  tenVu: tenVu,
+                  moTa: moTa,
+                );
+                await _loadCases();
+                if (_selectedCaseId == caseId) {
+                  _loadCaseDetails(caseId);
+                }
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Đã cập nhật vụ việc "$tenVu" thành công!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Lỗi cập nhật: $e'), backgroundColor: Colors.redAccent),
+                  );
+                }
+              }
+            },
+            child: const Text('Cập nhật'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Xóa vụ việc
+  Future<void> _deleteCase(String caseId) async {
+    final ok = await ApiService.deleteCase(caseId);
+    if (ok) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã xóa vụ việc'), backgroundColor: Colors.green),
+        );
+      }
+      if (_selectedCaseId == caseId) {
+        setState(() {
+          _selectedCaseId = null;
+          _selectedCaseDetails = null;
+        });
+      }
+      _loadCases();
+    }
+  }
+
+  /// Mở form thêm cá nhân vào vụ án
+  void _openAddPerson() {
+    if (_selectedCaseId == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PersonPage(caseId: _selectedCaseId),
+      ),
+    ).then((saved) {
+      if (saved == true && _selectedCaseId != null) {
+        _loadCaseDetails(_selectedCaseId!);
+        _loadCases();
+      }
+    });
+  }
+
+  /// Mở form chỉnh sửa thông tin cá nhân
+  void _openEditPerson(Map<String, dynamic> person) {
+    if (_selectedCaseId == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PersonPage(
+          caseId: _selectedCaseId,
+          initialPerson: person,
+        ),
+      ),
+    ).then((saved) {
+      if (saved == true && _selectedCaseId != null) {
+        _loadCaseDetails(_selectedCaseId!);
+        _loadCases();
+      }
+    });
+  }
+
+  /// Tải file Word của cá nhân
+  Future<void> _downloadDocx(String personId, String hoTen) async {
+    if (_selectedCaseId == null) return;
+    try {
+      final ok = await ApiService.downloadPersonDocx(
+        caseId: _selectedCaseId!,
+        personId: personId,
+        hoTen: hoTen,
+      );
+      if (ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Đã xuất file Word lý lịch: $hoTen'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi tải file Word: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
+    }
+  }
+
+  /// Xóa cá nhân khỏi vụ án
+  Future<void> _deletePerson(String personId, String hoTen) async {
+    if (_selectedCaseId == null) return;
+    final ok = await ApiService.deletePersonFromCase(_selectedCaseId!, personId);
+    if (ok) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Đã xóa đối tượng: $hoTen'), backgroundColor: Colors.green),
+        );
+      }
+      _loadCaseDetails(_selectedCaseId!);
+      _loadCases();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Quản Lý Hồ Sơ 5 Trường Thông Tin'),
-        centerTitle: true,
-      ),
-      body: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 600),
-          padding: const EdgeInsets.all(24.0),
-          child: Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'HỒ SƠ CÁ NHÂN (5 TRƯỜNG)',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.indigo,
-                          ),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: _importJson,
-                          icon: const Icon(Icons.file_upload, size: 18),
-                          label: const Text('Nạp file .JSON'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    CustomTextInput(
-                      controller: _hoTenController,
-                      label: 'Họ và tên',
-                      hint: 'Nhập đầy đủ họ và tên...',
-                      icon: Icons.person,
-                      isRequired: true,
-                    ),
-                    const SizedBox(height: 12),
-                    CustomTextInput(
-                      controller: _gioiTinhController,
-                      label: 'Giới tính',
-                      hint: 'Nam / Nữ',
-                      icon: Icons.wc,
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: CustomTextInput(
-                            controller: _ngaySinhController,
-                            label: 'Ngày sinh',
-                            hint: '15',
-                            icon: Icons.calendar_today,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: CustomTextInput(
-                            controller: _thangSinhController,
-                            label: 'Tháng sinh',
-                            hint: '08',
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: CustomTextInput(
-                            controller: _namSinhController,
-                            label: 'Năm sinh',
-                            hint: '1995',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _exportJson,
-                            icon: const Icon(Icons.save_alt),
-                            label: const Text('LƯU VỀ FILE .JSON'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _isLoading ? null : _generateDocx,
-                            icon: _isLoading
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                  )
-                                : const Icon(Icons.description),
-                            label: Text(_isLoading ? 'ĐANG TẠO...' : 'TẠO FILE WORD (.DOCX)'),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: Colors.indigo,
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 800;
+
+        // BỐ CỤC CHO MÀN HÌNH NHỎ (MOBILE)
+        if (isMobile) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Quản Lý Vụ Việc'),
+              centerTitle: true,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Làm mới',
+                  onPressed: _loadCases,
                 ),
-              ),
+              ],
             ),
+            body: Column(
+              children: [
+                // Welcome card xuất hiện bên trên danh sách vụ việc
+                WelcomeView(
+                  isCompact: true,
+                  onNewCasePressed: _showCreateCaseDialog,
+                ),
+                // Danh sách vụ việc chiếm toàn bộ phần còn lại
+                Expanded(
+                  child: _isLoadingCases
+                      ? const Center(child: CircularProgressIndicator())
+                      : CaseListPanel(
+                          cases: _cases,
+                          selectedCaseId: _selectedCaseId,
+                          onCaseSelected: (id) => _onSelectCase(id, true),
+                          onRefresh: _loadCases,
+                          onNewCasePressed: _showCreateCaseDialog,
+                          onCaseEdited: _showEditCaseDialog,
+                          onCaseDeleted: _deleteCase,
+                          isMobile: true,
+                        ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // BỐ CỤC CHO MÀN HÌNH RỘNG (WEB / DESKTOP SIDEBAR)
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Quick Docs Helper - Quản Lý Hồ Sơ Vụ Việc'),
+            centerTitle: false,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Làm mới danh sách',
+                onPressed: _loadCases,
+              ),
+              const SizedBox(width: 8),
+            ],
           ),
-        ),
-      ),
+          body: Row(
+            children: [
+              // Cột bên trái: Sidebar danh sách vụ việc
+              SizedBox(
+                width: 340,
+                child: _isLoadingCases
+                    ? const Center(child: CircularProgressIndicator())
+                    : CaseListPanel(
+                        cases: _cases,
+                        selectedCaseId: _selectedCaseId,
+                        onCaseSelected: (id) => _onSelectCase(id, false),
+                        onRefresh: _loadCases,
+                        onNewCasePressed: _showCreateCaseDialog,
+                        onCaseEdited: _showEditCaseDialog,
+                        onCaseDeleted: _deleteCase,
+                        isMobile: false,
+                      ),
+              ),
+
+              // Đường phân cách dọc
+              VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15),
+              ),
+
+              // Cột bên phải: Chi tiết vụ án hoặc Placeholder Welcome
+              Expanded(
+                child: _selectedCaseId != null
+                    ? CaseDetailPanel(
+                        caseData: _selectedCaseDetails,
+                        isLoading: _isLoadingDetails,
+                        onRefresh: () => _loadCaseDetails(_selectedCaseId!),
+                        onAddPersonPressed: _openAddPerson,
+                        onEditCasePressed: () => _showEditCaseDialog(
+                          _selectedCaseId!,
+                          _selectedCaseDetails?['ten_vu'] ?? '',
+                          _selectedCaseDetails?['mo_ta'] ?? '',
+                        ),
+                        onEditPersonPressed: _openEditPerson,
+                        onDownloadDocx: _downloadDocx,
+                        onDeletePerson: _deletePerson,
+                      )
+                    : WelcomeView(
+                        isCompact: false,
+                        onNewCasePressed: _showCreateCaseDialog,
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

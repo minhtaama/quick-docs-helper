@@ -47,3 +47,7 @@ temp_outputs/
 **/*.iml
 **/.idea/
 **/.metadata
+
+# 5. Build Artifacts & Generated Files
+static/
+data/

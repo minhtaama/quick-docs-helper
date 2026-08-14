@@ -22,7 +22,8 @@ class CustomTextInput extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
-      validator: validator ??
+      validator:
+          validator ??
           (isRequired
               ? (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -31,15 +32,32 @@ class CustomTextInput extends StatelessWidget {
                   return null;
                 }
               : null),
+      style: const TextStyle(fontSize: 14),
       decoration: InputDecoration(
         labelText: isRequired ? '$label (*)' : label,
+        labelStyle: const TextStyle(fontSize: 14),
         hintText: hint,
-        prefixIcon: icon != null ? Icon(icon) : null,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.0),
+        hintStyle: TextStyle(
+          fontSize: 12,
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
         ),
+        prefixIcon: icon != null
+            ? Padding(
+                padding: const EdgeInsets.only(left: 10, right: 8),
+                child: Icon(icon, size: 16),
+              )
+            : null,
+        prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(4.0),
+          borderSide: const BorderSide(width: 1.5),
+        ),
+        isDense: true,
         filled: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 14,
+        ),
       ),
     );
   }

@@ -22,7 +22,7 @@ class DocxService:
 
         self.output_dir = TEMP_OUTPUTS_DIR
 
-    def generate_docx_from_person(self, template_filename: str, person_data: PersonData, person_img_bytes: Optional[bytes] = None) -> str:
+    def generate_docx_from_person(self, template_filename: str, person_data: PersonData) -> str:
         template_path = os.path.join(self.template_dir, template_filename)
 
         if not os.path.exists(template_path):
@@ -30,10 +30,10 @@ class DocxService:
 
         template_doc = DocxTemplate(template_path)
         
-        img_obj = ""
-        if person_img_bytes:
-            img_io = io.BytesIO(person_img_bytes)
-            img_obj = InlineImage(template_doc, image_descriptor=img_io, width=Mm(30))
+        # Nếu có đường dẫn ảnh lưu trữ sẵn
+        if person_data.image_path and os.path.exists(person_data.image_path):
+            img_obj = InlineImage(template_doc, image_descriptor=person_data.image_path, width=Mm(30))
+        else: img_obj = ""
 
         context = person_data.model_dump()
         context["image"] = img_obj
