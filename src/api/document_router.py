@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Form, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse
-from src.schemas.document_schema import LyLichData
+from src.schemas.document_schema import PersonData
 from src.services.docx_service import DocxService
 
 router = APIRouter(prefix="/api/documents", tags=["Documents"])
@@ -35,7 +35,7 @@ async def generate_ly_lich(
 ):
     """Endpoint tiếp nhận thông tin form và tạo file Word Lý Lịch"""
     try:
-        data = LyLichData(
+        data = PersonData(
             ho_ten=ho_ten,
             gioi_tinh=gioi_tinh,
             ngay_sinh=ngay_sinh,
@@ -65,12 +65,13 @@ async def generate_ly_lich(
         if image and image.filename:
             image_bytes = await image.read()
 
-        output_path = docx_service.generate_ly_lich_doc(data, image_bytes=image_bytes)
+        output_path = docx_service.generate_docx_from_person(data, image_bytes=image_bytes)
 
         return FileResponse(
             output_path,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             filename=f"LyLich_{data.ho_ten or 'CaNhan'}.docx"
         )
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi tạo tài liệu: {str(e)}")

@@ -1,13 +1,15 @@
 import os
-from dataclasses import dataclass
 
-@dataclass
+# Đường dẫn tuyệt đối tới thư mục gốc dự án (quick-docs-helper)
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+TEMP_OUTPUTS_DIR = os.path.join(BASE_DIR, "temp_outputs")
+
 class Config:
-    """Cấu hình chung cho ứng dụng Quick Docs Helper"""
+    """
+    Cấu hình chung cho ứng dụng Quick Docs Helper
+    """
+    
     app_name: str = os.getenv("APP_NAME", "QuickDocsHelper")
     app_env: str = os.getenv("APP_ENV", "development")
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
-
-def load_config() -> Config:
-    """Hàm tải cấu hình ứng dụng"""
-    return Config()

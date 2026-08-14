@@ -5,7 +5,7 @@ import subprocess
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from src.config import load_config
+from src.config import Config
 from src.api.document_router import router as document_router
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -34,8 +34,7 @@ def sync_flutter_web():
 # Tự động đồng bộ Flutter Web khi khởi chạy main.py
 sync_flutter_web()
 
-config = load_config()
-app = FastAPI(title=config.app_name)
+app = FastAPI(title=Config.app_name)
 
 # Bật CORS cho Flutter Web và các client
 app.add_middleware(
