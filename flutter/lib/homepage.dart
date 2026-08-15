@@ -3,6 +3,7 @@ import 'services/api_service.dart';
 import 'widgets/welcome_view.dart';
 import 'widgets/case_list_panel.dart';
 import 'widgets/case_detail_panel.dart';
+import 'widgets/case_edit_dialog.dart';
 import 'case_detail_screen.dart';
 import 'person_page.dart';
 
@@ -93,9 +94,7 @@ class _HomePageState extends State<HomePage> {
       // Trên Mobile: Chuyển màn hình riêng biệt
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => CaseDetailScreen(caseId: caseId),
-        ),
+        MaterialPageRoute(builder: (_) => CaseDetailScreen(caseId: caseId)),
       ).then((_) => _loadCases());
     } else {
       // Trên Web/Desktop: Cập nhật vùng chi tiết bên phải
@@ -105,175 +104,59 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// Hộp thoại tạo mới vụ việc
-  void _showCreateCaseDialog() {
-    final tenVuController = TextEditingController();
-    final moTaController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
-    showDialog(
+  Future<void> _showCreateCaseDialog() async {
+    final newCase = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Tạo Vụ Việc Mới'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: tenVuController,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: 'Tên vụ việc / Vụ án (*)',
-                  hintText: 'Ví dụ: Vụ án buôn lậu A...',
-                  isDense: true,
-                ),
-                validator: (val) {
-                  if (val == null || val.trim().isEmpty) {
-                    return 'Vui lòng nhập tên vụ việc';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: moTaController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Mô tả / Ghi chú',
-                  hintText: 'Nhập thông tin tóm tắt về vụ việc...',
-                  isDense: true,
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              if (!formKey.currentState!.validate()) return;
-              final tenVu = tenVuController.text.trim();
-              final moTa = moTaController.text.trim();
-              Navigator.pop(ctx);
-
-              try {
-                final newCase = await ApiService.saveCase(tenVu: tenVu, moTa: moTa);
-                await _loadCases();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Đã tạo vụ việc "$tenVu" thành công!'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                  // Tự động chọn vụ án vừa tạo trên màn hình rộng
-                  if (newCase['id'] != null) {
-                    setState(() => _selectedCaseId = newCase['id']);
-                    _loadCaseDetails(newCase['id']);
-                  }
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Lỗi tạo vụ việc: $e'), backgroundColor: Colors.redAccent),
-                  );
-                }
-              }
-            },
-            child: const Text('Tạo'),
-          ),
-        ],
-      ),
+      builder: (ctx) => const CaseEditDialog(),
     );
+    if (newCase != null) {
+      await _loadCases();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã tạo vụ việc "${newCase['ten_vu']}" thành công!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Tự động chọn vụ án vừa tạo trên màn hình rộng
+        if (newCase['id'] != null) {
+          setState(() => _selectedCaseId = newCase['id']);
+          _loadCaseDetails(newCase['id']);
+        }
+      }
+    }
   }
 
   /// Hộp thoại chỉnh sửa tên / mô tả vụ việc
-  void _showEditCaseDialog(String caseId, String currentTenVu, String currentMoTa) {
-    final tenVuController = TextEditingController(text: currentTenVu);
-    final moTaController = TextEditingController(text: currentMoTa);
-    final formKey = GlobalKey<FormState>();
-
-    showDialog(
+  Future<void> _showEditCaseDialog(
+    String caseId,
+    String currentTenVu,
+    String currentMoTa,
+  ) async {
+    final updatedCase = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Chỉnh Sửa Vụ Việc'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: tenVuController,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: 'Tên vụ việc / Vụ án (*)',
-                  isDense: true,
-                ),
-                validator: (val) {
-                  if (val == null || val.trim().isEmpty) {
-                    return 'Vui lòng nhập tên vụ việc';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: moTaController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Mô tả / Ghi chú',
-                  isDense: true,
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              if (!formKey.currentState!.validate()) return;
-              final tenVu = tenVuController.text.trim();
-              final moTa = moTaController.text.trim();
-              Navigator.pop(ctx);
-
-              try {
-                await ApiService.saveCase(
-                  id: caseId,
-                  tenVu: tenVu,
-                  moTa: moTa,
-                );
-                await _loadCases();
-                if (_selectedCaseId == caseId) {
-                  _loadCaseDetails(caseId);
-                }
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Đã cập nhật vụ việc "$tenVu" thành công!'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Lỗi cập nhật: $e'), backgroundColor: Colors.redAccent),
-                  );
-                }
-              }
-            },
-            child: const Text('Cập nhật'),
-          ),
-        ],
+      builder: (ctx) => CaseEditDialog(
+        caseId: caseId,
+        initialTenVu: currentTenVu,
+        initialMoTa: currentMoTa,
       ),
     );
+    if (updatedCase != null) {
+      await _loadCases();
+      if (_selectedCaseId == caseId) {
+        _loadCaseDetails(caseId);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Đã cập nhật vụ việc "${updatedCase['ten_vu']}" thành công!',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    }
   }
 
   /// Xóa vụ việc
@@ -282,7 +165,10 @@ class _HomePageState extends State<HomePage> {
     if (ok) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã xóa vụ việc'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Đã xóa vụ việc'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
       if (_selectedCaseId == caseId) {
@@ -300,9 +186,7 @@ class _HomePageState extends State<HomePage> {
     if (_selectedCaseId == null) return;
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => PersonPage(caseId: _selectedCaseId),
-      ),
+      MaterialPageRoute(builder: (_) => PersonPage(caseId: _selectedCaseId)),
     ).then((saved) {
       if (saved == true && _selectedCaseId != null) {
         _loadCaseDetails(_selectedCaseId!);
@@ -317,10 +201,8 @@ class _HomePageState extends State<HomePage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => PersonPage(
-          caseId: _selectedCaseId,
-          initialPerson: person,
-        ),
+        builder: (_) =>
+            PersonPage(caseId: _selectedCaseId, initialPerson: person),
       ),
     ).then((saved) {
       if (saved == true && _selectedCaseId != null) {
@@ -341,13 +223,19 @@ class _HomePageState extends State<HomePage> {
       );
       if (ok && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Đã xuất file Word lý lịch: $hoTen'), backgroundColor: Colors.green),
+          SnackBar(
+            content: Text('Đã xuất file Word lý lịch: $hoTen'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tải file Word: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Lỗi tải file Word: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     }
@@ -356,11 +244,17 @@ class _HomePageState extends State<HomePage> {
   /// Xóa cá nhân khỏi vụ án
   Future<void> _deletePerson(String personId, String hoTen) async {
     if (_selectedCaseId == null) return;
-    final ok = await ApiService.deletePersonFromCase(_selectedCaseId!, personId);
+    final ok = await ApiService.deletePersonFromCase(
+      _selectedCaseId!,
+      personId,
+    );
     if (ok) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Đã xóa đối tượng: $hoTen'), backgroundColor: Colors.green),
+          SnackBar(
+            content: Text('Đã xóa đối tượng: $hoTen'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
       _loadCaseDetails(_selectedCaseId!);
@@ -452,7 +346,9 @@ class _HomePageState extends State<HomePage> {
               VerticalDivider(
                 width: 1,
                 thickness: 1,
-                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outline.withValues(alpha: 0.15),
               ),
 
               // Cột bên phải: Chi tiết vụ án hoặc Placeholder Welcome

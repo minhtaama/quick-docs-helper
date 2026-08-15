@@ -26,7 +26,9 @@ class CustomRadioInput extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: theme.inputDecorationTheme.fillColor ?? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        color:
+            theme.inputDecorationTheme.fillColor ??
+            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(4.0),
         border: Border.all(
           color: theme.colorScheme.outline.withValues(alpha: 0.5),
@@ -38,7 +40,11 @@ class CustomRadioInput extends StatelessWidget {
           if (icon != null) ...[
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: Icon(icon, size: 16, color: primaryColor.withValues(alpha: 0.7)),
+              child: Icon(
+                icon,
+                size: 16,
+                color: primaryColor.withValues(alpha: 0.7),
+              ),
             ),
           ],
           Text(
@@ -51,37 +57,42 @@ class CustomRadioInput extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Wrap(
-              spacing: 16,
-              children: options.map((option) {
-                final isSelected = selectedValue.trim().toLowerCase() == option.trim().toLowerCase();
-                return InkWell(
-                  onTap: () => onChanged(option),
-                  borderRadius: BorderRadius.circular(4.0),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Radio<String>(
-                          value: option,
-                          groupValue: isSelected ? option : null,
-                          onChanged: (val) {
-                            if (val != null) onChanged(val);
-                          },
-                          visualDensity: VisualDensity.compact,
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          option,
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ],
+            child: RadioGroup<String>(
+              groupValue: selectedValue,
+              onChanged: (val) {
+                if (val != null) onChanged(val);
+              },
+              child: Wrap(
+                spacing: 16,
+                children: options.map((option) {
+                  return InkWell(
+                    onTap: () => onChanged(option),
+                    borderRadius: BorderRadius.circular(4.0),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 6,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ExcludeFocus(
+                            excluding: true,
+                            child: Radio<String>(
+                              value: option,
+                              visualDensity: VisualDensity.compact,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(option, style: const TextStyle(fontSize: 14)),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              }).toList(),
+                  );
+                }).toList(),
+              ),
             ),
           ),
         ],
