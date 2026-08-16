@@ -31,6 +31,30 @@ class FamilyMemberList(list):
                 lines.append(str(item))
         return "\n".join(lines)
 
+class CriminalRecordList(list):
+    """
+    Danh sách động hỗ trợ cả:
+    1. Vòng lặp Jinja2 ({%p for item in tien_an_tien_su %}, {%tr ... %})
+    2. In trực tiếp dạng văn bản ({{ tien_an_tien_su }})
+    """
+    def __str__(self):
+        if not self:
+            return "Chưa có tiền án, tiền sự"
+        lines = []
+        for idx, item in enumerate(self, 1):
+            if isinstance(item, dict):
+                tg = item.get('thoi_gian', '').strip()
+                nd = item.get('noi_dung', '').strip()
+                if tg and nd:
+                    lines.append(f"- {tg}: {nd}")
+                elif nd:
+                    lines.append(f"- {nd}")
+                elif tg:
+                    lines.append(f"- {tg}")
+            else:
+                lines.append(str(item))
+        return "\n".join(lines) if lines else "Chưa có tiền án, tiền sự"
+
 class DocxService:
     """
     Service chịu trách nhiệm xử lý template Word và xuất file kết quả.
@@ -128,6 +152,13 @@ class DocxService:
             context["quan_he_gia_dinh"] = member_list
             context["gia_dinh"] = member_list
 
+        # Đóng gói tien_an_tien_su dạng CriminalRecordList hỗ trợ cả lặp {%p for %} lẫn {{ tien_an_tien_su }}
+        raw_tien_an = context.get("tien_an_tien_su", [])
+        if isinstance(raw_tien_an, list):
+            record_list = CriminalRecordList(raw_tien_an)
+            context["tien_an_tien_su"] = record_list
+            context["tien_an"] = record_list
+
         template_doc.render(context)
 
         os.makedirs(self.output_dir, exist_ok=True)
@@ -159,7 +190,7 @@ class DocxService:
         # NẾU CHƯA CÓ HOẶC BẮT BUỘC RELOAD -> RENDER VÀ CONVERT
         docx_path = self.generate_docx_from_person(template_filename, person_data)
 
-        # Khởi tạo COM Apartment cho môi trường đa luồng của FastAPI trên Windows
+        # Chuyển đổi DOCX sang PDF (Tương thích cả Windows MS Word và Linux LibreOffice)
         if sys.platform == "win32":
             try:
                 import pythoncom
@@ -167,12 +198,30 @@ class DocxService:
             except Exception as e:
                 print(f"pythoncom.CoInitialize warning: {e}")
 
-        try:
-            from docx2pdf import convert
-            convert(docx_path, cached_pdf_path)
-        except Exception as e:
-            print(f"Error converting docx to pdf: {e}")
-            raise RuntimeError(f"Lỗi chuyển đổi Word sang PDF: {e}")
+            try:
+                from docx2pdf import convert
+                convert(docx_path, cached_pdf_path)
+            except Exception as e:
+                print(f"Error converting docx to pdf via docx2pdf on Windows: {e}")
+                raise RuntimeError(f"Lỗi chuyển đổi Word sang PDF: {e}")
+        else:
+            # Trên Linux / Docker: Dùng LibreOffice headless
+            import subprocess
+            try:
+                cmd = ["soffice", "--headless", "--convert-to", "pdf", "--outdir", self.cache_dir, docx_path]
+                res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+                base_name = os.path.splitext(os.path.basename(docx_path))[0] + ".pdf"
+                generated_pdf = os.path.join(self.cache_dir, base_name)
+                if os.path.exists(generated_pdf):
+                    if generated_pdf != cached_pdf_path:
+                        if os.path.exists(cached_pdf_path):
+                            os.remove(cached_pdf_path)
+                        os.rename(generated_pdf, cached_pdf_path)
+                else:
+                    raise RuntimeError(f"LibreOffice không tạo được file PDF. Output: {res.stderr}")
+            except Exception as e:
+                print(f"Error converting docx to pdf via LibreOffice on Linux: {e}")
+                raise RuntimeError(f"Lỗi chuyển đổi Word sang PDF trên Linux: {e}")
 
         if not os.path.exists(cached_pdf_path):
             raise FileNotFoundError(f"Không thể tạo file PDF: {cached_pdf_path}")

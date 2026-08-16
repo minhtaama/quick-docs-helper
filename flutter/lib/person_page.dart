@@ -45,7 +45,7 @@ class _PersonPageState extends State<PersonPage> {
   late TextEditingController _noiOHienTaiController;
   late TextEditingController _chucVuController;
   late TextEditingController _doanTheController;
-  late TextEditingController _tienAnTienSuController;
+  final List<_RecordController> _tienAnControllers = [];
   final List<_FamilyMemberController> _giaDinhControllers = [];
 
   String _selectedGioiTinh = 'Nam';
@@ -96,11 +96,22 @@ class _PersonPageState extends State<PersonPage> {
     );
     _chucVuController = TextEditingController(text: p?['chuc_vu'] ?? '');
     _doanTheController = TextEditingController(text: p?['doan_the'] ?? '');
-    _tienAnTienSuController = TextEditingController(
-      text: p?['tien_an_tien_su'] ?? 'Chưa có tiền án, tiền sự',
-    );
 
     if (p != null) {
+      final rawTienAn = p['tien_an_tien_su'];
+      if (rawTienAn is List) {
+        for (final item in rawTienAn) {
+          if (item is Map) {
+            _tienAnControllers.add(
+              _RecordController(
+                thoiGian: item['thoi_gian']?.toString() ?? '',
+                noiDung: item['noi_dung']?.toString() ?? '',
+              ),
+            );
+          }
+        }
+      }
+
       final rawGiaDinh = p['quan_he_gia_dinh'];
       if (rawGiaDinh is List) {
         for (final item in rawGiaDinh) {
@@ -157,7 +168,9 @@ class _PersonPageState extends State<PersonPage> {
     _noiOHienTaiController.dispose();
     _chucVuController.dispose();
     _doanTheController.dispose();
-    _tienAnTienSuController.dispose();
+    for (final c in _tienAnControllers) {
+      c.dispose();
+    }
     for (final c in _giaDinhControllers) {
       c.dispose();
     }
@@ -223,7 +236,9 @@ class _PersonPageState extends State<PersonPage> {
         'noi_o_hien_tai': _noiOHienTaiController.text.trim(),
         'chuc_vu': _chucVuController.text.trim(),
         'doan_the': _doanTheController.text.trim(),
-        'tien_an_tien_su': _tienAnTienSuController.text.trim(),
+        'tien_an_tien_su': jsonEncode(
+          _tienAnControllers.map((c) => c.toMap()).toList(),
+        ),
         'quan_he_gia_dinh': jsonEncode(
           _giaDinhControllers.map((c) => c.toMap()).toList(),
         ),
@@ -362,9 +377,20 @@ class _PersonPageState extends State<PersonPage> {
                         noiOHienTaiController: _noiOHienTaiController,
                       ),
 
-                      // 5. TIỀN ÁN, TIỀN SỰ
+                      // 5. TIỀN ÁN, TIỀN SỰ (DANH SÁCH ĐỘNG)
                       _Section5CriminalRecord(
-                        tienAnTienSuController: _tienAnTienSuController,
+                        controllers: _tienAnControllers,
+                        onAdd: () {
+                          setState(() {
+                            _tienAnControllers.add(_RecordController());
+                          });
+                        },
+                        onRemove: (index) {
+                          setState(() {
+                            final removed = _tienAnControllers.removeAt(index);
+                            removed.dispose();
+                          });
+                        },
                       ),
 
                       // 6. QUAN HỆ GIA ĐÌNH (DANH SÁCH ĐỘNG)
@@ -432,7 +458,7 @@ class _PersonPageState extends State<PersonPage> {
 }
 
 // Widget tiêu đề section
-Widget _buildSectionHeader(BuildContext context, String title) {
+Widget _buildSectionHeader(BuildContext context, String title, {Widget? trailing}) {
   final theme = Theme.of(context);
   return Padding(
     padding: const EdgeInsets.only(top: 20.0, bottom: 12.0),
@@ -454,6 +480,10 @@ Widget _buildSectionHeader(BuildContext context, String title) {
             thickness: 1,
           ),
         ),
+        if (trailing != null) ...[
+          const SizedBox(width: 12),
+          trailing,
+        ],
       ],
     ),
   );
@@ -803,25 +833,201 @@ class _Section4Residences extends StatelessWidget {
   }
 }
 
-// SECTION 5: TIỀN ÁN, TIỀN SỰ
-class _Section5CriminalRecord extends StatelessWidget {
-  final TextEditingController tienAnTienSuController;
+// CONTROLLER QUẢN LÝ DÒNG TIỀN ÁN, TIỀN SỰ
+class _RecordController {
+  final TextEditingController thoiGianController;
+  final TextEditingController noiDungController;
 
-  const _Section5CriminalRecord({required this.tienAnTienSuController});
+  _RecordController({
+    String thoiGian = '',
+    String noiDung = '',
+  }) : thoiGianController = TextEditingController(text: thoiGian),
+       noiDungController = TextEditingController(text: noiDung);
+
+  Map<String, dynamic> toMap() => {
+    'thoi_gian': thoiGianController.text.trim(),
+    'noi_dung': noiDungController.text.trim(),
+  };
+
+  void dispose() {
+    thoiGianController.dispose();
+    noiDungController.dispose();
+  }
+}
+
+// SECTION 5: TIỀN ÁN, TIỀN SỰ (DANH SÁCH ĐỘNG ĐỒNG BỘ VỚI SECTION 6)
+class _Section5CriminalRecord extends StatelessWidget {
+  final List<_RecordController> controllers;
+  final VoidCallback onAdd;
+  final Function(int index) onRemove;
+
+  const _Section5CriminalRecord({
+    required this.controllers,
+    required this.onAdd,
+    required this.onRemove,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildSectionHeader(context, 'V. TIỀN ÁN, TIỀN SỰ'),
-        CustomTextInput(
-          controller: tienAnTienSuController,
-          label: 'Tiền án, tiền sự',
-          hint: 'Chưa có tiền án, tiền sự...',
-          minLines: 4,
-          maxLines: 8,
+        _buildSectionHeader(
+          context,
+          'V. TIỀN ÁN, TIỀN SỰ',
+          trailing: OutlinedButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add_circle_outline, size: 16),
+            label: const Text('Thêm tiền án, tiền sự'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              side: BorderSide(color: primaryColor.withValues(alpha: 0.5)),
+            ),
+          ),
         ),
+        if (controllers.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16.0),
+            margin: const EdgeInsets.only(top: 4.0),
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.03),
+              borderRadius: BorderRadius.circular(8.0),
+              border: Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.15),
+                style: BorderStyle.solid,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 18,
+                  color: primaryColor.withValues(alpha: 0.6),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Chưa có thông tin tiền án, tiền sự. Bấm "+ Thêm tiền án, tiền sự" để bổ sung nếu có.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: controllers.length,
+            itemBuilder: (context, index) {
+              final record = controllers[index];
+
+              return Card(
+                elevation: 0,
+                margin: const EdgeInsets.only(top: 10.0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  side: BorderSide(
+                    color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                  ),
+                ),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.25,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: primaryColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    '#${index + 1}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryColor,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: ValueListenableBuilder<TextEditingValue>(
+                                    valueListenable: record.thoiGianController,
+                                    builder: (context, val, _) {
+                                      final title = val.text.trim().isNotEmpty
+                                          ? 'Tiền án / Tiền sự (${val.text.trim()})'
+                                          : 'Tiền án, tiền sự #${index + 1}';
+                                      return Text(
+                                        title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.redAccent,
+                              size: 20,
+                            ),
+                            tooltip: 'Xóa mục này',
+                            onPressed: () => onRemove(index),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      CustomTextInput(
+                        controller: record.thoiGianController,
+                        label: 'Thời gian',
+                        hint: 'Ví dụ: Tháng 05/2018, hoặc Năm 2020...',
+                        icon: Icons.calendar_today_outlined,
+                      ),
+                      const SizedBox(height: 10),
+                      CustomTextInput(
+                        controller: record.noiDungController,
+                        label: 'Nội dung bản án / Quyết định xử phạt',
+                        hint: 'Tội danh, cơ quan xử lý, mức án, hình thức xử phạt...',
+                        icon: Icons.gavel_outlined,
+                        minLines: 2,
+                        maxLines: 4,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
       ],
     );
   }
@@ -884,29 +1090,26 @@ class _Section6FamilyRelations extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildSectionHeader(context, 'VI. QUAN HỆ GIA ĐÌNH'),
-            OutlinedButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.person_add_alt_1, size: 16),
-              label: const Text('Thêm người thân'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                side: BorderSide(color: primaryColor.withValues(alpha: 0.5)),
+        _buildSectionHeader(
+          context,
+          'VI. QUAN HỆ GIA ĐÌNH',
+          trailing: OutlinedButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.person_add_alt_1, size: 16),
+            label: const Text('Thêm người thân'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
               ),
+              side: BorderSide(color: primaryColor.withValues(alpha: 0.5)),
             ),
-          ],
+          ),
         ),
         if (controllers.isEmpty)
           Container(
             padding: const EdgeInsets.all(16.0),
-            margin: const EdgeInsets.only(top: 8.0),
+            margin: const EdgeInsets.only(top: 4.0),
             decoration: BoxDecoration(
               color: primaryColor.withValues(alpha: 0.03),
               borderRadius: BorderRadius.circular(8.0),
@@ -967,42 +1170,48 @@ class _Section6FamilyRelations extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: primaryColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  '#${index + 1}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: primaryColor,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: primaryColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    '#${index + 1}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryColor,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              ValueListenableBuilder<TextEditingValue>(
-                                valueListenable: member.hoTenController,
-                                builder: (context, val, _) {
-                                  return Text(
-                                    val.text.trim().isNotEmpty
-                                        ? val.text.trim()
-                                        : 'Người thân ${index + 1}',
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: ValueListenableBuilder<TextEditingValue>(
+                                    valueListenable: member.hoTenController,
+                                    builder: (context, val, _) {
+                                      return Text(
+                                        val.text.trim().isNotEmpty
+                                            ? val.text.trim()
+                                            : 'Người thân ${index + 1}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           IconButton(
                             icon: const Icon(

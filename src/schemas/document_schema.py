@@ -1,7 +1,12 @@
 import uuid
 from typing import Optional, List
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+class RecordData(BaseModel):
+    """Schema đại diện cho một tiền án/tiền sự"""
+    thoi_gian: str = ""
+    noi_dung: str = ""
 
 class FamilyData(BaseModel):
     """Schema đại diện cho một người thân/thành viên trong gia đình"""
@@ -39,9 +44,25 @@ class PersonData(BaseModel):
     noi_o_hien_tai: str = ""
     chuc_vu: str = ""
     doan_the: str = ""
-    tien_an_tien_su: str = "Chưa có tiền án, tiền sự"
+    tien_an_tien_su: List[RecordData] = []
     quan_he_gia_dinh: List[FamilyData] = []
     image_path: Optional[str] = None
+
+    @field_validator("tien_an_tien_su", mode="before")
+    @classmethod
+    def parse_tien_an_tien_su(cls, v):
+        if isinstance(v, str):
+            if not v or v.strip() == "Chưa có tiền án, tiền sự":
+                return []
+            try:
+                import json
+                data = json.loads(v)
+                if isinstance(data, list):
+                    return data
+            except Exception:
+                pass
+            return []
+        return v or []
 
 class CaseCreate(BaseModel):
     """Schema khi tạo mới hoặc cập nhật một vụ án/vụ việc"""

@@ -1,0 +1,13 @@
+.git
+.gitignore
+.venv
+.vscode
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+flutter/.dart_tool
+flutter/.packages
+flutter/build
+temp_outputs/cache_pdf/*

@@ -3,7 +3,7 @@ import os
 import json
 from typing import List, Optional
 from fastapi import APIRouter, Form, File, UploadFile, HTTPException
-from src.schemas.document_schema import CaseData, CaseCreate, PersonData, FamilyData
+from src.schemas.document_schema import CaseData, CaseCreate, PersonData, FamilyData, RecordData
 from src.services.storage_service import StorageService
 from src.services.docx_service import DocxService
 
@@ -80,7 +80,7 @@ async def add_or_update_person(
     noi_o_hien_tai: str = Form(""),
     chuc_vu: str = Form(""),
     doan_the: str = Form(""),
-    tien_an_tien_su: str = Form("Chưa có tiền án, tiền sự"),
+    tien_an_tien_su: str = Form("[]"),
     quan_he_gia_dinh: str = Form("[]"),
     image: Optional[UploadFile] = File(None)
 ):
@@ -99,6 +99,17 @@ async def add_or_update_person(
                         parsed_gia_dinh.append(FamilyData(**item))
         except Exception as e:
             print(f"Error parsing quan_he_gia_dinh: {e}")
+
+    parsed_tien_an = []
+    if tien_an_tien_su:
+        try:
+            raw_list = json.loads(tien_an_tien_su)
+            if isinstance(raw_list, list):
+                for item in raw_list:
+                    if isinstance(item, dict):
+                        parsed_tien_an.append(RecordData(**item))
+        except Exception as e:
+            print(f"Error parsing tien_an_tien_su: {e}")
 
     # Khởi tạo đối tượng PersonData
     person_data = PersonData(
@@ -125,7 +136,7 @@ async def add_or_update_person(
         noi_o_hien_tai=noi_o_hien_tai,
         chuc_vu=chuc_vu,
         doan_the=doan_the,
-        tien_an_tien_su=tien_an_tien_su,
+        tien_an_tien_su=parsed_tien_an,
         quan_he_gia_dinh=parsed_gia_dinh
     )
 
