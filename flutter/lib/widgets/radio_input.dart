@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class CustomRadioInput extends StatelessWidget {
-  final String label;
+  final String? label;
   final List<String> options;
   final String selectedValue;
   final ValueChanged<String> onChanged;
@@ -10,7 +10,7 @@ class CustomRadioInput extends StatelessWidget {
 
   const CustomRadioInput({
     super.key,
-    required this.label,
+    this.label,
     required this.options,
     required this.selectedValue,
     required this.onChanged,
@@ -24,20 +24,20 @@ class CustomRadioInput extends StatelessWidget {
     final primaryColor = theme.colorScheme.primary;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3.5),
       decoration: BoxDecoration(
         color:
             theme.inputDecorationTheme.fillColor ??
             theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(4.0),
         border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.5),
-          width: 1.5,
+          color: theme.colorScheme.outline.withValues(alpha: 1),
+          width: 1,
         ),
       ),
       child: Row(
         children: [
-          if (icon != null) ...[
+          if (icon != null && label != null) ...[
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: Icon(
@@ -47,15 +47,17 @@ class CustomRadioInput extends StatelessWidget {
               ),
             ),
           ],
-          Text(
-            isRequired ? '$label (*):' : '$label:',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: primaryColor.withValues(alpha: 0.8),
-            ),
-          ),
-          const SizedBox(width: 12),
+          label != null
+              ? Text(
+                  isRequired ? '$label (*):' : '$label:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: primaryColor.withValues(alpha: 0.8),
+                  ),
+                )
+              : SizedBox.shrink(),
+          label != null ? const SizedBox(width: 12) : SizedBox.shrink(),
           Expanded(
             child: RadioGroup<String>(
               groupValue: selectedValue,
@@ -71,7 +73,7 @@ class CustomRadioInput extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 4,
-                        vertical: 6,
+                        vertical: 0,
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -80,6 +82,10 @@ class CustomRadioInput extends StatelessWidget {
                             excluding: true,
                             child: Radio<String>(
                               value: option,
+                              overlayColor: WidgetStateProperty.all(
+                                Colors.transparent,
+                              ),
+                              splashRadius: 0,
                               visualDensity: VisualDensity.compact,
                               materialTapTargetSize:
                                   MaterialTapTargetSize.shrinkWrap,

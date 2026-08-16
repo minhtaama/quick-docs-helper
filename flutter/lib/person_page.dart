@@ -1,19 +1,17 @@
+import 'package:file_picker/file_picker.dart';
+import 'widgets/date_time_input.dart';
+import 'widgets/avatar_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart' as fp;
 import 'widgets/text_input.dart';
 import 'widgets/radio_input.dart';
 import 'services/api_service.dart';
 
 class PersonPage extends StatefulWidget {
-  final String? caseId;
   final Map<String, dynamic>? initialPerson;
+  final String? caseId;
 
-  const PersonPage({
-    super.key,
-    this.caseId,
-    this.initialPerson,
-  });
+  const PersonPage({super.key, this.initialPerson, this.caseId});
 
   @override
   State<PersonPage> createState() => _PersonPageState();
@@ -22,39 +20,31 @@ class PersonPage extends StatefulWidget {
 class _PersonPageState extends State<PersonPage> {
   final _formKey = GlobalKey<FormState>();
 
-  // 1. Thông tin cơ bản
-  final _hoTenController = TextEditingController();
-  final _gioiTinhController = TextEditingController(text: 'Nam');
-  final _ngaySinhController = TextEditingController();
-  final _thangSinhController = TextEditingController();
-  final _namSinhController = TextEditingController();
-  final _noiSinhController = TextEditingController();
-  final _queQuanController = TextEditingController();
-  final _quocTichController = TextEditingController(text: 'Việt Nam');
-  final _danTocController = TextEditingController(text: 'Kinh');
-  final _tonGiaoController = TextEditingController(text: 'Không');
-
-  // 2. Thông tin CCCD
-  final _cccdController = TextEditingController();
-  final _ngayCccdController = TextEditingController();
-  final _thangCccdController = TextEditingController();
-  final _namCccdController = TextEditingController();
-  final _noiCapCccdController = TextEditingController(text: 'Cục Cảnh sát QLHC về TTXH');
-
-  // 3. Học vấn & Nghề nghiệp
-  final _hocVanController = TextEditingController();
-  final _ngheNghiepController = TextEditingController();
-  final _noiLamViecController = TextEditingController();
-  final _chucVuController = TextEditingController();
-  final _doanTheController = TextEditingController();
-
-  // 4. Địa chỉ cư trú
-  final _noiThuongTruController = TextEditingController();
-  final _noiTamTruController = TextEditingController();
-  final _noiOHienTaiController = TextEditingController();
-
-  // 5. Tiền án, tiền sự
-  final _tienAnTienSuController = TextEditingController(text: 'Chưa có tiền án, tiền sự');
+  // Text Controllers
+  late TextEditingController _hoTenController;
+  late TextEditingController _gioiTinhController;
+  late TextEditingController _ngaySinhController;
+  late TextEditingController _thangSinhController;
+  late TextEditingController _namSinhController;
+  late TextEditingController _noiSinhController;
+  late TextEditingController _queQuanController;
+  late TextEditingController _quocTichController;
+  late TextEditingController _danTocController;
+  late TextEditingController _tonGiaoController;
+  late TextEditingController _cccdController;
+  late TextEditingController _ngayCccdController;
+  late TextEditingController _thangCccdController;
+  late TextEditingController _namCccdController;
+  late TextEditingController _noiCapCccdController;
+  late TextEditingController _hocVanController;
+  late TextEditingController _ngheNghiepController;
+  late TextEditingController _noiLamViecController;
+  late TextEditingController _noiThuongTruController;
+  late TextEditingController _noiTamTruController;
+  late TextEditingController _noiOHienTaiController;
+  late TextEditingController _chucVuController;
+  late TextEditingController _doanTheController;
+  late TextEditingController _tienAnTienSuController;
 
   String _selectedGioiTinh = 'Nam';
   bool _isSaving = false;
@@ -62,37 +52,62 @@ class _PersonPageState extends State<PersonPage> {
   // Ảnh đại diện
   Uint8List? _avatarBytes;
   String? _avatarFilename;
+  String? _initialImageUrl;
 
   @override
   void initState() {
     super.initState();
-    if (widget.initialPerson != null) {
-      final p = widget.initialPerson!;
-      _hoTenController.text = p['ho_ten'] ?? '';
-      _gioiTinhController.text = p['gioi_tinh'] ?? 'Nam';
-      _selectedGioiTinh = _gioiTinhController.text;
-      _ngaySinhController.text = p['ngay_sinh'] ?? '';
-      _thangSinhController.text = p['thang_sinh'] ?? '';
-      _namSinhController.text = p['nam_sinh'] ?? '';
-      _noiSinhController.text = p['noi_sinh'] ?? '';
-      _queQuanController.text = p['que_quan'] ?? '';
-      _quocTichController.text = p['quoc_tich'] ?? 'Việt Nam';
-      _danTocController.text = p['dan_toc'] ?? 'Kinh';
-      _tonGiaoController.text = p['ton_giao'] ?? 'Không';
-      _cccdController.text = p['cccd'] ?? '';
-      _ngayCccdController.text = p['ngay_cccd'] ?? '';
-      _thangCccdController.text = p['thang_cccd'] ?? '';
-      _namCccdController.text = p['nam_cccd'] ?? '';
-      _noiCapCccdController.text = p['noi_cap_cccd'] ?? 'Cục Cảnh sát QLHC về TTXH';
-      _hocVanController.text = p['hoc_van'] ?? '';
-      _ngheNghiepController.text = p['nghe_nghiep'] ?? '';
-      _noiLamViecController.text = p['noi_lam_viec'] ?? '';
-      _noiThuongTruController.text = p['noi_thuong_tru'] ?? '';
-      _noiTamTruController.text = p['noi_tam_tru'] ?? '';
-      _noiOHienTaiController.text = p['noi_o_hien_tai'] ?? '';
-      _chucVuController.text = p['chuc_vu'] ?? '';
-      _doanTheController.text = p['doan_the'] ?? '';
-      _tienAnTienSuController.text = p['tien_an_tien_su'] ?? 'Chưa có tiền án, tiền sự';
+    final p = widget.initialPerson;
+
+    _hoTenController = TextEditingController(text: p?['ho_ten'] ?? '');
+    _gioiTinhController = TextEditingController(text: p?['gioi_tinh'] ?? 'Nam');
+    _ngaySinhController = TextEditingController(text: p?['ngay_sinh'] ?? '');
+    _thangSinhController = TextEditingController(text: p?['thang_sinh'] ?? '');
+    _namSinhController = TextEditingController(text: p?['nam_sinh'] ?? '');
+    _noiSinhController = TextEditingController(text: p?['noi_sinh'] ?? '');
+    _queQuanController = TextEditingController(text: p?['que_quan'] ?? '');
+    _quocTichController = TextEditingController(
+      text: p?['quoc_tich'] ?? 'Việt Nam',
+    );
+    _danTocController = TextEditingController(text: p?['dan_toc'] ?? 'Kinh');
+    _tonGiaoController = TextEditingController(text: p?['ton_giao'] ?? 'Không');
+    _cccdController = TextEditingController(text: p?['cccd'] ?? '');
+    _ngayCccdController = TextEditingController(text: p?['ngay_cccd'] ?? '');
+    _thangCccdController = TextEditingController(text: p?['thang_cccd'] ?? '');
+    _namCccdController = TextEditingController(text: p?['nam_cccd'] ?? '');
+    _noiCapCccdController = TextEditingController(
+      text: p?['noi_cap_cccd'] ?? 'Cục Cảnh sát QLHC về TTXH',
+    );
+    _hocVanController = TextEditingController(text: p?['hoc_van'] ?? '');
+    _ngheNghiepController = TextEditingController(
+      text: p?['nghe_nghiep'] ?? '',
+    );
+    _noiLamViecController = TextEditingController(
+      text: p?['noi_lam_viec'] ?? '',
+    );
+    _noiThuongTruController = TextEditingController(
+      text: p?['noi_thuong_tru'] ?? '',
+    );
+    _noiTamTruController = TextEditingController(text: p?['noi_tam_tru'] ?? '');
+    _noiOHienTaiController = TextEditingController(
+      text: p?['noi_o_hien_tai'] ?? '',
+    );
+    _chucVuController = TextEditingController(text: p?['chuc_vu'] ?? '');
+    _doanTheController = TextEditingController(text: p?['doan_the'] ?? '');
+    _tienAnTienSuController = TextEditingController(
+      text: p?['tien_an_tien_su'] ?? 'Chưa có tiền án, tiền sự',
+    );
+
+    if (p != null) {
+      _selectedGioiTinh = p['gioi_tinh'] ?? 'Nam';
+      final imagePath = p['image_path'] ?? '';
+      final personId = p['id'] ?? '';
+      if (imagePath.toString().isNotEmpty &&
+          widget.caseId != null &&
+          personId.toString().isNotEmpty) {
+        _initialImageUrl =
+            '${ApiService.baseUrl}/api/v1/cases/${widget.caseId}/persons/$personId/image?t=${DateTime.now().millisecondsSinceEpoch}';
+      }
     }
   }
 
@@ -116,78 +131,83 @@ class _PersonPageState extends State<PersonPage> {
     _hocVanController.dispose();
     _ngheNghiepController.dispose();
     _noiLamViecController.dispose();
-    _chucVuController.dispose();
-    _doanTheController.dispose();
     _noiThuongTruController.dispose();
     _noiTamTruController.dispose();
     _noiOHienTaiController.dispose();
+    _chucVuController.dispose();
+    _doanTheController.dispose();
     _tienAnTienSuController.dispose();
     super.dispose();
   }
 
   Future<void> _pickAvatar() async {
-    try {
-      final result = await fp.FilePicker.platform.pickFiles(
-        type: fp.FileType.image,
-        withData: true,
-      );
-      if (result != null && result.files.isNotEmpty && result.files.first.bytes != null) {
-        setState(() {
-          _avatarBytes = result.files.first.bytes;
-          _avatarFilename = result.files.first.name;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi chọn ảnh: $e'), backgroundColor: Colors.redAccent),
-        );
-      }
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+    );
+
+    if (result != null && result.files.single.bytes != null) {
+      setState(() {
+        _avatarBytes = result.files.single.bytes;
+        _avatarFilename = result.files.single.name;
+      });
     }
-  }
-
-  Map<String, String> _collectFields() {
-    final fields = {
-      'ho_ten': _hoTenController.text.trim(),
-      'gioi_tinh': _gioiTinhController.text.trim(),
-      'ngay_sinh': _ngaySinhController.text.trim(),
-      'thang_sinh': _thangSinhController.text.trim(),
-      'nam_sinh': _namSinhController.text.trim(),
-      'noi_sinh': _noiSinhController.text.trim(),
-      'que_quan': _queQuanController.text.trim(),
-      'quoc_tich': _quocTichController.text.trim(),
-      'dan_toc': _danTocController.text.trim(),
-      'ton_giao': _tonGiaoController.text.trim(),
-      'cccd': _cccdController.text.trim(),
-      'ngay_cccd': _ngayCccdController.text.trim(),
-      'thang_cccd': _thangCccdController.text.trim(),
-      'nam_cccd': _namCccdController.text.trim(),
-      'noi_cap_cccd': _noiCapCccdController.text.trim(),
-      'hoc_van': _hocVanController.text.trim(),
-      'nghe_nghiep': _ngheNghiepController.text.trim(),
-      'noi_lam_viec': _noiLamViecController.text.trim(),
-      'noi_thuong_tru': _noiThuongTruController.text.trim(),
-      'noi_tam_tru': _noiTamTruController.text.trim(),
-      'noi_o_hien_tai': _noiOHienTaiController.text.trim(),
-      'chuc_vu': _chucVuController.text.trim(),
-      'doan_the': _doanTheController.text.trim(),
-      'tien_an_tien_su': _tienAnTienSuController.text.trim(),
-    };
-
-    if (widget.initialPerson != null && widget.initialPerson!['id'] != null) {
-      fields['person_id'] = widget.initialPerson!['id'].toString();
-    }
-
-    return fields;
   }
 
   Future<void> _saveToCase() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (widget.caseId == null) return;
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Vui lòng kiểm tra lại thông tin còn thiếu/chưa hợp lệ',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isSaving = true);
     try {
-      final fields = _collectFields();
+      final isEdit = widget.initialPerson != null;
+      final personId = isEdit
+          ? widget.initialPerson!['id']
+          : DateTime.now().millisecondsSinceEpoch.toString();
+
+      final personData = {
+        'person_id': personId,
+        'ho_ten': _hoTenController.text.trim(),
+        'gioi_tinh': _gioiTinhController.text.trim(),
+        'ngay_sinh': _ngaySinhController.text.trim(),
+        'thang_sinh': _thangSinhController.text.trim(),
+        'nam_sinh': _namSinhController.text.trim(),
+        'noi_sinh': _noiSinhController.text.trim(),
+        'que_quan': _queQuanController.text.trim(),
+        'quoc_tich': _quocTichController.text.trim(),
+        'dan_toc': _danTocController.text.trim(),
+        'ton_giao': _tonGiaoController.text.trim(),
+        'cccd': _cccdController.text.trim(),
+        'ngay_cccd': _ngayCccdController.text.trim(),
+        'thang_cccd': _thangCccdController.text.trim(),
+        'nam_cccd': _namCccdController.text.trim(),
+        'noi_cap_cccd': _noiCapCccdController.text.trim(),
+        'hoc_van': _hocVanController.text.trim(),
+        'nghe_nghiep': _ngheNghiepController.text.trim(),
+        'noi_lam_viec': _noiLamViecController.text.trim(),
+        'noi_thuong_tru': _noiThuongTruController.text.trim(),
+        'noi_tam_tru': _noiTamTruController.text.trim(),
+        'noi_o_hien_tai': _noiOHienTaiController.text.trim(),
+        'chuc_vu': _chucVuController.text.trim(),
+        'doan_the': _doanTheController.text.trim(),
+        'tien_an_tien_su': _tienAnTienSuController.text.trim(),
+        'image_path': widget.initialPerson?['image_path'] ?? '',
+      };
+
+      final Map<String, String> fields = {};
+      personData.forEach((key, value) {
+        fields[key] = value.toString();
+      });
+
       await ApiService.savePersonToCase(
         caseId: widget.caseId!,
         fields: fields,
@@ -196,12 +216,13 @@ class _PersonPageState extends State<PersonPage> {
       );
 
       if (mounted) {
-        final isEdit = widget.initialPerson != null;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(isEdit
-                ? 'Đã cập nhật hồ sơ của "${fields['ho_ten']}" thành công!'
-                : 'Đã thêm hồ sơ của "${fields['ho_ten']}" vào vụ án!'),
+            content: Text(
+              isEdit
+                  ? 'Cập nhật đối tượng thành công!'
+                  : 'Đã lưu đối tượng vào vụ án!',
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -210,41 +231,15 @@ class _PersonPageState extends State<PersonPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi lưu hồ sơ: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Lỗi khi lưu: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
-  }
-
-  Widget _buildSectionHeader(String title, IconData icon) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(top: 16.0, bottom: 12.0),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: theme.colorScheme.primary),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.primary,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Divider(
-              color: theme.colorScheme.outline.withValues(alpha: 0.2),
-              thickness: 1,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -255,14 +250,16 @@ class _PersonPageState extends State<PersonPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEdit ? 'Chỉnh Sửa Hồ Sơ Cá Nhân' : 'Thêm Hồ Sơ Cá Nhân'),
+        title: Text(
+          isEdit ? 'THÔNG TIN ĐỐI TƯỢNG/BỊ CAN' : 'THÊM ĐỐI TƯỢNG/BỊ CAN',
+        ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
         child: Center(
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 800),
+            constraints: const BoxConstraints(maxWidth: 900),
             child: Card(
               elevation: 2,
               shape: RoundedRectangleBorder(
@@ -280,318 +277,69 @@ class _PersonPageState extends State<PersonPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        isEdit ? 'CHỈNH SỬA HỒ SƠ CÁ NHÂN' : 'HỒ SƠ CÁ NHÂN',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: primaryColor,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
                         isEdit
                             ? 'Cập nhật các thông tin cá nhân dưới đây và nhấn Cập Nhật Hồ Sơ.'
-                            : 'Điền đầy đủ các thông tin cá nhân dưới đây để lưu vào vụ việc hoặc xuất tài liệu Word.',
+                            : 'Điền đầy đủ các thông tin cá nhân dưới đây để lưu vào vụ việc/vụ án và xuất Word.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,
                           color: primaryColor.withValues(alpha: 0.6),
                         ),
                       ),
-                      const SizedBox(height: 16),
-
-                      // Avatar picker
-                      Center(
-                        child: Stack(
-                          children: [
-                            CircleAvatar(
-                              radius: 40,
-                              backgroundColor: primaryColor.withValues(alpha: 0.1),
-                              backgroundImage: _avatarBytes != null ? MemoryImage(_avatarBytes!) : null,
-                              child: _avatarBytes == null
-                                  ? Icon(Icons.person, size: 40, color: primaryColor)
-                                  : null,
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: InkWell(
-                                onTap: _pickAvatar,
-                                child: CircleAvatar(
-                                  radius: 14,
-                                  backgroundColor: primaryColor,
-                                  child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Center(
-                        child: TextButton.icon(
-                          onPressed: _pickAvatar,
-                          icon: const Icon(Icons.upload_file, size: 16),
-                          label: Text(_avatarBytes != null ? 'Đổi ảnh đại diện' : 'Chọn ảnh đại diện'),
-                        ),
-                      ),
 
                       // 1. THÔNG TIN CƠ BẢN
-                      _buildSectionHeader('I. THÔNG TIN CƠ BẢN', Icons.person_outline),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: CustomTextInput(
-                              controller: _hoTenController,
-                              label: 'Họ và tên',
-                              hint: 'Nguyễn Văn A...',
-                              icon: Icons.badge_outlined,
-                              isRequired: true,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            flex: 2,
-                            child: CustomRadioInput(
-                              label: 'Giới tính',
-                              options: const ['Nam', 'Nữ'],
-                              selectedValue: _selectedGioiTinh,
-                              icon: Icons.wc,
-                              onChanged: (val) {
-                                setState(() {
-                                  _selectedGioiTinh = val;
-                                  _gioiTinhController.text = val;
-                                });
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: CustomTextInput(
-                              controller: _ngaySinhController,
-                              label: 'Ngày sinh',
-                              hint: '15',
-                              icon: Icons.calendar_today,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: CustomTextInput(
-                              controller: _thangSinhController,
-                              label: 'Tháng sinh',
-                              hint: '08',
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: CustomTextInput(
-                              controller: _namSinhController,
-                              label: 'Năm sinh',
-                              hint: '1995',
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: CustomTextInput(
-                              controller: _noiSinhController,
-                              label: 'Nơi sinh',
-                              hint: 'Xã/Phường, Huyện/Quận, Tỉnh/TP...',
-                              icon: Icons.location_city,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: CustomTextInput(
-                              controller: _queQuanController,
-                              label: 'Quê quán',
-                              hint: 'Xã/Phường, Huyện/Quận, Tỉnh/TP...',
-                              icon: Icons.home_work_outlined,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: CustomTextInput(
-                              controller: _quocTichController,
-                              label: 'Quốc tịch',
-                              hint: 'Việt Nam',
-                              icon: Icons.flag_outlined,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: CustomTextInput(
-                              controller: _danTocController,
-                              label: 'Dân tộc',
-                              hint: 'Kinh',
-                              icon: Icons.people_outline,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: CustomTextInput(
-                              controller: _tonGiaoController,
-                              label: 'Tôn giáo',
-                              hint: 'Không',
-                              icon: Icons.church_outlined,
-                            ),
-                          ),
-                        ],
+                      _Section1BasicInfo(
+                        avatarBytes: _avatarBytes,
+                        initialImageUrl: _initialImageUrl,
+                        onPickAvatar: _pickAvatar,
+                        hoTenController: _hoTenController,
+                        selectedGioiTinh: _selectedGioiTinh,
+                        onGioiTinhChanged: (val) {
+                          setState(() {
+                            _selectedGioiTinh = val;
+                            _gioiTinhController.text = val;
+                          });
+                        },
+                        ngaySinhController: _ngaySinhController,
+                        thangSinhController: _thangSinhController,
+                        namSinhController: _namSinhController,
+                        noiSinhController: _noiSinhController,
+                        queQuanController: _queQuanController,
+                        quocTichController: _quocTichController,
+                        danTocController: _danTocController,
+                        tonGiaoController: _tonGiaoController,
                       ),
 
                       // 2. THÔNG TIN CCCD / ĐỊNH DANH
-                      _buildSectionHeader('II. THÔNG TIN CCCD / ĐỊNH DANH', Icons.credit_card_outlined),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: CustomTextInput(
-                              controller: _cccdController,
-                              label: 'Số CCCD / CMND',
-                              hint: '12 chữ số...',
-                              icon: Icons.credit_card,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            flex: 3,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: CustomTextInput(
-                                    controller: _ngayCccdController,
-                                    label: 'Ngày cấp',
-                                    hint: '01',
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: CustomTextInput(
-                                    controller: _thangCccdController,
-                                    label: 'Tháng cấp',
-                                    hint: '01',
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: CustomTextInput(
-                                    controller: _namCccdController,
-                                    label: 'Năm cấp',
-                                    hint: '2022',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      CustomTextInput(
-                        controller: _noiCapCccdController,
-                        label: 'Nơi cấp CCCD',
-                        hint: 'Cục Cảnh sát QLHC về TTXH',
-                        icon: Icons.account_balance_outlined,
+                      _Section2CccdInfo(
+                        cccdController: _cccdController,
+                        ngayCccdController: _ngayCccdController,
+                        thangCccdController: _thangCccdController,
+                        namCccdController: _namCccdController,
+                        noiCapCccdController: _noiCapCccdController,
                       ),
 
                       // 3. HỌC VẤN & CÔNG VIỆC
-                      _buildSectionHeader('III. HỌC VẤN, NGHỀ NGHIỆP & ĐOÀN THỂ', Icons.work_outline),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: CustomTextInput(
-                              controller: _hocVanController,
-                              label: 'Trình độ học vấn',
-                              hint: '12/12, Đại học...',
-                              icon: Icons.school_outlined,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: CustomTextInput(
-                              controller: _ngheNghiepController,
-                              label: 'Nghề nghiệp',
-                              hint: 'Kỹ sư, Tự do...',
-                              icon: Icons.work_outline,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      CustomTextInput(
-                        controller: _noiLamViecController,
-                        label: 'Nơi làm việc',
-                        hint: 'Tên công ty / Cơ quan làm việc...',
-                        icon: Icons.business_outlined,
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: CustomTextInput(
-                              controller: _chucVuController,
-                              label: 'Chức vụ',
-                              hint: 'Nhân viên, Giám đốc...',
-                              icon: Icons.manage_accounts_outlined,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: CustomTextInput(
-                              controller: _doanTheController,
-                              label: 'Đoàn thể',
-                              hint: 'Đoàn TNCS, Đảng viên...',
-                              icon: Icons.groups_outlined,
-                            ),
-                          ),
-                        ],
+                      _Section3EducationWork(
+                        hocVanController: _hocVanController,
+                        ngheNghiepController: _ngheNghiepController,
+                        noiLamViecController: _noiLamViecController,
+                        chucVuController: _chucVuController,
+                        doanTheController: _doanTheController,
                       ),
 
                       // 4. ĐỊA CHỈ CƯ TRÚ
-                      _buildSectionHeader('IV. ĐỊA CHỈ CƯ TRÚ', Icons.home_outlined),
-                      CustomTextInput(
-                        controller: _noiThuongTruController,
-                        label: 'Nơi thường trú (Hộ khẩu)',
-                        hint: 'Số nhà, đường, phường/xã, quận/huyện, tỉnh/TP...',
-                        icon: Icons.home_outlined,
-                      ),
-                      const SizedBox(height: 12),
-                      CustomTextInput(
-                        controller: _noiTamTruController,
-                        label: 'Nơi tạm trú',
-                        hint: 'Địa chỉ tạm trú hiện tại...',
-                        icon: Icons.holiday_village_outlined,
-                      ),
-                      const SizedBox(height: 12),
-                      CustomTextInput(
-                        controller: _noiOHienTaiController,
-                        label: 'Nơi ở hiện nay',
-                        hint: 'Nơi đang sinh sống thực tế...',
-                        icon: Icons.pin_drop_outlined,
+                      _Section4Residences(
+                        noiThuongTruController: _noiThuongTruController,
+                        noiTamTruController: _noiTamTruController,
+                        noiOHienTaiController: _noiOHienTaiController,
                       ),
 
                       // 5. TIỀN ÁN, TIỀN SỰ
-                      _buildSectionHeader('V. TIỀN ÁN, TIỀN SỰ', Icons.gavel_outlined),
-                      CustomTextInput(
-                        controller: _tienAnTienSuController,
-                        label: 'Tiền án, tiền sự',
-                        hint: 'Chưa có tiền án, tiền sự...',
-                        icon: Icons.gavel_outlined,
+                      _Section5CriminalRecord(
+                        tienAnTienSuController: _tienAnTienSuController,
                       ),
+
                       const SizedBox(height: 24),
 
                       // Action Buttons
@@ -602,18 +350,28 @@ class _PersonPageState extends State<PersonPage> {
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
                                 )
                               : Icon(isEdit ? Icons.check : Icons.save),
                           label: Text(
                             _isSaving
                                 ? 'Đang lưu...'
-                                : (isEdit ? 'CẬP NHẬT HỒ SƠ' : 'LƯU HỒ SƠ VÀO VỤ ÁN'),
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                : (isEdit
+                                      ? 'CẬP NHẬT HỒ SƠ'
+                                      : 'LƯU HỒ SƠ VÀO VỤ ÁN'),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           style: FilledButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
                         ),
                       ],
@@ -626,6 +384,403 @@ class _PersonPageState extends State<PersonPage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// Widget tiêu đề section
+Widget _buildSectionHeader(BuildContext context, String title) {
+  final theme = Theme.of(context);
+  return Padding(
+    padding: const EdgeInsets.only(top: 20.0, bottom: 12.0),
+    child: Row(
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Divider(
+            color: theme.colorScheme.outline.withValues(alpha: 0.2),
+            thickness: 1,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// SECTION 1: THÔNG TIN CƠ BẢN
+class _Section1BasicInfo extends StatelessWidget {
+  final Uint8List? avatarBytes;
+  final String? initialImageUrl;
+  final VoidCallback onPickAvatar;
+  final TextEditingController hoTenController;
+  final String selectedGioiTinh;
+  final ValueChanged<String> onGioiTinhChanged;
+  final TextEditingController ngaySinhController;
+  final TextEditingController thangSinhController;
+  final TextEditingController namSinhController;
+  final TextEditingController noiSinhController;
+  final TextEditingController queQuanController;
+  final TextEditingController quocTichController;
+  final TextEditingController danTocController;
+  final TextEditingController tonGiaoController;
+
+  const _Section1BasicInfo({
+    required this.avatarBytes,
+    required this.initialImageUrl,
+    required this.onPickAvatar,
+    required this.hoTenController,
+    required this.selectedGioiTinh,
+    required this.onGioiTinhChanged,
+    required this.ngaySinhController,
+    required this.thangSinhController,
+    required this.namSinhController,
+    required this.noiSinhController,
+    required this.queQuanController,
+    required this.quocTichController,
+    required this.danTocController,
+    required this.tonGiaoController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildSectionHeader(context, 'I. THÔNG TIN CƠ BẢN'),
+        Row(
+          children: [
+            Expanded(
+              flex: 1,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: AvatarPicker(
+                  avatarBytes: avatarBytes,
+                  initialImageUrl: initialImageUrl,
+                  onPickAvatar: onPickAvatar,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 5,
+              child: Column(
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: CustomTextInput(
+                          controller: hoTenController,
+                          label: 'Họ và tên',
+                          hint: 'Nguyễn Văn A...',
+                          icon: Icons.badge_outlined,
+                          isRequired: true,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 180,
+                        child: CustomRadioInput(
+                          options: const ['Nam', 'Nữ'],
+                          selectedValue: selectedGioiTinh,
+                          icon: Icons.wc,
+                          onChanged: onGioiTinhChanged,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 1,
+                        child: DateTimeInput(
+                          label: 'Ngày tháng năm sinh',
+                          hint: 'dd/mm/yyyy (vd: 15081995)',
+                          icon: Icons.calendar_today,
+                          dayController: ngaySinhController,
+                          monthController: thangSinhController,
+                          yearController: namSinhController,
+                          isRequired: true,
+                          validator: (val) {
+                            if (val == null || val.isEmpty) {
+                              return 'Vui lòng nhập ngày sinh';
+                            }
+                            if (val.length != 10) {
+                              return 'Vui lòng nhập ngày sinh hợp lệ';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: CustomTextInput(
+                          controller: noiSinhController,
+                          label: 'Nơi sinh',
+                          hint: 'Xã/Phường, Tỉnh/TP...',
+                          icon: Icons.location_city,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextInput(
+                    controller: queQuanController,
+                    label: 'Quê quán',
+                    hint: 'Xã/Phường, Tỉnh/TP...',
+                    icon: Icons.home_work_outlined,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: CustomTextInput(
+                          controller: quocTichController,
+                          label: 'Quốc tịch',
+                          hint: 'Việt Nam',
+                          icon: Icons.flag_outlined,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: CustomTextInput(
+                          controller: danTocController,
+                          label: 'Dân tộc',
+                          hint: 'Kinh',
+                          icon: Icons.people_outline,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: CustomTextInput(
+                          controller: tonGiaoController,
+                          label: 'Tôn giáo',
+                          hint: 'Không',
+                          icon: Icons.church_outlined,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// SECTION 2: THÔNG TIN CCCD
+class _Section2CccdInfo extends StatelessWidget {
+  final TextEditingController cccdController;
+  final TextEditingController ngayCccdController;
+  final TextEditingController thangCccdController;
+  final TextEditingController namCccdController;
+  final TextEditingController noiCapCccdController;
+
+  const _Section2CccdInfo({
+    required this.cccdController,
+    required this.ngayCccdController,
+    required this.thangCccdController,
+    required this.namCccdController,
+    required this.noiCapCccdController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildSectionHeader(context, 'II. THÔNG TIN CCCD'),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 2,
+              child: CustomTextInput(
+                controller: cccdController,
+                label: 'Số CCCD / CMND',
+                hint: '12 chữ số...',
+                icon: Icons.credit_card,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 3,
+              child: DateTimeInput(
+                label: 'Ngày cấp CCCD',
+                hint: 'dd/mm/yyyy (vd: 01012022)',
+                icon: Icons.calendar_today,
+                dayController: ngayCccdController,
+                monthController: thangCccdController,
+                yearController: namCccdController,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        CustomTextInput(
+          controller: noiCapCccdController,
+          label: 'Nơi cấp CCCD',
+          hint: 'Cục Cảnh sát QLHC về TTXH',
+          icon: Icons.account_balance_outlined,
+        ),
+      ],
+    );
+  }
+}
+
+// SECTION 3: HỌC VẤN & CÔNG VIỆC
+class _Section3EducationWork extends StatelessWidget {
+  final TextEditingController hocVanController;
+  final TextEditingController ngheNghiepController;
+  final TextEditingController noiLamViecController;
+  final TextEditingController chucVuController;
+  final TextEditingController doanTheController;
+
+  const _Section3EducationWork({
+    required this.hocVanController,
+    required this.ngheNghiepController,
+    required this.noiLamViecController,
+    required this.chucVuController,
+    required this.doanTheController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildSectionHeader(context, 'III. HỌC VẤN, NGHỀ NGHIỆP & ĐOÀN THỂ'),
+        Row(
+          children: [
+            Expanded(
+              child: CustomTextInput(
+                controller: hocVanController,
+                label: 'Trình độ học vấn',
+                hint: '12/12, Đại học...',
+                icon: Icons.school_outlined,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: CustomTextInput(
+                controller: ngheNghiepController,
+                label: 'Nghề nghiệp',
+                hint: 'Kỹ sư, Tự do...',
+                icon: Icons.work_outline,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        CustomTextInput(
+          controller: noiLamViecController,
+          label: 'Nơi làm việc',
+          hint: 'Tên công ty / Cơ quan làm việc...',
+          icon: Icons.business_outlined,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: CustomTextInput(
+                controller: chucVuController,
+                label: 'Chức vụ',
+                hint: 'Nhân viên, Giám đốc...',
+                icon: Icons.manage_accounts_outlined,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: CustomTextInput(
+                controller: doanTheController,
+                label: 'Đoàn thể',
+                hint: 'Đoàn TNCS, Đảng viên...',
+                icon: Icons.groups_outlined,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// SECTION 4: ĐỊA CHỈ CƯ TRÚ
+class _Section4Residences extends StatelessWidget {
+  final TextEditingController noiThuongTruController;
+  final TextEditingController noiTamTruController;
+  final TextEditingController noiOHienTaiController;
+
+  const _Section4Residences({
+    required this.noiThuongTruController,
+    required this.noiTamTruController,
+    required this.noiOHienTaiController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildSectionHeader(context, 'IV. ĐỊA CHỈ CƯ TRÚ'),
+        CustomTextInput(
+          controller: noiThuongTruController,
+          label: 'Nơi thường trú (Hộ khẩu)',
+          hint: 'Số nhà, đường, phường/xã, tỉnh/TP...',
+          icon: Icons.home_outlined,
+        ),
+        const SizedBox(height: 12),
+        CustomTextInput(
+          controller: noiTamTruController,
+          label: 'Nơi tạm trú',
+          hint: 'Địa chỉ tạm trú hiện tại...',
+          icon: Icons.holiday_village_outlined,
+        ),
+        const SizedBox(height: 12),
+        CustomTextInput(
+          controller: noiOHienTaiController,
+          label: 'Nơi ở hiện nay',
+          hint: 'Nơi đang sinh sống thực tế...',
+          icon: Icons.pin_drop_outlined,
+        ),
+      ],
+    );
+  }
+}
+
+// SECTION 5: TIỀN ÁN, TIỀN SỰ
+class _Section5CriminalRecord extends StatelessWidget {
+  final TextEditingController tienAnTienSuController;
+
+  const _Section5CriminalRecord({required this.tienAnTienSuController});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildSectionHeader(context, 'V. TIỀN ÁN, TIỀN SỰ'),
+        CustomTextInput(
+          controller: tienAnTienSuController,
+          label: 'Tiền án, tiền sự',
+          hint: 'Chưa có tiền án, tiền sự...',
+          minLines: 4,
+          maxLines: 8,
+        ),
+      ],
     );
   }
 }

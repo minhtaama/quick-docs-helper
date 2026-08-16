@@ -23,14 +23,14 @@ def sync_flutter_web():
     static_dir = os.path.join(base_dir, "static")
 
     if os.path.exists(flutter_dir):
-        if not os.path.exists(flutter_build_dir):
-            print("Đang tự động biên dịch Flutter Web...")
-            subprocess.run(["flutter", "build", "web"], cwd=flutter_dir, shell=True)
+        # if not os.path.exists(flutter_build_dir):
+        print("Đang tự động biên dịch Flutter Web...")
+        subprocess.run(["flutter", "build", "web"], cwd=flutter_dir, shell=True)
 
-        if os.path.exists(flutter_build_dir):
-            os.makedirs(static_dir, exist_ok=True)
-            shutil.copytree(flutter_build_dir, static_dir, dirs_exist_ok=True)
-            print("Đã tự động đồng bộ Flutter Web vào thư mục static.")
+        # if os.path.exists(flutter_build_dir):
+        os.makedirs(static_dir, exist_ok=True)
+        shutil.copytree(flutter_build_dir, static_dir, dirs_exist_ok=True)
+        print("Đã tự động đồng bộ Flutter Web vào thư mục static.")
 
 # Tự động đồng bộ Flutter Web khi khởi chạy main.py
 sync_flutter_web()

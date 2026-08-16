@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_web/widgets/text_input.dart';
 import '../services/api_service.dart';
 
 class CaseEditDialog extends StatefulWidget {
@@ -70,38 +71,38 @@ class _CaseEditDialogState extends State<CaseEditDialog> {
     final isEdit = widget.caseId != null && widget.caseId!.isNotEmpty;
 
     return AlertDialog(
-      title: Text(isEdit ? 'Chỉnh Sửa Vụ Việc' : 'Tạo Vụ Việc Mới'),
+      title: Text(isEdit ? 'Chỉnh sửa vụ việc/vụ án' : 'Tạo vụ việc/vụ án mới'),
       content: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _tenVuController,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Tên vụ việc / Vụ án (*)',
-                hintText: 'Ví dụ: Vụ án buôn lậu A...',
-                isDense: true,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 600, maxWidth: 600),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              CustomTextInput(
+                controller: _tenVuController,
+                label: 'Tên vụ việc / Vụ án (*)',
+                hint: 'Ví dụ: Vụ án buôn lậu A...',
+                minLines: 3,
+                maxLines: 3,
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) {
+                    return 'Vui lòng nhập tên vụ việc';
+                  }
+                  return null;
+                },
               ),
-              validator: (val) {
-                if (val == null || val.trim().isEmpty) {
-                  return 'Vui lòng nhập tên vụ việc';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _moTaController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Mô tả / Ghi chú',
-                hintText: 'Nhập thông tin tóm tắt về vụ việc...',
-                isDense: true,
+              const SizedBox(height: 16),
+              CustomTextInput(
+                controller: _moTaController,
+                minLines: 6,
+                maxLines: 6,
+                label: 'Mô tả / Ghi chú',
+                hint: 'Nhập thông tin tóm tắt về vụ việc...',
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       actions: [

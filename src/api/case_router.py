@@ -1,3 +1,4 @@
+from fastapi.responses import Response
 import os
 from typing import List, Optional
 from fastapi import APIRouter, Form, File, UploadFile, HTTPException
@@ -139,3 +140,10 @@ async def delete_person(case_id: str, person_id: str):
     if not success:
         raise HTTPException(status_code=404, detail="Không tìm thấy cá nhân hoặc vụ việc")
     return {"message": "Đã xóa cá nhân khỏi vụ việc", "person_id": person_id}
+
+@router.get("/{case_id}/persons/{person_id}/image", summary="Lấy ảnh đại diện của cá nhân")
+async def get_person_image(case_id: str, person_id: str):
+    image_bytes = storage_service.get_person_image_bytes(case_id, person_id)
+    if not image_bytes:
+        raise HTTPException(status_code=404, detail="Không tìm thấy ảnh đại diện")
+    return Response(content=image_bytes, media_type="image/png")

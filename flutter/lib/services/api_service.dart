@@ -7,6 +7,9 @@ class ApiService {
   // Khi chạy Flutter Web trên cùng server FastAPI, đường dẫn rỗng "" sẽ tự động gọi theo host hiện tại.
   // Khi chạy riêng hoặc cần trỏ cứng, dùng http://127.0.0.1:8000.
   static String get baseUrl {
+    if (kDebugMode) {
+      return 'http://127.0.0.1:8000';
+    }
     if (kIsWeb) {
       return Uri.base.origin;
     }

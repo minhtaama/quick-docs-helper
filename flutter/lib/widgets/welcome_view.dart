@@ -60,12 +60,6 @@ class WelcomeView extends StatelessWidget {
                 ],
               ),
             ),
-            if (onNewCasePressed != null)
-              IconButton.filledTonal(
-                onPressed: onNewCasePressed,
-                icon: const Icon(Icons.add, size: 20),
-                tooltip: 'Thêm vụ việc mới',
-              ),
           ],
         ),
       );
