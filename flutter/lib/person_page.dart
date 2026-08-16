@@ -457,6 +457,7 @@ class _Section1BasicInfo extends StatelessWidget {
       children: [
         _buildSectionHeader(context, 'I. THÔNG TIN CƠ BẢN'),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               flex: 1,
@@ -501,7 +502,6 @@ class _Section1BasicInfo extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        flex: 1,
                         child: DateTimeInput(
                           label: 'Ngày tháng năm sinh',
                           hint: 'dd/mm/yyyy (vd: 15081995)',
@@ -523,7 +523,6 @@ class _Section1BasicInfo extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        flex: 2,
                         child: CustomTextInput(
                           controller: noiSinhController,
                           label: 'Nơi sinh',

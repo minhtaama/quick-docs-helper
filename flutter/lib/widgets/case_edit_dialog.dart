@@ -82,13 +82,13 @@ class _CaseEditDialogState extends State<CaseEditDialog> {
             children: [
               CustomTextInput(
                 controller: _tenVuController,
-                label: 'Tên vụ việc / Vụ án (*)',
-                hint: 'Ví dụ: Vụ án buôn lậu A...',
+                label: 'Tên tóm tắt (*)',
+                hint: '...',
                 minLines: 3,
                 maxLines: 3,
                 validator: (val) {
                   if (val == null || val.trim().isEmpty) {
-                    return 'Vui lòng nhập tên vụ việc';
+                    return 'Vui lòng nhập tên tóm tắt';
                   }
                   return null;
                 },
@@ -98,8 +98,16 @@ class _CaseEditDialogState extends State<CaseEditDialog> {
                 controller: _moTaController,
                 minLines: 6,
                 maxLines: 6,
-                label: 'Mô tả / Ghi chú',
-                hint: 'Nhập thông tin tóm tắt về vụ việc...',
+                isRequired: true,
+                label: 'Tên đầy đủ vụ án/vụ việc',
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) {
+                    return 'Vui lòng nhập tên đầy đủ tên vụ án/vụ việc';
+                  }
+                  return null;
+                },
+                hint:
+                    'Ví dụ: Vụ án ... xảy ra ngày ... tại ... hoặc Đơn của ông ... tố giác ... xảy ra ngày ... tại ....',
               ),
             ],
           ),

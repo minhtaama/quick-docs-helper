@@ -6,7 +6,8 @@ class CaseListPanel extends StatefulWidget {
   final ValueChanged<String> onCaseSelected;
   final VoidCallback onRefresh;
   final VoidCallback onNewCasePressed;
-  final Function(String caseId, String currentTenVu, String currentMoTa)? onCaseEdited;
+  final Function(String caseId, String currentTenVu, String currentMoTa)?
+  onCaseEdited;
   final Future<void> Function(String caseId)? onCaseDeleted;
   final bool isMobile;
 
@@ -41,7 +42,9 @@ class _CaseListPanelState extends State<CaseListPanel> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Xác nhận xóa vụ việc'),
-        content: Text('Bạn có chắc chắn muốn xóa vụ việc "$tenVu"? Toàn bộ dữ liệu các cá nhân trong vụ việc này sẽ bị xóa.'),
+        content: Text(
+          'Bạn có chắc chắn muốn xóa vụ việc "$tenVu"? Toàn bộ dữ liệu các cá nhân trong vụ việc này sẽ bị xóa.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -104,9 +107,15 @@ class _CaseListPanelState extends State<CaseListPanel> {
                 FilledButton.icon(
                   onPressed: widget.onNewCasePressed,
                   icon: const Icon(Icons.add, size: 16),
-                  label: const Text('Tạo vụ việc', style: TextStyle(fontSize: 13)),
+                  label: const Text(
+                    'Tạo vụ việc',
+                    style: TextStyle(fontSize: 13),
+                  ),
                   style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     visualDensity: VisualDensity.compact,
                   ),
                 ),
@@ -116,7 +125,10 @@ class _CaseListPanelState extends State<CaseListPanel> {
 
           // Ô tìm kiếm vụ việc
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 4.0,
+            ),
             child: TextField(
               controller: _searchController,
               onChanged: (val) {
@@ -126,8 +138,15 @@ class _CaseListPanelState extends State<CaseListPanel> {
               decoration: InputDecoration(
                 isDense: true,
                 hintText: 'Tìm kiếm theo tên vụ việc...',
-                hintStyle: TextStyle(fontSize: 12, color: primaryColor.withValues(alpha: 0.5)),
-                prefixIcon: Icon(Icons.search, size: 18, color: primaryColor.withValues(alpha: 0.6)),
+                hintStyle: TextStyle(
+                  fontSize: 12,
+                  color: primaryColor.withValues(alpha: 0.5),
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  size: 18,
+                  color: primaryColor.withValues(alpha: 0.6),
+                ),
                 suffixIcon: _searchKeyword.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear, size: 16),
@@ -137,10 +156,15 @@ class _CaseListPanelState extends State<CaseListPanel> {
                         },
                       )
                     : null,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: BorderSide(color: theme.colorScheme.outline.withValues(alpha: 0.2)),
+                  borderSide: BorderSide(
+                    color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                  ),
                 ),
                 filled: true,
               ),
@@ -158,7 +182,11 @@ class _CaseListPanelState extends State<CaseListPanel> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.inbox_outlined, size: 40, color: primaryColor.withValues(alpha: 0.3)),
+                          Icon(
+                            Icons.inbox_outlined,
+                            size: 40,
+                            color: primaryColor.withValues(alpha: 0.3),
+                          ),
                           const SizedBox(height: 8),
                           Text(
                             _searchKeyword.isNotEmpty
@@ -175,7 +203,10 @@ class _CaseListPanelState extends State<CaseListPanel> {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12.0,
+                      vertical: 4.0,
+                    ),
                     itemCount: filteredCases.length,
                     itemBuilder: (context, index) {
                       final item = filteredCases[index];
@@ -193,12 +224,15 @@ class _CaseListPanelState extends State<CaseListPanel> {
                           side: BorderSide(
                             color: isSelected
                                 ? primaryColor
-                                : theme.colorScheme.outline.withValues(alpha: 0.15),
+                                : theme.colorScheme.outline.withValues(
+                                    alpha: 0.15,
+                                  ),
                             width: isSelected ? 1.5 : 1.0,
                           ),
                         ),
                         color: isSelected
-                            ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6)
+                            ? theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.6)
                             : theme.colorScheme.surface,
                         child: InkWell(
                           borderRadius: BorderRadius.circular(8.0),
@@ -216,13 +250,16 @@ class _CaseListPanelState extends State<CaseListPanel> {
                                   child: Icon(
                                     Icons.folder,
                                     size: 18,
-                                    color: isSelected ? Colors.white : primaryColor,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : primaryColor,
                                   ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         tenVu,
@@ -231,7 +268,7 @@ class _CaseListPanelState extends State<CaseListPanel> {
                                           fontWeight: FontWeight.bold,
                                           color: primaryColor,
                                         ),
-                                        maxLines: 1,
+                                        maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       if (moTa.isNotEmpty) ...[
@@ -240,9 +277,11 @@ class _CaseListPanelState extends State<CaseListPanel> {
                                           moTa,
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color: primaryColor.withValues(alpha: 0.6),
+                                            color: primaryColor.withValues(
+                                              alpha: 0.6,
+                                            ),
                                           ),
-                                          maxLines: 1,
+                                          maxLines: 3,
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ],
@@ -252,14 +291,18 @@ class _CaseListPanelState extends State<CaseListPanel> {
                                           Icon(
                                             Icons.people_alt_outlined,
                                             size: 14,
-                                            color: primaryColor.withValues(alpha: 0.7),
+                                            color: primaryColor.withValues(
+                                              alpha: 0.7,
+                                            ),
                                           ),
                                           const SizedBox(width: 4),
                                           Text(
                                             '$soNguoi đối tượng',
                                             style: TextStyle(
                                               fontSize: 11,
-                                              color: primaryColor.withValues(alpha: 0.7),
+                                              color: primaryColor.withValues(
+                                                alpha: 0.7,
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -272,19 +315,28 @@ class _CaseListPanelState extends State<CaseListPanel> {
                                     icon: Icon(
                                       Icons.edit_outlined,
                                       size: 18,
-                                      color: primaryColor.withValues(alpha: 0.7),
+                                      color: primaryColor.withValues(
+                                        alpha: 0.7,
+                                      ),
                                     ),
                                     tooltip: 'Chỉnh sửa tên / mô tả vụ việc',
-                                    onPressed: () => widget.onCaseEdited!(caseId, tenVu, moTa),
+                                    onPressed: () => widget.onCaseEdited!(
+                                      caseId,
+                                      tenVu,
+                                      moTa,
+                                    ),
                                   ),
                                 IconButton(
                                   icon: Icon(
                                     Icons.delete_outline,
                                     size: 18,
-                                    color: Colors.redAccent.withValues(alpha: 0.8),
+                                    color: Colors.redAccent.withValues(
+                                      alpha: 0.8,
+                                    ),
                                   ),
                                   tooltip: 'Xóa vụ việc',
-                                  onPressed: () => _confirmDelete(context, caseId, tenVu),
+                                  onPressed: () =>
+                                      _confirmDelete(context, caseId, tenVu),
                                 ),
                               ],
                             ),

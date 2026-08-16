@@ -4,7 +4,6 @@ import 'widgets/welcome_view.dart';
 import 'widgets/case_list_panel.dart';
 import 'widgets/case_detail_panel.dart';
 import 'widgets/case_edit_dialog.dart';
-import 'case_detail_screen.dart';
 import 'person_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -18,6 +17,8 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> _cases = [];
   String? _selectedCaseId;
   Map<String, dynamic>? _selectedCaseDetails;
+  double _sidebarWidth = 360.0;
+  bool _isResizing = false;
 
   bool _isLoadingCases = false;
   bool _isLoadingDetails = false;
@@ -89,18 +90,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// Xử lý chọn vụ việc
-  void _onSelectCase(String caseId, bool isMobile) {
-    if (isMobile) {
-      // Trên Mobile: Chuyển màn hình riêng biệt
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => CaseDetailScreen(caseId: caseId)),
-      ).then((_) => _loadCases());
-    } else {
-      // Trên Web/Desktop: Cập nhật vùng chi tiết bên phải
-      setState(() => _selectedCaseId = caseId);
-      _loadCaseDetails(caseId);
-    }
+  void _onSelectCase(String caseId) {
+    setState(() => _selectedCaseId = caseId);
+    _loadCaseDetails(caseId);
   }
 
   /// Hộp thoại tạo mới vụ việc
@@ -264,119 +256,187 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 800;
+    return PopScope(
+      canPop: _selectedCaseId == null,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          setState(() {
+            _selectedCaseId = null;
+            _selectedCaseDetails = null;
+          });
+        }
+      },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 1200;
 
-        // BỐ CỤC CHO MÀN HÌNH NHỎ (MOBILE)
-        if (isMobile) {
+          // BỐ CỤC CHO MÀN HÌNH NHỎ (MOBILE)
+          if (isMobile) {
+            final hasSelectedCase = _selectedCaseId != null;
+
+            return Scaffold(
+              appBar: AppBar(
+                leading: hasSelectedCase
+                    ? IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        tooltip: 'Quay lại danh sách',
+                        onPressed: () {
+                          setState(() {
+                            _selectedCaseId = null;
+                            _selectedCaseDetails = null;
+                          });
+                        },
+                      )
+                    : null,
+                title: Text(
+                  hasSelectedCase
+                      ? (_selectedCaseDetails?['ten_vu'] ?? 'Chi tiết vụ việc')
+                      : 'Quản Lý Vụ Việc',
+                ),
+                centerTitle: !hasSelectedCase,
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    tooltip: 'Làm mới',
+                    onPressed: hasSelectedCase && _selectedCaseId != null
+                        ? () => _loadCaseDetails(_selectedCaseId!)
+                        : _loadCases,
+                  ),
+                ],
+              ),
+              body: hasSelectedCase
+                  ? CaseDetailPanel(
+                      caseData: _selectedCaseDetails,
+                      isLoading: _isLoadingDetails,
+                      onRefresh: () => _loadCaseDetails(_selectedCaseId!),
+                      onAddPersonPressed: _openAddPerson,
+                      onEditCasePressed: () => _showEditCaseDialog(
+                        _selectedCaseId!,
+                        _selectedCaseDetails?['ten_vu'] ?? '',
+                        _selectedCaseDetails?['mo_ta'] ?? '',
+                      ),
+                      onEditPersonPressed: _openEditPerson,
+                      onDownloadDocx: _downloadDocx,
+                      onDeletePerson: _deletePerson,
+                    )
+                  : Column(
+                      children: [
+                        WelcomeView(
+                          isCompact: true,
+                          onNewCasePressed: _showCreateCaseDialog,
+                        ),
+                        Expanded(
+                          child: _isLoadingCases
+                              ? const Center(child: CircularProgressIndicator())
+                              : CaseListPanel(
+                                  cases: _cases,
+                                  selectedCaseId: _selectedCaseId,
+                                  onCaseSelected: _onSelectCase,
+                                  onRefresh: _loadCases,
+                                  onNewCasePressed: _showCreateCaseDialog,
+                                  onCaseEdited: _showEditCaseDialog,
+                                  onCaseDeleted: _deleteCase,
+                                  isMobile: true,
+                                ),
+                        ),
+                      ],
+                    ),
+            );
+          }
+
+          // BỐ CỤC CHO MÀN HÌNH RỘNG (WEB / DESKTOP SIDEBAR)
           return Scaffold(
             appBar: AppBar(
-              title: const Text('Quản Lý Vụ Việc'),
-              centerTitle: true,
+              title: const Text('Quick Docs Helper - Quản Lý Hồ Sơ Vụ Việc'),
+              centerTitle: false,
               actions: [
                 IconButton(
                   icon: const Icon(Icons.refresh),
-                  tooltip: 'Làm mới',
+                  tooltip: 'Làm mới danh sách',
                   onPressed: _loadCases,
                 ),
+                const SizedBox(width: 8),
               ],
             ),
-            body: Column(
+            body: Row(
               children: [
-                // Welcome card xuất hiện bên trên danh sách vụ việc
-                WelcomeView(
-                  isCompact: true,
-                  onNewCasePressed: _showCreateCaseDialog,
-                ),
-                // Danh sách vụ việc chiếm toàn bộ phần còn lại
-                Expanded(
+                // Cột bên trái: Sidebar danh sách vụ việc
+                SizedBox(
+                  width: _sidebarWidth,
                   child: _isLoadingCases
                       ? const Center(child: CircularProgressIndicator())
                       : CaseListPanel(
                           cases: _cases,
                           selectedCaseId: _selectedCaseId,
-                          onCaseSelected: (id) => _onSelectCase(id, true),
+                          onCaseSelected: _onSelectCase,
                           onRefresh: _loadCases,
                           onNewCasePressed: _showCreateCaseDialog,
                           onCaseEdited: _showEditCaseDialog,
                           onCaseDeleted: _deleteCase,
-                          isMobile: true,
+                          isMobile: false,
+                        ),
+                ),
+
+                // Thanh kéo thay đổi kích thước Sidebar
+                MouseRegion(
+                  cursor: SystemMouseCursors.resizeColumn,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onHorizontalDragStart: (_) {
+                      setState(() => _isResizing = true);
+                    },
+                    onHorizontalDragUpdate: (details) {
+                      setState(() {
+                        _sidebarWidth = (_sidebarWidth + details.delta.dx)
+                            .clamp(360.0, 650.0);
+                      });
+                    },
+                    onHorizontalDragEnd: (_) {
+                      setState(() => _isResizing = false);
+                    },
+                    child: Container(
+                      width: 8,
+                      color: Colors.transparent,
+                      alignment: Alignment.center,
+                      child: Container(
+                        width: 1.5,
+                        color: _isResizing
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(
+                                context,
+                              ).colorScheme.outline.withValues(alpha: 0.2),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Cột bên phải: Chi tiết vụ án hoặc Placeholder Welcome
+                Expanded(
+                  child: _selectedCaseId != null
+                      ? CaseDetailPanel(
+                          caseData: _selectedCaseDetails,
+                          isLoading: _isLoadingDetails,
+                          onRefresh: () => _loadCaseDetails(_selectedCaseId!),
+                          onAddPersonPressed: _openAddPerson,
+                          onEditCasePressed: () => _showEditCaseDialog(
+                            _selectedCaseId!,
+                            _selectedCaseDetails?['ten_vu'] ?? '',
+                            _selectedCaseDetails?['mo_ta'] ?? '',
+                          ),
+                          onEditPersonPressed: _openEditPerson,
+                          onDownloadDocx: _downloadDocx,
+                          onDeletePerson: _deletePerson,
+                        )
+                      : WelcomeView(
+                          isCompact: false,
+                          onNewCasePressed: _showCreateCaseDialog,
                         ),
                 ),
               ],
             ),
           );
-        }
-
-        // BỐ CỤC CHO MÀN HÌNH RỘNG (WEB / DESKTOP SIDEBAR)
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Quick Docs Helper - Quản Lý Hồ Sơ Vụ Việc'),
-            centerTitle: false,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                tooltip: 'Làm mới danh sách',
-                onPressed: _loadCases,
-              ),
-              const SizedBox(width: 8),
-            ],
-          ),
-          body: Row(
-            children: [
-              // Cột bên trái: Sidebar danh sách vụ việc
-              SizedBox(
-                width: 340,
-                child: _isLoadingCases
-                    ? const Center(child: CircularProgressIndicator())
-                    : CaseListPanel(
-                        cases: _cases,
-                        selectedCaseId: _selectedCaseId,
-                        onCaseSelected: (id) => _onSelectCase(id, false),
-                        onRefresh: _loadCases,
-                        onNewCasePressed: _showCreateCaseDialog,
-                        onCaseEdited: _showEditCaseDialog,
-                        onCaseDeleted: _deleteCase,
-                        isMobile: false,
-                      ),
-              ),
-
-              // Đường phân cách dọc
-              VerticalDivider(
-                width: 1,
-                thickness: 1,
-                color: Theme.of(
-                  context,
-                ).colorScheme.outline.withValues(alpha: 0.15),
-              ),
-
-              // Cột bên phải: Chi tiết vụ án hoặc Placeholder Welcome
-              Expanded(
-                child: _selectedCaseId != null
-                    ? CaseDetailPanel(
-                        caseData: _selectedCaseDetails,
-                        isLoading: _isLoadingDetails,
-                        onRefresh: () => _loadCaseDetails(_selectedCaseId!),
-                        onAddPersonPressed: _openAddPerson,
-                        onEditCasePressed: () => _showEditCaseDialog(
-                          _selectedCaseId!,
-                          _selectedCaseDetails?['ten_vu'] ?? '',
-                          _selectedCaseDetails?['mo_ta'] ?? '',
-                        ),
-                        onEditPersonPressed: _openEditPerson,
-                        onDownloadDocx: _downloadDocx,
-                        onDeletePerson: _deletePerson,
-                      )
-                    : WelcomeView(
-                        isCompact: false,
-                        onNewCasePressed: _showCreateCaseDialog,
-                      ),
-              ),
-            ],
-          ),
-        );
-      },
+        },
+      ),
     );
   }
 }
