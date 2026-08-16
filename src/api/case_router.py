@@ -4,9 +4,11 @@ from typing import List, Optional
 from fastapi import APIRouter, Form, File, UploadFile, HTTPException
 from src.schemas.document_schema import CaseData, CaseCreate, PersonData
 from src.services.storage_service import StorageService
+from src.services.docx_service import DocxService
 
 router = APIRouter(prefix="/api/v1/cases", tags=["Cases & Persons"])
 storage_service = StorageService()
+docx_service = DocxService()
 
 @router.get("", summary="Lấy danh sách tất cả vụ việc")
 @router.get("/", include_in_schema=False)
@@ -131,6 +133,10 @@ async def add_or_update_person(
         image_ext=image_ext
     )
 
+    # Dọn dẹp cache PDF cũ để khi xuất lại sẽ tự động làm mới
+    if saved_person and saved_person.id:
+        docx_service.clear_person_cache(saved_person.id)
+
     return saved_person
 
 @router.delete("/{case_id}/persons/{person_id}", summary="Xóa một cá nhân khỏi vụ việc")
@@ -139,6 +145,7 @@ async def delete_person(case_id: str, person_id: str):
     success = storage_service.delete_person(case_id, person_id)
     if not success:
         raise HTTPException(status_code=404, detail="Không tìm thấy cá nhân hoặc vụ việc")
+    docx_service.clear_person_cache(person_id)
     return {"message": "Đã xóa cá nhân khỏi vụ việc", "person_id": person_id}
 
 @router.get("/{case_id}/persons/{person_id}/image", summary="Lấy ảnh đại diện của cá nhân")

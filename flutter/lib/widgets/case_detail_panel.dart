@@ -1,25 +1,24 @@
 import '../services/api_service.dart';
+import '../export_docs_page.dart';
 import 'package:flutter/material.dart';
 
 class CaseDetailPanel extends StatelessWidget {
   final Map<String, dynamic>? caseData;
   final bool isLoading;
-  final VoidCallback onRefresh;
+  final VoidCallback? onRefresh;
   final VoidCallback onAddPersonPressed;
   final VoidCallback? onEditCasePressed;
   final Function(Map<String, dynamic> person)? onEditPersonPressed;
-  final Future<void> Function(String personId, String hoTen)? onDownloadDocx;
   final Future<void> Function(String personId, String hoTen)? onDeletePerson;
 
   const CaseDetailPanel({
     super.key,
     required this.caseData,
     this.isLoading = false,
-    required this.onRefresh,
+    this.onRefresh,
     required this.onAddPersonPressed,
     this.onEditCasePressed,
     this.onEditPersonPressed,
-    this.onDownloadDocx,
     this.onDeletePerson,
   });
 
@@ -214,24 +213,17 @@ class CaseDetailPanel extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Header Danh sách con người
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'DANH SÁCH ĐỐI TƯỢNG/BỊ CAN TRONG VỤ ÁN (${personList.length})',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: primaryColor.withValues(alpha: 0.8),
-                  letterSpacing: 0.5,
-                ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'DANH SÁCH ĐỐI TƯỢNG/BỊ CAN TRONG VỤ ÁN (${personList.length})',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: primaryColor.withValues(alpha: 0.8),
+                letterSpacing: 0.5,
               ),
-              IconButton(
-                icon: const Icon(Icons.refresh, size: 20),
-                tooltip: 'Làm mới danh sách',
-                onPressed: onRefresh,
-              ),
-            ],
+            ),
           ),
           const SizedBox(height: 12),
 
@@ -457,20 +449,28 @@ class CaseDetailPanel extends StatelessWidget {
                                   tooltip: 'Sửa thông tin đối tượng',
                                   onPressed: () => onEditPersonPressed!(person),
                                 ),
-                              if (onDownloadDocx != null)
-                                FilledButton.icon(
-                                  onPressed: () =>
-                                      onDownloadDocx!(personId, hoTen),
-                                  icon: const Icon(Icons.description, size: 16),
-                                  label: const Text('Xuất Word'),
-                                  style: FilledButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
+                              FilledButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ExportDocsPage(
+                                        caseId: caseId,
+                                        person: person,
+                                      ),
                                     ),
-                                    visualDensity: VisualDensity.compact,
+                                  );
+                                },
+                                icon: const Icon(Icons.print_outlined, size: 16),
+                                label: const Text('Xuất văn bản'),
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
                                   ),
+                                  visualDensity: VisualDensity.compact,
                                 ),
+                              ),
                               IconButton(
                                 icon: Icon(
                                   Icons.delete_outline,

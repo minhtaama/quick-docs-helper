@@ -178,21 +178,61 @@ class ApiService {
     }
   }
 
-  /// Tải file Word Lý Lịch Cá Nhân (.docx) từ Backend
-  static Future<bool> downloadPersonDocx({
+  /// Lấy danh sách các mẫu văn bản dành cho đối tượng từ Backend
+  static Future<List<Map<String, dynamic>>> getPersonTemplates() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/v1/generate/templates/person'),
+      );
+      if (response.statusCode == 200) {
+        final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is List) {
+          return decoded
+              .where((e) => e != null)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('ApiService.getPersonTemplates error: $e');
+      return [];
+    }
+  }
+
+  /// Lấy đường dẫn URL trang xem trước tài liệu kiểu Google Docs
+  static String getPersonDocxPreviewUrl({
     required String caseId,
     required String personId,
+    required String templateFilename,
+  }) {
+    final encoded = Uri.encodeComponent(templateFilename);
+    return '$baseUrl/api/v1/generate/person/$caseId/$personId/preview-viewer?template_file=$encoded';
+  }
+
+  /// Tải file Word theo mẫu chỉ định
+  static Future<bool> downloadPersonTemplateDocx({
+    required String caseId,
+    required String personId,
+    required String templateFilename,
     required String hoTen,
+    String? displayName,
   }) async {
     try {
+      final encoded = Uri.encodeComponent(templateFilename);
       final response = await http.post(
-        Uri.parse('$baseUrl/api/v1/generate/ly-lich-ca-nhan/$caseId/$personId'),
+        Uri.parse(
+          '$baseUrl/api/v1/generate/person/$caseId/$personId/download?template_file=$encoded',
+        ),
       );
 
       if (response.statusCode == 200) {
         final Uint8List bytes = response.bodyBytes;
         final safeName = hoTen.trim().isEmpty ? 'CaNhan' : hoTen.trim();
-        final filename = 'LyLich_$safeName.docx';
+        final prefix = (displayName != null && displayName.isNotEmpty)
+            ? displayName.replaceAll(' ', '_')
+            : templateFilename.replaceAll('.docx', '');
+        final filename = '${prefix}_$safeName.docx';
 
         if (kIsWeb) {
           final blob = html.Blob(
@@ -207,10 +247,10 @@ class ApiService {
         }
         return true;
       } else {
-        throw Exception('Lỗi kết xuất file Word (${response.statusCode})');
+        throw Exception('Lỗi tải văn bản (${response.statusCode})');
       }
     } catch (e) {
-      debugPrint('ApiService.downloadPersonDocx error: $e');
+      debugPrint('ApiService.downloadPersonTemplateDocx error: $e');
       rethrow;
     }
   }

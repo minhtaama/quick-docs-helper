@@ -204,35 +204,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  /// Tải file Word của cá nhân
-  Future<void> _downloadDocx(String personId, String hoTen) async {
-    if (_selectedCaseId == null) return;
-    try {
-      final ok = await ApiService.downloadPersonDocx(
-        caseId: _selectedCaseId!,
-        personId: personId,
-        hoTen: hoTen,
-      );
-      if (ok && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Đã xuất file Word lý lịch: $hoTen'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi tải file Word: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    }
-  }
-
   /// Xóa cá nhân khỏi vụ án
   Future<void> _deletePerson(String personId, String hoTen) async {
     if (_selectedCaseId == null) return;
@@ -294,15 +265,6 @@ class _HomePageState extends State<HomePage> {
                       : 'Quản Lý Vụ Việc',
                 ),
                 centerTitle: !hasSelectedCase,
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    tooltip: 'Làm mới',
-                    onPressed: hasSelectedCase && _selectedCaseId != null
-                        ? () => _loadCaseDetails(_selectedCaseId!)
-                        : _loadCases,
-                  ),
-                ],
               ),
               body: hasSelectedCase
                   ? CaseDetailPanel(
@@ -316,7 +278,6 @@ class _HomePageState extends State<HomePage> {
                         _selectedCaseDetails?['mo_ta'] ?? '',
                       ),
                       onEditPersonPressed: _openEditPerson,
-                      onDownloadDocx: _downloadDocx,
                       onDeletePerson: _deletePerson,
                     )
                   : Column(
@@ -349,14 +310,6 @@ class _HomePageState extends State<HomePage> {
             appBar: AppBar(
               title: const Text('Quick Docs Helper - Quản Lý Hồ Sơ Vụ Việc'),
               centerTitle: false,
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  tooltip: 'Làm mới danh sách',
-                  onPressed: _loadCases,
-                ),
-                const SizedBox(width: 8),
-              ],
             ),
             body: Row(
               children: [
@@ -424,7 +377,6 @@ class _HomePageState extends State<HomePage> {
                             _selectedCaseDetails?['mo_ta'] ?? '',
                           ),
                           onEditPersonPressed: _openEditPerson,
-                          onDownloadDocx: _downloadDocx,
                           onDeletePerson: _deletePerson,
                         )
                       : WelcomeView(
