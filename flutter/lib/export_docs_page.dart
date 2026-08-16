@@ -64,12 +64,14 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
   String get _currentViewType =>
       'docx-preview-${widget.caseId}-${widget.person['id']}-$_selectedTemplateFile-$_previewReloadCounter';
 
-  void _registerCurrentIframe() {
+  void _registerCurrentIframe({bool force = false}) {
     if (kIsWeb && _selectedTemplateFile != null) {
       final previewUrl = ApiService.getPersonDocxPreviewUrl(
         caseId: widget.caseId,
         personId: widget.person['id'] ?? '',
         templateFilename: _selectedTemplateFile!,
+        force: force,
+        timestamp: DateTime.now().millisecondsSinceEpoch,
       );
 
       final viewType = _currentViewType;
@@ -87,6 +89,21 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
         },
       );
     }
+  }
+
+  void _forceReloadPreview() {
+    if (_selectedTemplateFile == null) return;
+    setState(() {
+      _previewReloadCounter++;
+      _registerCurrentIframe(force: true);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Đang kết xuất lại bản xem trước (đã xóa cache)...'),
+        backgroundColor: Colors.blueGrey,
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   Future<void> _downloadCurrentDocx() async {
@@ -154,7 +171,13 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
           ],
         ),
         actions: [
-          if (_selectedTemplateFile != null)
+          if (_selectedTemplateFile != null) ...[
+            IconButton(
+              onPressed: _forceReloadPreview,
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Làm mới & Xóa cache xem trước (Force Reload)',
+            ),
+            const SizedBox(width: 4),
             Padding(
               padding: const EdgeInsets.only(right: 16.0),
               child: FilledButton.icon(
@@ -182,6 +205,7 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
                 ),
               ),
             ),
+          ],
         ],
       ),
       body: LayoutBuilder(

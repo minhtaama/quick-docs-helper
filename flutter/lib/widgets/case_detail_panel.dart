@@ -431,6 +431,18 @@ class CaseDetailPanel extends StatelessWidget {
                                   softWrap: true,
                                 ),
                               ],
+                              if (person['quan_he_gia_dinh'] is List &&
+                                  (person['quan_he_gia_dinh'] as List).isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Quan hệ gia đình: ${(person['quan_he_gia_dinh'] as List).length} người thân',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontStyle: FontStyle.italic,
+                                    color: primaryColor.withValues(alpha: 0.7),
+                                  ),
+                                ),
+                              ],
                             ],
                           );
 

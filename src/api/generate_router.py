@@ -1,5 +1,6 @@
 from typing import Optional
 import os
+import time
 import urllib.parse
 from fastapi import APIRouter, Form, File, UploadFile, HTTPException, Query
 from fastapi.responses import FileResponse, HTMLResponse, Response
@@ -22,7 +23,9 @@ async def get_person_templates():
 async def get_person_pdf_data(
     case_id: str,
     person_id: str,
-    template_file: str = Query("ly-lich-ca-nhan.docx", description="Tên file mẫu docx")
+    template_file: str = Query("ly-lich-ca-nhan.docx", description="Tên file mẫu docx"),
+    force: bool = Query(False, description="Bắt buộc render lại và bỏ qua cache"),
+    t: Optional[str] = Query(None, description="Timestamp tránh cache trình duyệt")
 ):
     """
     Kết xuất file Word và chuyển sang PDF (có tích hợp Cache), trả về stream nhị phân application/octet-stream
@@ -35,15 +38,22 @@ async def get_person_pdf_data(
     try:
         pdf_path = docx_service.generate_pdf_from_person(
             template_filename=template_file,
-            person_data=person
+            person_data=person,
+            force=force
         )
+        headers = {
+            "Content-Disposition": "inline; filename=preview.bin",
+        }
+        if not force:
+            headers["Cache-Control"] = "public, max-age=86400"
+        else:
+            headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+            headers["Pragma"] = "no-cache"
+
         return FileResponse(
             pdf_path,
             media_type="application/octet-stream",
-            headers={
-                "Content-Disposition": "inline; filename=preview.bin",
-                "Cache-Control": "public, max-age=86400"
-            }
+            headers=headers
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi tạo tài liệu PDF: {str(e)}")
@@ -75,14 +85,18 @@ async def get_person_docx_raw(
 async def get_person_docx_preview_viewer(
     case_id: str,
     person_id: str,
-    template_file: str = Query("ly-lich-ca-nhan.docx", description="Tên file mẫu docx")
+    template_file: str = Query("ly-lich-ca-nhan.docx", description="Tên file mẫu docx"),
+    force: bool = Query(False, description="Bắt buộc render lại và bỏ qua cache"),
+    t: Optional[str] = Query(None, description="Timestamp tránh cache")
 ):
     """
     Trả về giao diện Web sử dụng Mozilla PDF.js vẽ từng trang A4 lên HTML5 Canvas,
     đảm bảo không bị IDM can thiệp, chuẩn 100% định dạng Word và tốc độ tức thì nhờ Cache.
     """
     encoded_tpl = urllib.parse.quote(template_file)
-    pdf_data_url = f"/api/v1/generate/person/{case_id}/{person_id}/pdf-data?template_file={encoded_tpl}"
+    cur_time = t or str(int(time.time() * 1000))
+    force_param = f"&force=true&t={cur_time}" if force else f"&t={cur_time}"
+    pdf_data_url = f"/api/v1/generate/person/{case_id}/{person_id}/pdf-data?template_file={encoded_tpl}{force_param}"
 
     html_content = f"""<!DOCTYPE html>
 <html lang="vi">
@@ -193,11 +207,12 @@ async def get_person_docx_preview_viewer(
 
         // Khởi tạo bộ nhớ đệm phía Client (RAM Cache)
         window.__clientPdfCache = window.__clientPdfCache || {{}};
+        const isForce = {"true" if force else "false"};
 
         async function renderPdf() {{
             try {{
                 let arrayBuffer;
-                if (window.__clientPdfCache[pdfDataUrl]) {{
+                if (!isForce && window.__clientPdfCache[pdfDataUrl]) {{
                     arrayBuffer = window.__clientPdfCache[pdfDataUrl];
                 }} else {{
                     const response = await fetch(pdfDataUrl);

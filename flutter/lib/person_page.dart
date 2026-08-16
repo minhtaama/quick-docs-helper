@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'widgets/date_time_input.dart';
 import 'widgets/avatar_picker.dart';
@@ -45,6 +46,7 @@ class _PersonPageState extends State<PersonPage> {
   late TextEditingController _chucVuController;
   late TextEditingController _doanTheController;
   late TextEditingController _tienAnTienSuController;
+  final List<_FamilyMemberController> _giaDinhControllers = [];
 
   String _selectedGioiTinh = 'Nam';
   bool _isSaving = false;
@@ -99,6 +101,25 @@ class _PersonPageState extends State<PersonPage> {
     );
 
     if (p != null) {
+      final rawGiaDinh = p['quan_he_gia_dinh'];
+      if (rawGiaDinh is List) {
+        for (final item in rawGiaDinh) {
+          if (item is Map) {
+            _giaDinhControllers.add(
+              _FamilyMemberController(
+                quanHe: item['quan_he']?.toString() ?? 'Bố đẻ',
+                hoTen: item['ho_ten']?.toString() ?? '',
+                namSinh: item['nam_sinh']?.toString() ?? '',
+                ngheNghiep: item['nghe_nghiep']?.toString() ?? '',
+                noiO: item['noi_o']?.toString() ?? '',
+              ),
+            );
+          }
+        }
+      }
+    }
+
+    if (p != null) {
       _selectedGioiTinh = p['gioi_tinh'] ?? 'Nam';
       final imagePath = p['image_path'] ?? '';
       final personId = p['id'] ?? '';
@@ -137,6 +158,9 @@ class _PersonPageState extends State<PersonPage> {
     _chucVuController.dispose();
     _doanTheController.dispose();
     _tienAnTienSuController.dispose();
+    for (final c in _giaDinhControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -200,6 +224,9 @@ class _PersonPageState extends State<PersonPage> {
         'chuc_vu': _chucVuController.text.trim(),
         'doan_the': _doanTheController.text.trim(),
         'tien_an_tien_su': _tienAnTienSuController.text.trim(),
+        'quan_he_gia_dinh': jsonEncode(
+          _giaDinhControllers.map((c) => c.toMap()).toList(),
+        ),
         'image_path': widget.initialPerson?['image_path'] ?? '',
       };
 
@@ -338,6 +365,22 @@ class _PersonPageState extends State<PersonPage> {
                       // 5. TIỀN ÁN, TIỀN SỰ
                       _Section5CriminalRecord(
                         tienAnTienSuController: _tienAnTienSuController,
+                      ),
+
+                      // 6. QUAN HỆ GIA ĐÌNH (DANH SÁCH ĐỘNG)
+                      _Section6FamilyRelations(
+                        controllers: _giaDinhControllers,
+                        onAdd: () {
+                          setState(() {
+                            _giaDinhControllers.add(_FamilyMemberController());
+                          });
+                        },
+                        onRemove: (index) {
+                          setState(() {
+                            final removed = _giaDinhControllers.removeAt(index);
+                            removed.dispose();
+                          });
+                        },
                       ),
 
                       const SizedBox(height: 24),
@@ -488,7 +531,7 @@ class _Section1BasicInfo extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       SizedBox(
-                        width: 180,
+                        width: 190,
                         child: CustomRadioInput(
                           options: const ['Nam', 'Nữ'],
                           selectedValue: selectedGioiTinh,
@@ -779,6 +822,304 @@ class _Section5CriminalRecord extends StatelessWidget {
           minLines: 4,
           maxLines: 8,
         ),
+      ],
+    );
+  }
+}
+
+// CONTROLLER QUẢN LÝ DÒNG THÀNH VIÊN GIA ĐÌNH
+class _FamilyMemberController {
+  String quanHe;
+  final TextEditingController hoTenController;
+  final TextEditingController namSinhController;
+  final TextEditingController ngheNghiepController;
+  final TextEditingController noiOController;
+
+  _FamilyMemberController({
+    this.quanHe = 'Bố đẻ',
+    String hoTen = '',
+    String namSinh = '',
+    String ngheNghiep = '',
+    String noiO = '',
+  }) : hoTenController = TextEditingController(text: hoTen),
+       namSinhController = TextEditingController(text: namSinh),
+       ngheNghiepController = TextEditingController(text: ngheNghiep),
+       noiOController = TextEditingController(text: noiO);
+
+  Map<String, dynamic> toMap() => {
+    'quan_he': quanHe,
+    'ho_ten': hoTenController.text.trim(),
+    'nam_sinh': namSinhController.text.trim(),
+    'nghe_nghiep': ngheNghiepController.text.trim(),
+    'noi_o': noiOController.text.trim(),
+  };
+
+  void dispose() {
+    hoTenController.dispose();
+    namSinhController.dispose();
+    ngheNghiepController.dispose();
+    noiOController.dispose();
+  }
+}
+
+// SECTION 6: QUAN HỆ GIA ĐÌNH (DÙNG CUSTOM TEXT INPUT)
+class _Section6FamilyRelations extends StatelessWidget {
+  final List<_FamilyMemberController> controllers;
+  final VoidCallback onAdd;
+  final Function(int index) onRemove;
+
+  const _Section6FamilyRelations({
+    required this.controllers,
+    required this.onAdd,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+
+    final relations = ['Bố', 'Mẹ', 'Vợ', 'Chồng', 'Con', 'Anh', 'Chị', 'Em'];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSectionHeader(context, 'VI. QUAN HỆ GIA ĐÌNH'),
+            OutlinedButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.person_add_alt_1, size: 16),
+              label: const Text('Thêm người thân'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                side: BorderSide(color: primaryColor.withValues(alpha: 0.5)),
+              ),
+            ),
+          ],
+        ),
+        if (controllers.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16.0),
+            margin: const EdgeInsets.only(top: 8.0),
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.03),
+              borderRadius: BorderRadius.circular(8.0),
+              border: Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.15),
+                style: BorderStyle.solid,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 18,
+                  color: primaryColor.withValues(alpha: 0.6),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Chưa có thông tin người thân trong gia đình. Bấm "+ Thêm người thân" để bổ sung.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: controllers.length,
+            itemBuilder: (context, index) {
+              final member = controllers[index];
+              final currentRelation = member.quanHe;
+              final safeRelation = relations.contains(currentRelation)
+                  ? currentRelation
+                  : 'Khác';
+
+              return Card(
+                elevation: 0,
+                margin: const EdgeInsets.only(top: 10.0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  side: BorderSide(
+                    color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                  ),
+                ),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.25,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: primaryColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  '#${index + 1}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              ValueListenableBuilder<TextEditingValue>(
+                                valueListenable: member.hoTenController,
+                                builder: (context, val, _) {
+                                  return Text(
+                                    val.text.trim().isNotEmpty
+                                        ? val.text.trim()
+                                        : 'Người thân ${index + 1}',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.redAccent,
+                              size: 20,
+                            ),
+                            tooltip: 'Xóa người thân này',
+                            onPressed: () => onRemove(index),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: DropdownButtonFormField<String>(
+                              initialValue: safeRelation,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black87,
+                              ),
+                              decoration: InputDecoration(
+                                labelText: 'Quan hệ',
+                                labelStyle: const TextStyle(fontSize: 14),
+                                prefixIcon: const Padding(
+                                  padding: EdgeInsets.only(left: 10, right: 8),
+                                  child: Icon(Icons.people_outline, size: 16),
+                                ),
+                                prefixIconConstraints: const BoxConstraints(
+                                  minWidth: 0,
+                                  minHeight: 0,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(4.0),
+                                  borderSide: const BorderSide(width: 1.5),
+                                ),
+                                isDense: true,
+                                filled: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 14,
+                                ),
+                              ),
+                              items: relations
+                                  .map(
+                                    (r) => DropdownMenuItem(
+                                      value: r,
+                                      child: Text(
+                                        r,
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  member.quanHe = val;
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 5,
+                            child: CustomTextInput(
+                              controller: member.hoTenController,
+                              label: 'Họ và tên',
+                              hint: 'Nguyễn Văn A...',
+                              icon: Icons.person_outline,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 3,
+                            child: CustomTextInput(
+                              controller: member.namSinhController,
+                              label: 'Năm sinh',
+                              hint: '1970...',
+                              icon: Icons.calendar_today_outlined,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 5,
+                            child: CustomTextInput(
+                              controller: member.ngheNghiepController,
+                              label: 'Nghề nghiệp / Nơi làm việc',
+                              hint: 'Lao động tự do, Cán bộ hưu trí...',
+                              icon: Icons.work_outline,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 6,
+                            child: CustomTextInput(
+                              controller: member.noiOController,
+                              label: 'Nơi ở hiện nay / Nơi cư trú',
+                              hint: 'Số nhà, phường/xã, tỉnh/TP...',
+                              icon: Icons.home_outlined,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
       ],
     );
   }

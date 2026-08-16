@@ -1,8 +1,9 @@
 from fastapi.responses import Response
 import os
+import json
 from typing import List, Optional
 from fastapi import APIRouter, Form, File, UploadFile, HTTPException
-from src.schemas.document_schema import CaseData, CaseCreate, PersonData
+from src.schemas.document_schema import CaseData, CaseCreate, PersonData, FamilyData
 from src.services.storage_service import StorageService
 from src.services.docx_service import DocxService
 
@@ -80,12 +81,24 @@ async def add_or_update_person(
     chuc_vu: str = Form(""),
     doan_the: str = Form(""),
     tien_an_tien_su: str = Form("Chưa có tiền án, tiền sự"),
+    quan_he_gia_dinh: str = Form("[]"),
     image: Optional[UploadFile] = File(None)
 ):
     """Thêm một con người mới hoặc cập nhật thông tin con người kèm ảnh đại diện vào vụ việc"""
     case = storage_service.get_case(case_id)
     if not case:
         raise HTTPException(status_code=404, detail="Không tìm thấy vụ việc")
+
+    parsed_gia_dinh = []
+    if quan_he_gia_dinh:
+        try:
+            raw_list = json.loads(quan_he_gia_dinh)
+            if isinstance(raw_list, list):
+                for item in raw_list:
+                    if isinstance(item, dict):
+                        parsed_gia_dinh.append(FamilyData(**item))
+        except Exception as e:
+            print(f"Error parsing quan_he_gia_dinh: {e}")
 
     # Khởi tạo đối tượng PersonData
     person_data = PersonData(
@@ -112,7 +125,8 @@ async def add_or_update_person(
         noi_o_hien_tai=noi_o_hien_tai,
         chuc_vu=chuc_vu,
         doan_the=doan_the,
-        tien_an_tien_su=tien_an_tien_su
+        tien_an_tien_su=tien_an_tien_su,
+        quan_he_gia_dinh=parsed_gia_dinh
     )
 
     if person_id:

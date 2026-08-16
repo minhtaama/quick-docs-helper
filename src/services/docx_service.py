@@ -9,6 +9,28 @@ from docx.shared import Mm
 from src.schemas.document_schema import PersonData, CaseData
 from src.config import BASE_DIR, TEMPLATES_DIR, TEMP_OUTPUTS_DIR
 
+class FamilyMemberList(list):
+    """
+    Danh sách động hỗ trợ cả:
+    1. Vòng lặp Jinja2 ({%p for item in quan_he_gia_dinh %}, {%tr ... %})
+    2. In trực tiếp dạng văn bản ({{ quan_he_gia_dinh }})
+    """
+    def __str__(self):
+        if not self:
+            return "****Thiếu thông tin quan hệ gia đình*****"
+        lines = []
+        for idx, item in enumerate(self, 1):
+            if isinstance(item, dict):
+                qh = f"- {item.get('quan_he', '')}: " if item.get('quan_he') else f"{idx}. "
+                ht = item.get('ho_ten', '')
+                ns = f" (SN: {item.get('nam_sinh', '')})" if item.get('nam_sinh') else ""
+                nn = f", Nghề nghiệp: {item.get('nghe_nghiep', '')}" if item.get('nghe_nghiep') else ""
+                no = f", Nơi ở: {item.get('noi_o', '')}" if item.get('noi_o') else ""
+                lines.append(f"{qh}{ht}{ns}{nn}{no}".strip())
+            else:
+                lines.append(str(item))
+        return "\n".join(lines)
+
 class DocxService:
     """
     Service chịu trách nhiệm xử lý template Word và xuất file kết quả.
@@ -99,6 +121,13 @@ class DocxService:
         context = person_data.model_dump()
         context["image"] = img_obj
 
+        # Đóng gói quan_he_gia_dinh dạng FamilyMemberList hỗ trợ cả lặp {%p for %} lẫn {{ quan_he_gia_dinh }}
+        raw_gia_dinh = context.get("quan_he_gia_dinh", [])
+        if isinstance(raw_gia_dinh, list):
+            member_list = FamilyMemberList(raw_gia_dinh)
+            context["quan_he_gia_dinh"] = member_list
+            context["gia_dinh"] = member_list
+
         template_doc.render(context)
 
         os.makedirs(self.output_dir, exist_ok=True)
@@ -110,11 +139,12 @@ class DocxService:
     
         return output_path
 
-    def generate_pdf_from_person(self, template_filename: str, person_data: PersonData) -> str:
+    def generate_pdf_from_person(self, template_filename: str, person_data: PersonData, force: bool = False) -> str:
         """
         Render file Word (.docx) rồi chuyển đổi sang file PDF (.pdf) chuẩn 100%
         bằng Microsoft Word Engine để phục vụ xem trước và in ấn.
         Đã tích hợp cơ chế Cache PDF để phản hồi tức thì trong 0ms khi chuyển đổi giữa các mẫu.
+        Nếu force=True, hệ thống sẽ bỏ qua cache và render lại từ đầu.
         """
         template_path = self._resolve_template_path(template_filename)
         cache_hash = self._get_cache_hash(template_path, person_data)
@@ -122,11 +152,11 @@ class DocxService:
         cached_pdf_name = f"{clean_tpl}_{person_data.id}_{cache_hash}.pdf"
         cached_pdf_path = os.path.join(self.cache_dir, cached_pdf_name)
 
-        # KIỂM TRA BỘ NHỚ ĐỆM (CACHE HIT)
-        if os.path.exists(cached_pdf_path) and os.path.getsize(cached_pdf_path) > 0:
+        # KIỂM TRA BỘ NHỚ ĐỆM (CACHE HIT - Chỉ dùng khi không yêu cầu force)
+        if not force and os.path.exists(cached_pdf_path) and os.path.getsize(cached_pdf_path) > 0:
             return cached_pdf_path
 
-        # NẾU CHƯA CÓ TRONG CACHE -> RENDER VÀ CONVERT
+        # NẾU CHƯA CÓ HOẶC BẮT BUỘC RELOAD -> RENDER VÀ CONVERT
         docx_path = self.generate_docx_from_person(template_filename, person_data)
 
         # Khởi tạo COM Apartment cho môi trường đa luồng của FastAPI trên Windows

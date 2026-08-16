@@ -200,14 +200,18 @@ class ApiService {
     }
   }
 
-  /// Lấy đường dẫn URL trang xem trước tài liệu kiểu Google Docs
+  /// Lấy đường dẫn URL trang xem trước tài liệu kiểu Google Docs (có hỗ trợ force reload cache)
   static String getPersonDocxPreviewUrl({
     required String caseId,
     required String personId,
     required String templateFilename,
+    bool force = false,
+    int? timestamp,
   }) {
     final encoded = Uri.encodeComponent(templateFilename);
-    return '$baseUrl/api/v1/generate/person/$caseId/$personId/preview-viewer?template_file=$encoded';
+    final t = timestamp ?? DateTime.now().millisecondsSinceEpoch;
+    final forceParam = force ? '&force=true&t=$t' : '&t=$t';
+    return '$baseUrl/api/v1/generate/person/$caseId/$personId/preview-viewer?template_file=$encoded$forceParam';
   }
 
   /// Tải file Word theo mẫu chỉ định

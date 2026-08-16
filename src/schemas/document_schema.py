@@ -1,7 +1,15 @@
 import uuid
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field
+
+class FamilyData(BaseModel):
+    """Schema đại diện cho một người thân/thành viên trong gia đình"""
+    quan_he: str = ""
+    ho_ten: str = ""
+    nam_sinh: str = ""
+    nghe_nghiep: str = ""
+    noi_o: str = ""
 
 class PersonData(BaseModel):
     """
@@ -32,6 +40,7 @@ class PersonData(BaseModel):
     chuc_vu: str = ""
     doan_the: str = ""
     tien_an_tien_su: str = "Chưa có tiền án, tiền sự"
+    quan_he_gia_dinh: List[FamilyData] = []
     image_path: Optional[str] = None
 
 class CaseCreate(BaseModel):
@@ -52,4 +61,3 @@ class CaseData(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     updated_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     con_nguoi_list: list[PersonData] = []
-    
