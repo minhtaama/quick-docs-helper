@@ -49,5 +49,4 @@ temp_outputs/
 **/.metadata
 
 # 5. Build Artifacts & Generated Files
-static/
 data/
