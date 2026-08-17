@@ -86,8 +86,8 @@ class CaseDetailPanel extends StatelessWidget {
       );
     }
 
-    final tenVu = caseData!['ten_vu'] ?? 'Chưa đặt tên';
-    final moTa = caseData!['mo_ta'] ?? '';
+    final tenTomTat = caseData!['ten_tom_tat'] ?? 'Chưa đặt tên';
+    final tenDayDu = caseData!['ten_day_du'] ?? '';
     final personList = caseData!['con_nguoi_list'] as List? ?? [];
 
     return Padding(
@@ -117,7 +117,7 @@ class CaseDetailPanel extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          tenVu,
+                          tenTomTat,
                           style: TextStyle(
                             fontSize: isHeaderCompact ? 18 : 20,
                             fontWeight: FontWeight.bold,
@@ -129,10 +129,10 @@ class CaseDetailPanel extends StatelessWidget {
                       ),
                     ],
                   ),
-                  if (moTa.isNotEmpty) ...[
+                  if (tenDayDu.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
-                      moTa,
+                      tenDayDu,
                       style: TextStyle(
                         fontSize: 14,
                         color: primaryColor.withValues(alpha: 0.75),
@@ -432,7 +432,8 @@ class CaseDetailPanel extends StatelessWidget {
                                 ),
                               ],
                               if (person['tien_an_tien_su'] is List &&
-                                  (person['tien_an_tien_su'] as List).isNotEmpty) ...[
+                                  (person['tien_an_tien_su'] as List)
+                                      .isNotEmpty) ...[
                                 const SizedBox(height: 4),
                                 Text(
                                   'Tiền án, tiền sự: ${(person['tien_an_tien_su'] as List).length} tiền án/tiền sự',
@@ -444,7 +445,8 @@ class CaseDetailPanel extends StatelessWidget {
                                 ),
                               ],
                               if (person['quan_he_gia_dinh'] is List &&
-                                  (person['quan_he_gia_dinh'] as List).isNotEmpty) ...[
+                                  (person['quan_he_gia_dinh'] as List)
+                                      .isNotEmpty) ...[
                                 const SizedBox(height: 4),
                                 Text(
                                   'Quan hệ gia đình: ${(person['quan_he_gia_dinh'] as List).length} người thân',
@@ -485,7 +487,10 @@ class CaseDetailPanel extends StatelessWidget {
                                     ),
                                   );
                                 },
-                                icon: const Icon(Icons.print_outlined, size: 16),
+                                icon: const Icon(
+                                  Icons.print_outlined,
+                                  size: 16,
+                                ),
                                 label: const Text('Xuất văn bản'),
                                 style: FilledButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(

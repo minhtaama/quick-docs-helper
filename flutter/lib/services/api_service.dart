@@ -42,13 +42,13 @@ class ApiService {
   /// Thêm mới hoặc cập nhật một vụ án
   static Future<Map<String, dynamic>> saveCase({
     String? id,
-    required String tenVu,
-    required String moTa,
+    required String tenTomTat,
+    required String tenDayDu,
   }) async {
     try {
       final Map<String, dynamic> body = {
-        'ten_vu': tenVu,
-        'mo_ta': moTa,
+        'ten_tom_tat': tenTomTat,
+        'ten_day_du': tenDayDu,
       };
       if (id != null && id.isNotEmpty) {
         body['id'] = id;
@@ -72,13 +72,6 @@ class ApiService {
       rethrow;
     }
   }
-
-  /// Tạo mới một vụ án
-  static Future<Map<String, dynamic>> createCase(
-    String tenVu,
-    String moTa,
-  ) =>
-      saveCase(tenVu: tenVu, moTa: moTa);
 
   /// Lấy thông tin chi tiết một vụ án kèm danh sách cá nhân
   static Future<Map<String, dynamic>?> getCaseDetails(String caseId) async {
@@ -220,7 +213,6 @@ class ApiService {
     required String personId,
     required String templateFilename,
     required String hoTen,
-    String? displayName,
   }) async {
     try {
       final encoded = Uri.encodeComponent(templateFilename);
@@ -232,11 +224,28 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final Uint8List bytes = response.bodyBytes;
-        final safeName = hoTen.trim().isEmpty ? 'CaNhan' : hoTen.trim();
-        final prefix = (displayName != null && displayName.isNotEmpty)
-            ? displayName.replaceAll(' ', '_')
-            : templateFilename.replaceAll('.docx', '');
-        final filename = '${prefix}_$safeName.docx';
+
+        // Trích xuất tên file từ Content-Disposition header do Backend trả về (Quy về 1 mối duy nhất)
+        String filename =
+            '${templateFilename.replaceAll('.docx', '')}_${hoTen.trim().isEmpty ? "CaNhan" : hoTen.trim()}.docx';
+        final disposition = response.headers['content-disposition'];
+        if (disposition != null) {
+          final matchUtf8 = RegExp(
+            r"filename\*=UTF-8''([^;\r\n]+)",
+            caseSensitive: false,
+          ).firstMatch(disposition);
+          if (matchUtf8 != null && matchUtf8.group(1) != null) {
+            filename = Uri.decodeFull(matchUtf8.group(1)!);
+          } else {
+            final matchStandard = RegExp(
+              r'filename="?([^";\r\n]+)"?',
+              caseSensitive: false,
+            ).firstMatch(disposition);
+            if (matchStandard != null && matchStandard.group(1) != null) {
+              filename = matchStandard.group(1)!.trim();
+            }
+          }
+        }
 
         if (kIsWeb) {
           final blob = html.Blob(

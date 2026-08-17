@@ -1,7 +1,7 @@
 import os
 import json
 import shutil
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
 from src.config import CASES_DIR
 from src.schemas.document_schema import CaseData, PersonData
@@ -25,7 +25,7 @@ class StorageService:
     def _get_case_images_folder(self, case_id: str) -> str:
         return os.path.join(self._get_case_folder(case_id), "images")
 
-    def list_cases(self) -> List[dict]:
+    def list_cases(self) -> list[dict]:
         """Lấy danh sách tóm tắt tất cả các vụ án hiện có"""
         results = []
         if not os.path.exists(self.cases_dir):
@@ -39,10 +39,12 @@ class StorageService:
                     try:
                         with open(json_path, "r", encoding="utf-8") as f:
                             data = json.load(f)
+                            ten_tom_tat = data.get("ten_tom_tat") or "Chưa đặt tên"
+                            ten_day_du = data.get("ten_day_du") or ""
                             results.append({
                                 "id": data.get("id", entry),
-                                "ten_vu": data.get("ten_vu", "Chưa đặt tên"),
-                                "mo_ta": data.get("mo_ta", ""),
+                                "ten_tom_tat": ten_tom_tat,
+                                "ten_day_du": ten_day_du,
                                 "so_luong_nguoi": len(data.get("con_nguoi_list", [])),
                                 "created_at": data.get("created_at", ""),
                                 "updated_at": data.get("updated_at", "")

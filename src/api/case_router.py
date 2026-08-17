@@ -1,8 +1,7 @@
-from fastapi.responses import Response
 import os
 import json
-from typing import List, Optional
-from fastapi import APIRouter, Form, File, UploadFile, HTTPException
+from typing import Optional
+from fastapi import APIRouter, Form, File, UploadFile, HTTPException, Response
 from src.schemas.document_schema import CaseData, CaseCreate, PersonData, FamilyData, RecordData
 from src.services.storage_service import StorageService
 from src.services.docx_service import DocxService
@@ -25,14 +24,14 @@ async def add_or_update_case(payload: CaseCreate):
         existing_case = storage_service.get_case(payload.id)
         if not existing_case:
             raise HTTPException(status_code=404, detail="Không tìm thấy vụ việc để cập nhật")
-        existing_case.ten_vu = payload.ten_vu
-        existing_case.mo_ta = payload.mo_ta
+        existing_case.ten_tom_tat = payload.ten_tom_tat
+        existing_case.ten_day_du = payload.ten_day_du
         saved = storage_service.save_case(existing_case)
         return saved
 
     new_case = CaseData(
-        ten_vu=payload.ten_vu,
-        mo_ta=payload.mo_ta
+        ten_tom_tat=payload.ten_tom_tat,
+        ten_day_du=payload.ten_day_du
     )
     saved = storage_service.save_case(new_case)
     return saved

@@ -8,11 +8,7 @@ class ExportDocsPage extends StatefulWidget {
   final String caseId;
   final Map<String, dynamic> person;
 
-  const ExportDocsPage({
-    super.key,
-    required this.caseId,
-    required this.person,
-  });
+  const ExportDocsPage({super.key, required this.caseId, required this.person});
 
   @override
   State<ExportDocsPage> createState() => _ExportDocsPageState();
@@ -76,18 +72,15 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
 
       final viewType = _currentViewType;
 
-      ui_web.platformViewRegistry.registerViewFactory(
-        viewType,
-        (int viewId) {
-          final iframe = html.IFrameElement()
-            ..src = previewUrl
-            ..style.border = 'none'
-            ..style.width = '100%'
-            ..style.height = '100%'
-            ..style.backgroundColor = '#f1f3f4';
-          return iframe;
-        },
-      );
+      ui_web.platformViewRegistry.registerViewFactory(viewType, (int viewId) {
+        final iframe = html.IFrameElement()
+          ..src = previewUrl
+          ..style.border = 'none'
+          ..style.width = '100%'
+          ..style.height = '100%'
+          ..style.backgroundColor = '#f1f3f4';
+        return iframe;
+      });
     }
   }
 
@@ -110,12 +103,11 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
     if (_selectedTemplateFile == null) return;
     setState(() => _isDownloading = true);
     try {
-      final hoTen = widget.person['ho_ten'] ?? 'CaNhan';
+      final hoTen = widget.person['ho_ten'] ?? '???';
       final ok = await ApiService.downloadPersonTemplateDocx(
         caseId: widget.caseId,
         personId: widget.person['id'] ?? '',
         templateFilename: _selectedTemplateFile!,
-        displayName: _selectedDisplayName,
         hoTen: hoTen,
       );
 
@@ -277,7 +269,8 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
                       final tpl = _templates[index];
                       final fileName = tpl['file_name'] ?? '';
                       final displayName =
-                          tpl['display_name'] ?? fileName.replaceAll('.docx', '');
+                          tpl['display_name'] ??
+                          fileName.replaceAll('.docx', '');
                       final isSelected = fileName == _selectedTemplateFile;
 
                       return Card(
@@ -296,7 +289,7 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
                         ),
                         color: isSelected
                             ? theme.colorScheme.surfaceContainerHighest
-                                .withValues(alpha: 0.5)
+                                  .withValues(alpha: 0.5)
                             : theme.colorScheme.surface,
                         child: InkWell(
                           borderRadius: BorderRadius.circular(8.0),
@@ -385,7 +378,9 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
                     color: theme.colorScheme.surface,
                     border: Border(
                       bottom: BorderSide(
-                        color: theme.colorScheme.outline.withValues(alpha: 0.15),
+                        color: theme.colorScheme.outline.withValues(
+                          alpha: 0.15,
+                        ),
                       ),
                     ),
                   ),
@@ -463,10 +458,7 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
                   ),
                   Expanded(
                     child: TabBarView(
-                      children: [
-                        templateListWidget,
-                        previewWidget,
-                      ],
+                      children: [templateListWidget, previewWidget],
                     ),
                   ),
                 ],
@@ -477,18 +469,13 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
           // BỐ CỤC DESKTOP (2 Cột song song)
           return Row(
             children: [
-              SizedBox(
-                width: 320,
-                child: templateListWidget,
-              ),
+              SizedBox(width: 320, child: templateListWidget),
               VerticalDivider(
                 width: 1,
                 thickness: 1,
                 color: theme.colorScheme.outline.withValues(alpha: 0.15),
               ),
-              Expanded(
-                child: previewWidget,
-              ),
+              Expanded(child: previewWidget),
             ],
           );
         },

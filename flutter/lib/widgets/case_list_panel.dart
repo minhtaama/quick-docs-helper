@@ -72,10 +72,10 @@ class _CaseListPanelState extends State<CaseListPanel> {
 
     final filteredCases = widget.cases.where((item) {
       if (_searchKeyword.isEmpty) return true;
-      final tenVu = (item['ten_vu'] ?? '').toString().toLowerCase();
-      final moTa = (item['mo_ta'] ?? '').toString().toLowerCase();
+      final tenTomTat = (item['ten_tom_tat'] ?? item['ten_vu'] ?? '').toString().toLowerCase();
+      final tenDayDu = (item['ten_day_du'] ?? item['mo_ta'] ?? '').toString().toLowerCase();
       final keyword = _searchKeyword.toLowerCase();
-      return tenVu.contains(keyword) || moTa.contains(keyword);
+      return tenTomTat.contains(keyword) || tenDayDu.contains(keyword);
     }).toList();
 
     return Container(
@@ -211,8 +211,8 @@ class _CaseListPanelState extends State<CaseListPanel> {
                     itemBuilder: (context, index) {
                       final item = filteredCases[index];
                       final caseId = item['id'] ?? '';
-                      final tenVu = item['ten_vu'] ?? 'Vụ việc không tên';
-                      final moTa = item['mo_ta'] ?? '';
+                      final tenTomTat = item['ten_tom_tat'] ?? item['ten_vu'] ?? 'Vụ việc không tên';
+                      final tenDayDu = item['ten_day_du'] ?? item['mo_ta'] ?? '';
                       final soNguoi = item['so_luong_nguoi'] ?? 0;
                       final isSelected = widget.selectedCaseId == caseId;
 
@@ -262,7 +262,7 @@ class _CaseListPanelState extends State<CaseListPanel> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        tenVu,
+                                        tenTomTat,
                                         style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.bold,
@@ -271,10 +271,10 @@ class _CaseListPanelState extends State<CaseListPanel> {
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                       ),
-                                      if (moTa.isNotEmpty) ...[
+                                      if (tenDayDu.isNotEmpty) ...[
                                         const SizedBox(height: 2),
                                         Text(
-                                          moTa,
+                                          tenDayDu,
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: primaryColor.withValues(
@@ -322,8 +322,8 @@ class _CaseListPanelState extends State<CaseListPanel> {
                                     tooltip: 'Chỉnh sửa tên / mô tả vụ việc',
                                     onPressed: () => widget.onCaseEdited!(
                                       caseId,
-                                      tenVu,
-                                      moTa,
+                                      tenTomTat,
+                                      tenDayDu,
                                     ),
                                   ),
                                 IconButton(
@@ -336,7 +336,7 @@ class _CaseListPanelState extends State<CaseListPanel> {
                                   ),
                                   tooltip: 'Xóa vụ việc',
                                   onPressed: () =>
-                                      _confirmDelete(context, caseId, tenVu),
+                                      _confirmDelete(context, caseId, tenTomTat),
                                 ),
                               ],
                             ),

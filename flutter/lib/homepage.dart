@@ -104,9 +104,10 @@ class _HomePageState extends State<HomePage> {
     if (newCase != null) {
       await _loadCases();
       if (mounted) {
+        final caseTitle = newCase['ten_tom_tat'] ?? '';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Đã tạo vụ việc "${newCase['ten_vu']}" thành công!'),
+            content: Text('Đã tạo vụ "$caseTitle" thành công!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -122,15 +123,15 @@ class _HomePageState extends State<HomePage> {
   /// Hộp thoại chỉnh sửa tên / mô tả vụ việc
   Future<void> _showEditCaseDialog(
     String caseId,
-    String currentTenVu,
-    String currentMoTa,
+    String currentTenTomTat,
+    String currentTenDayDu,
   ) async {
     final updatedCase = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (ctx) => CaseEditDialog(
         caseId: caseId,
-        initialTenVu: currentTenVu,
-        initialMoTa: currentMoTa,
+        initialTenTomTat: currentTenTomTat,
+        initialTenDayDu: currentTenDayDu,
       ),
     );
     if (updatedCase != null) {
@@ -139,11 +140,10 @@ class _HomePageState extends State<HomePage> {
         _loadCaseDetails(caseId);
       }
       if (mounted) {
+        final caseTitle = updatedCase['ten_tom_tat'] ?? '';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Đã cập nhật vụ việc "${updatedCase['ten_vu']}" thành công!',
-            ),
+            content: Text('Đã cập nhật vụ "$caseTitle" thành công!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -261,8 +261,9 @@ class _HomePageState extends State<HomePage> {
                     : null,
                 title: Text(
                   hasSelectedCase
-                      ? (_selectedCaseDetails?['ten_vu'] ?? 'Chi tiết vụ việc')
-                      : 'Quản Lý Vụ Việc',
+                      ? (_selectedCaseDetails?['ten_tom_tat'] ??
+                            'Chi tiết vụ việc')
+                      : 'Quản lý vụ việc',
                 ),
                 centerTitle: !hasSelectedCase,
               ),
@@ -274,8 +275,8 @@ class _HomePageState extends State<HomePage> {
                       onAddPersonPressed: _openAddPerson,
                       onEditCasePressed: () => _showEditCaseDialog(
                         _selectedCaseId!,
-                        _selectedCaseDetails?['ten_vu'] ?? '',
-                        _selectedCaseDetails?['mo_ta'] ?? '',
+                        _selectedCaseDetails?['ten_tom_tat'] ?? '',
+                        _selectedCaseDetails?['ten_day_du'] ?? '',
                       ),
                       onEditPersonPressed: _openEditPerson,
                       onDeletePerson: _deletePerson,
@@ -373,8 +374,8 @@ class _HomePageState extends State<HomePage> {
                           onAddPersonPressed: _openAddPerson,
                           onEditCasePressed: () => _showEditCaseDialog(
                             _selectedCaseId!,
-                            _selectedCaseDetails?['ten_vu'] ?? '',
-                            _selectedCaseDetails?['mo_ta'] ?? '',
+                            _selectedCaseDetails?['ten_tom_tat'] ?? '',
+                            _selectedCaseDetails?['ten_day_du'] ?? '',
                           ),
                           onEditPersonPressed: _openEditPerson,
                           onDeletePerson: _deletePerson,

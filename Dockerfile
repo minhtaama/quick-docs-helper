@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Tạo các thư mục lưu trữ và cache
-RUN mkdir -p temp_outputs templates static storage
+RUN mkdir -p data/cases data/cache templates static
 
 EXPOSE 8000
 

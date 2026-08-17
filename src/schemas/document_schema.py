@@ -1,7 +1,7 @@
 import uuid
-from typing import Optional, List
+from typing import Optional, Any
 from datetime import datetime
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 class RecordData(BaseModel):
     """Schema đại diện cho một tiền án/tiền sự"""
@@ -44,8 +44,8 @@ class PersonData(BaseModel):
     noi_o_hien_tai: str = ""
     chuc_vu: str = ""
     doan_the: str = ""
-    tien_an_tien_su: List[RecordData] = []
-    quan_he_gia_dinh: List[FamilyData] = []
+    tien_an_tien_su: list[RecordData] = []
+    quan_he_gia_dinh: list[FamilyData] = []
     image_path: Optional[str] = None
 
     @field_validator("tien_an_tien_su", mode="before")
@@ -67,18 +67,36 @@ class PersonData(BaseModel):
 class CaseCreate(BaseModel):
     """Schema khi tạo mới hoặc cập nhật một vụ án/vụ việc"""
     id: Optional[str] = None
-    ten_vu: str
-    mo_ta: str = ""
+    ten_tom_tat: str = ""
+    ten_day_du: str = ""
 
-CaseSave = CaseCreate
+    @model_validator(mode="before")
+    @classmethod
+    def handle_legacy_keys(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "ten_vu" in data and not data.get("ten_tom_tat"):
+                data["ten_tom_tat"] = data["ten_vu"]
+            if "mo_ta" in data and not data.get("ten_day_du"):
+                data["ten_day_du"] = data["mo_ta"]
+        return data
 
 class CaseData(BaseModel):
     """
     Schema chứa thông tin tổng thể của một vụ án/vụ việc
     """
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    ten_vu: str = ""
-    mo_ta: str = ""
+    ten_tom_tat: str = ""
+    ten_day_du: str = ""
     created_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     updated_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     con_nguoi_list: list[PersonData] = []
+
+    @model_validator(mode="before")
+    @classmethod
+    def handle_legacy_keys(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "ten_vu" in data and not data.get("ten_tom_tat"):
+                data["ten_tom_tat"] = data["ten_vu"]
+            if "mo_ta" in data and not data.get("ten_day_du"):
+                data["ten_day_du"] = data["mo_ta"]
+        return data

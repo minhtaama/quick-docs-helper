@@ -4,14 +4,14 @@ import '../services/api_service.dart';
 
 class CaseEditDialog extends StatefulWidget {
   final String? caseId;
-  final String? initialTenVu;
-  final String? initialMoTa;
+  final String? initialTenTomTat;
+  final String? initialTenDayDu;
 
   const CaseEditDialog({
     super.key,
     this.caseId,
-    this.initialTenVu,
-    this.initialMoTa,
+    this.initialTenTomTat,
+    this.initialTenDayDu,
   });
 
   @override
@@ -20,35 +20,37 @@ class CaseEditDialog extends StatefulWidget {
 
 class _CaseEditDialogState extends State<CaseEditDialog> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _tenVuController;
-  late final TextEditingController _moTaController;
+  late final TextEditingController _tenTomTatController;
+  late final TextEditingController _tenDayDuController;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _tenVuController = TextEditingController(text: widget.initialTenVu ?? '');
-    _moTaController = TextEditingController(text: widget.initialMoTa ?? '');
+    _tenTomTatController =
+        TextEditingController(text: widget.initialTenTomTat ?? '');
+    _tenDayDuController =
+        TextEditingController(text: widget.initialTenDayDu ?? '');
   }
 
   @override
   void dispose() {
-    _tenVuController.dispose();
-    _moTaController.dispose();
+    _tenTomTatController.dispose();
+    _tenDayDuController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final tenVu = _tenVuController.text.trim();
-    final moTa = _moTaController.text.trim();
+    final tenTomTat = _tenTomTatController.text.trim();
+    final tenDayDu = _tenDayDuController.text.trim();
 
     setState(() => _isLoading = true);
     try {
       final result = await ApiService.saveCase(
         id: widget.caseId,
-        tenVu: tenVu,
-        moTa: moTa,
+        tenTomTat: tenTomTat,
+        tenDayDu: tenDayDu,
       );
       if (mounted) {
         Navigator.pop(context, result);
@@ -81,7 +83,7 @@ class _CaseEditDialogState extends State<CaseEditDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               CustomTextInput(
-                controller: _tenVuController,
+                controller: _tenTomTatController,
                 label: 'Tên tóm tắt (*)',
                 hint: '...',
                 minLines: 3,
@@ -95,7 +97,7 @@ class _CaseEditDialogState extends State<CaseEditDialog> {
               ),
               const SizedBox(height: 16),
               CustomTextInput(
-                controller: _moTaController,
+                controller: _tenDayDuController,
                 minLines: 6,
                 maxLines: 6,
                 isRequired: true,

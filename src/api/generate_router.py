@@ -1,12 +1,13 @@
 from typing import Optional
 import os
 import time
-import urllib.parse
-from fastapi import APIRouter, Form, File, UploadFile, HTTPException, Query
-from fastapi.responses import FileResponse, HTMLResponse, Response
+from urllib.parse import quote
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from src.schemas.document_schema import PersonData
 from src.services.docx_service import DocxService
 from src.services.storage_service import StorageService
+
 
 router = APIRouter(prefix="/api/v1/generate", tags=["Document Generation"])
 docx_service = DocxService()
@@ -25,7 +26,6 @@ async def get_person_pdf_data(
     person_id: str,
     template_file: str = Query("ly-lich-ca-nhan.docx", description="Tên file mẫu docx"),
     force: bool = Query(False, description="Bắt buộc render lại và bỏ qua cache"),
-    t: Optional[str] = Query(None, description="Timestamp tránh cache trình duyệt")
 ):
     """
     Kết xuất file Word và chuyển sang PDF (có tích hợp Cache), trả về stream nhị phân application/octet-stream
@@ -58,29 +58,6 @@ async def get_person_pdf_data(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi tạo tài liệu PDF: {str(e)}")
 
-@router.get("/person/{case_id}/{person_id}/docx-raw", summary="Lấy tệp DOCX đã render dạng raw binary")
-async def get_person_docx_raw(
-    case_id: str,
-    person_id: str,
-    template_file: str = Query("ly-lich-ca-nhan.docx", description="Tên file mẫu docx")
-):
-    person = storage_service.get_person(case_id, person_id)
-    if not person:
-        raise HTTPException(status_code=404, detail="Không tìm thấy thông tin cá nhân trong vụ việc")
-
-    try:
-        output_path = docx_service.generate_docx_from_person(
-            template_filename=template_file,
-            person_data=person
-        )
-        return FileResponse(
-            output_path,
-            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            filename=os.path.basename(output_path)
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi tạo tài liệu Word: {str(e)}")
-
 @router.get("/person/{case_id}/{person_id}/preview-viewer", summary="Trang HTML xem trước tài liệu PDF qua PDF.js Canvas (Chống IDM bắt link & Có Cache)")
 async def get_person_docx_preview_viewer(
     case_id: str,
@@ -93,7 +70,7 @@ async def get_person_docx_preview_viewer(
     Trả về giao diện Web sử dụng Mozilla PDF.js vẽ từng trang A4 lên HTML5 Canvas,
     đảm bảo không bị IDM can thiệp, chuẩn 100% định dạng Word và tốc độ tức thì nhờ Cache.
     """
-    encoded_tpl = urllib.parse.quote(template_file)
+    encoded_tpl = quote(template_file)
     cur_time = t or str(int(time.time() * 1000))
     force_param = f"&force=true&t={cur_time}" if force else f"&t={cur_time}"
     pdf_data_url = f"/api/v1/generate/person/{case_id}/{person_id}/pdf-data?template_file={encoded_tpl}{force_param}"
@@ -281,25 +258,30 @@ async def get_person_docx_preview_viewer(
 async def download_person_docx(
     case_id: str,
     person_id: str,
-    template_file: str = Query("ly-lich-ca-nhan.docx", description="Tên file mẫu docx")
+    template_file: str = Query("209_ly_lich_ca_nhan.docx", description="Tên file mẫu docx")
 ):
     person = storage_service.get_person(case_id, person_id)
     if not person:
         raise HTTPException(status_code=404, detail="Không tìm thấy thông tin cá nhân trong vụ việc")
 
     try:
-        output_path = docx_service.generate_docx_from_person(
+        buffer = docx_service.generate_docx_bytes(
             template_filename=template_file,
             person_data=person
         )
+        display_tpl_name = [tpl["display_name"] for tpl in docx_service.get_person_templates() if tpl["file_name"] == template_file][0]
         safe_person_name = person.ho_ten.strip() if person.ho_ten.strip() else "CaNhan"
-        clean_tpl_name = template_file.replace(".docx", "")
-        download_filename = f"{clean_tpl_name}_{safe_person_name}.docx"
+        download_filename = f"{display_tpl_name} - {safe_person_name}.docx"
 
-        return FileResponse(
-            output_path,
+        encoded_filename = quote(download_filename)
+        headers = {
+            "Content-Disposition": f"attachment; filename=\"{download_filename}\"; filename*=UTF-8''{encoded_filename}"
+        }
+
+        return StreamingResponse(
+            buffer,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            filename=download_filename
+            headers=headers
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi tạo tài liệu Word: {str(e)}")

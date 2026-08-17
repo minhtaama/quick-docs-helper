@@ -7,9 +7,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./storage:/app/storage
+      - ./data:/app/data
       - ./templates:/app/templates
-      - ./temp_outputs:/app/temp_outputs
     restart: always
     environment:
       - PYTHONUNBUFFERED=1
