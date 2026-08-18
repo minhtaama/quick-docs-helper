@@ -115,8 +115,9 @@ async def download_person_docx(
         download_filename = f"{display_tpl_name} - {safe_person_name}.docx"
 
         encoded_filename = quote(download_filename)
+        safe_ascii_filename = template_file.replace(".docx", "")
         headers = {
-            "Content-Disposition": f"attachment; filename=\"{template_file.replace(".docx", "")}\"; filename*=UTF-8''{encoded_filename}"
+            "Content-Disposition": f"attachment; filename=\"{safe_ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
         }
 
         return StreamingResponse(
@@ -222,8 +223,9 @@ async def download_case_docx(
         download_filename = f"{display_tpl_name} - {safe_case_name}.docx"
 
         encoded_filename = quote(download_filename)
+        safe_ascii_filename = template_file.replace(".docx", "")
         headers = {
-            "Content-Disposition": f"attachment; filename=\"{template_file.replace(".docx", "")}\"; filename*=UTF-8''{encoded_filename}"
+            "Content-Disposition": f"attachment; filename=\"{safe_ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
         }
 
         return StreamingResponse(
