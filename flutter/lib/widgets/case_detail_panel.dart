@@ -86,7 +86,6 @@ class CaseDetailPanel extends StatelessWidget {
       );
     }
 
-    final tenTomTat = caseData!['ten_tom_tat'] ?? 'Chưa đặt tên';
     final tenDayDu = caseData!['ten_day_du'] ?? '';
     final personList = caseData!['con_nguoi_list'] as List? ?? [];
 
@@ -103,36 +102,10 @@ class CaseDetailPanel extends StatelessWidget {
               final titleAndDescription = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Row(
-                  //   crossAxisAlignment: CrossAxisAlignment.start,
-                  //   children: [
-                  //     Padding(
-                  //       padding: const EdgeInsets.only(top: 2.0),
-                  //       child: Icon(
-                  //         Icons.folder_special,
-                  //         color: primaryColor,
-                  //         size: 22,
-                  //       ),
-                  //     ),
-                  //     const SizedBox(width: 8),
-                  //     Expanded(
-                  //       child: Text(
-                  //         tenTomTat,
-                  //         style: TextStyle(
-                  //           fontSize: isHeaderCompact ? 18 : 20,
-                  //           fontWeight: FontWeight.bold,
-                  //           color: primaryColor,
-                  //         ),
-                  //         softWrap: true,
-                  //         maxLines: 2,
-                  //       ),
-                  //     ),
-                  //   ],
-                  // ),
                   if (tenDayDu.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
-                      tenDayDu,
+                      'Tên đầy đủ: $tenDayDu',
                       style: TextStyle(
                         fontSize: 16,
                         color: primaryColor.withValues(alpha: 0.75),
@@ -151,20 +124,33 @@ class CaseDetailPanel extends StatelessWidget {
                 runSpacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  if (onEditCasePressed != null)
-                    IconButton(
-                      icon: Icon(
-                        Icons.edit_outlined,
-                        size: 20,
-                        color: primaryColor,
+                  FilledButton.tonalIcon(
+                    onPressed: () {
+                      final caseId = caseData!['id'] ?? '';
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ExportDocsPage(
+                            caseId: caseId,
+                            caseData: caseData,
+                            isCaseLevel: true,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.description_outlined, size: 18),
+                    label: const Text('Văn bản chung'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
                       ),
-                      tooltip: 'Sửa tên / mô tả vụ việc',
-                      onPressed: onEditCasePressed,
                     ),
+                  ),
                   FilledButton.icon(
                     onPressed: onAddPersonPressed,
                     icon: const Icon(Icons.person_add_alt_1, size: 18),
-                    label: const Text('Thêm Đối Tượng'),
+                    label: const Text('Thêm người'),
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -304,8 +290,9 @@ class CaseDetailPanel extends StatelessWidget {
                           imagePath.toString().isNotEmpty &&
                           caseId.toString().isNotEmpty &&
                           personId.toString().isNotEmpty;
+                      final updatedAt = caseData?['updated_at'] ?? '';
                       final String imageUrl = hasImage
-                          ? '${ApiService.baseUrl}/api/v1/cases/$caseId/persons/$personId/image?t=${DateTime.now().millisecondsSinceEpoch}'
+                          ? '${ApiService.baseUrl}/api/v1/cases/$caseId/persons/$personId/image?v=$updatedAt'
                           : '';
 
                       return LayoutBuilder(

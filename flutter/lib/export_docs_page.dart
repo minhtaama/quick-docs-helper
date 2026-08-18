@@ -6,9 +6,17 @@ import 'services/api_service.dart';
 
 class ExportDocsPage extends StatefulWidget {
   final String caseId;
-  final Map<String, dynamic> person;
+  final Map<String, dynamic>? person;
+  final Map<String, dynamic>? caseData;
+  final bool isCaseLevel;
 
-  const ExportDocsPage({super.key, required this.caseId, required this.person});
+  const ExportDocsPage({
+    super.key,
+    required this.caseId,
+    this.person,
+    this.caseData,
+    this.isCaseLevel = false,
+  });
 
   @override
   State<ExportDocsPage> createState() => _ExportDocsPageState();
@@ -30,7 +38,10 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
 
   Future<void> _loadTemplates() async {
     setState(() => _isLoadingTemplates = true);
-    final templates = await ApiService.getPersonTemplates();
+    final templates = widget.isCaseLevel
+        ? await ApiService.getCaseTemplates()
+        : await ApiService.getPersonTemplates();
+
     if (mounted) {
       setState(() {
         _templates = templates;
@@ -57,18 +68,30 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
     }
   }
 
-  String get _currentViewType =>
-      'docx-preview-${widget.caseId}-${widget.person['id']}-$_selectedTemplateFile-$_previewReloadCounter';
+  String get _currentViewType {
+    if (widget.isCaseLevel) {
+      return 'docx-preview-case-${widget.caseId}-$_selectedTemplateFile-$_previewReloadCounter';
+    }
+    final personId = widget.person?['id'] ?? '';
+    return 'docx-preview-${widget.caseId}-$personId-$_selectedTemplateFile-$_previewReloadCounter';
+  }
 
   void _registerCurrentIframe({bool force = false}) {
     if (kIsWeb && _selectedTemplateFile != null) {
-      final previewUrl = ApiService.getPersonDocxPreviewUrl(
-        caseId: widget.caseId,
-        personId: widget.person['id'] ?? '',
-        templateFilename: _selectedTemplateFile!,
-        force: force,
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-      );
+      final previewUrl = widget.isCaseLevel
+          ? ApiService.getCaseDocxPreviewUrl(
+              caseId: widget.caseId,
+              templateFilename: _selectedTemplateFile!,
+              force: force,
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+            )
+          : ApiService.getPersonDocxPreviewUrl(
+              caseId: widget.caseId,
+              personId: widget.person?['id'] ?? '',
+              templateFilename: _selectedTemplateFile!,
+              force: force,
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+            );
 
       final viewType = _currentViewType;
 
@@ -103,13 +126,23 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
     if (_selectedTemplateFile == null) return;
     setState(() => _isDownloading = true);
     try {
-      final hoTen = widget.person['ho_ten'] ?? '???';
-      final ok = await ApiService.downloadPersonTemplateDocx(
-        caseId: widget.caseId,
-        personId: widget.person['id'] ?? '',
-        templateFilename: _selectedTemplateFile!,
-        hoTen: hoTen,
-      );
+      final bool ok;
+      if (widget.isCaseLevel) {
+        final tenTomTat = widget.caseData?['ten_tom_tat'] ?? 'VuViec';
+        ok = await ApiService.downloadCaseTemplateDocx(
+          caseId: widget.caseId,
+          templateFilename: _selectedTemplateFile!,
+          tenTomTat: tenTomTat,
+        );
+      } else {
+        final hoTen = widget.person?['ho_ten'] ?? '???';
+        ok = await ApiService.downloadPersonTemplateDocx(
+          caseId: widget.caseId,
+          personId: widget.person?['id'] ?? '',
+          templateFilename: _selectedTemplateFile!,
+          hoTen: hoTen,
+        );
+      }
 
       if (ok && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -139,8 +172,23 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
-    final hoTen = widget.person['ho_ten'] ?? 'Đối tượng';
-    final cccd = widget.person['cccd'] ?? '';
+
+    final String titleText;
+    final String subtitleText;
+
+    if (widget.isCaseLevel) {
+      final tenTomTat = widget.caseData?['ten_tom_tat'] ?? 'Vụ án';
+      final personCount =
+          (widget.caseData?['con_nguoi_list'] as List?)?.length ?? 0;
+      titleText = 'XUẤT VĂN BẢN VỤ VIỆC/VỤ ÁN';
+      subtitleText = 'Vụ việc: $tenTomTat  •  Tổng số đối tượng: $personCount';
+    } else {
+      final hoTen = widget.person?['ho_ten'] ?? 'Đối tượng';
+      final cccd = widget.person?['cccd'] ?? '';
+      titleText = 'XUẤT VĂN BẢN ĐỐI TƯỢNG';
+      subtitleText =
+          'Đối tượng: $hoTen${cccd.isNotEmpty ? '  •  CCCD: $cccd' : ''}';
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -148,12 +196,12 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'XUẤT VĂN BẢN HỒ SƠ',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Text(
+              titleText,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             Text(
-              'Đối tượng: $hoTen${cccd.isNotEmpty ? '  •  CCCD: $cccd' : ''}',
+              subtitleText,
               style: TextStyle(
                 fontSize: 12,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
@@ -218,6 +266,9 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
           }
 
           if (_templates.isEmpty) {
+            final folderDesc = widget.isCaseLevel
+                ? 'templates/case/'
+                : 'templates/person/';
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -228,9 +279,9 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
                     color: primaryColor.withValues(alpha: 0.4),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Chưa có mẫu văn bản nào trong thư mục templates/person/',
-                    style: TextStyle(fontSize: 15),
+                  Text(
+                    'Chưa có mẫu văn bản nào trong thư mục $folderDesc',
+                    style: const TextStyle(fontSize: 15),
                   ),
                 ],
               ),

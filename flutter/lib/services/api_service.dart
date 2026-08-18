@@ -267,4 +267,98 @@ class ApiService {
       rethrow;
     }
   }
+
+  /// Lấy danh sách các mẫu văn bản dành cho vụ án
+  static Future<List<Map<String, dynamic>>> getCaseTemplates() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/v1/generate/templates/case'),
+      );
+      if (response.statusCode == 200) {
+        final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is List) {
+          return decoded
+              .where((e) => e != null)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('ApiService.getCaseTemplates error: $e');
+      return [];
+    }
+  }
+
+  /// Lấy đường dẫn URL trang xem trước tài liệu vụ việc
+  static String getCaseDocxPreviewUrl({
+    required String caseId,
+    required String templateFilename,
+    bool force = false,
+    int? timestamp,
+  }) {
+    final encoded = Uri.encodeComponent(templateFilename);
+    final t = timestamp ?? DateTime.now().millisecondsSinceEpoch;
+    final forceParam = force ? '&force=true&t=$t' : '&t=$t';
+    return '$baseUrl/api/v1/generate/case/$caseId/preview-viewer?template_file=$encoded$forceParam';
+  }
+
+  /// Tải file Word vụ việc theo mẫu chỉ định
+  static Future<bool> downloadCaseTemplateDocx({
+    required String caseId,
+    required String templateFilename,
+    required String tenTomTat,
+  }) async {
+    try {
+      final encoded = Uri.encodeComponent(templateFilename);
+      final response = await http.post(
+        Uri.parse(
+          '$baseUrl/api/v1/generate/case/$caseId/download?template_file=$encoded',
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final Uint8List bytes = response.bodyBytes;
+
+        String filename =
+            '${templateFilename.replaceAll('.docx', '')}_${tenTomTat.trim().isEmpty ? "VuViec" : tenTomTat.trim()}.docx';
+        final disposition = response.headers['content-disposition'];
+        if (disposition != null) {
+          final matchUtf8 = RegExp(
+            r"filename\*=UTF-8''([^;\r\n]+)",
+            caseSensitive: false,
+          ).firstMatch(disposition);
+          if (matchUtf8 != null && matchUtf8.group(1) != null) {
+            filename = Uri.decodeFull(matchUtf8.group(1)!);
+          } else {
+            final matchStandard = RegExp(
+              r'filename="?([^";\r\n]+)"?',
+              caseSensitive: false,
+            ).firstMatch(disposition);
+            if (matchStandard != null && matchStandard.group(1) != null) {
+              filename = matchStandard.group(1)!.trim();
+            }
+          }
+        }
+
+        if (kIsWeb) {
+          final blob = html.Blob(
+            [bytes],
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          );
+          final url = html.Url.createObjectUrlFromBlob(blob);
+          html.AnchorElement(href: url)
+            ..setAttribute("download", filename)
+            ..click();
+          html.Url.revokeObjectUrl(url);
+        }
+        return true;
+      } else {
+        throw Exception('Lỗi tải văn bản vụ việc (${response.statusCode})');
+      }
+    } catch (e) {
+      debugPrint('ApiService.downloadCaseTemplateDocx error: $e');
+      rethrow;
+    }
+  }
 }
