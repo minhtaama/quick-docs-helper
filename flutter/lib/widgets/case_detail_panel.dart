@@ -103,39 +103,40 @@ class CaseDetailPanel extends StatelessWidget {
               final titleAndDescription = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2.0),
-                        child: Icon(
-                          Icons.folder_special,
-                          color: primaryColor,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          tenTomTat,
-                          style: TextStyle(
-                            fontSize: isHeaderCompact ? 18 : 20,
-                            fontWeight: FontWeight.bold,
-                            color: primaryColor,
-                          ),
-                          softWrap: true,
-                          maxLines: 2,
-                        ),
-                      ),
-                    ],
-                  ),
+                  // Row(
+                  //   crossAxisAlignment: CrossAxisAlignment.start,
+                  //   children: [
+                  //     Padding(
+                  //       padding: const EdgeInsets.only(top: 2.0),
+                  //       child: Icon(
+                  //         Icons.folder_special,
+                  //         color: primaryColor,
+                  //         size: 22,
+                  //       ),
+                  //     ),
+                  //     const SizedBox(width: 8),
+                  //     Expanded(
+                  //       child: Text(
+                  //         tenTomTat,
+                  //         style: TextStyle(
+                  //           fontSize: isHeaderCompact ? 18 : 20,
+                  //           fontWeight: FontWeight.bold,
+                  //           color: primaryColor,
+                  //         ),
+                  //         softWrap: true,
+                  //         maxLines: 2,
+                  //       ),
+                  //     ),
+                  //   ],
+                  // ),
                   if (tenDayDu.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
                       tenDayDu,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 16,
                         color: primaryColor.withValues(alpha: 0.75),
+                        fontWeight: FontWeight.bold,
                       ),
                       softWrap: true,
                       maxLines: 3,

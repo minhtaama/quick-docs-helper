@@ -132,6 +132,7 @@ class _HomePageState extends State<HomePage> {
         caseId: caseId,
         initialTenTomTat: currentTenTomTat,
         initialTenDayDu: currentTenDayDu,
+        onDelete: () => _deleteCase(caseId),
       ),
     );
     if (updatedCase != null) {

@@ -248,7 +248,7 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'DANH SÁCH MẪU (${_templates.length})',
+                      'DANH SÁCH VĂN BẢN (${_templates.length})',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -316,33 +316,17 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        displayName,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: isSelected
-                                              ? FontWeight.bold
-                                              : FontWeight.w600,
-                                          color: primaryColor,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        fileName,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: primaryColor.withValues(
-                                            alpha: 0.5,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                  child: Text(
+                                    displayName,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.w600,
+                                      color: primaryColor,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 if (isSelected)
@@ -469,7 +453,7 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
           // BỐ CỤC DESKTOP (2 Cột song song)
           return Row(
             children: [
-              SizedBox(width: 320, child: templateListWidget),
+              SizedBox(width: 380, child: templateListWidget),
               VerticalDivider(
                 width: 1,
                 thickness: 1,

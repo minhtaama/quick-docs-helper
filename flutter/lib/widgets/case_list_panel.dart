@@ -37,34 +37,6 @@ class _CaseListPanelState extends State<CaseListPanel> {
     super.dispose();
   }
 
-  void _confirmDelete(BuildContext context, String caseId, String tenVu) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xác nhận xóa vụ việc'),
-        content: Text(
-          'Bạn có chắc chắn muốn xóa vụ việc "$tenVu"? Toàn bộ dữ liệu các cá nhân trong vụ việc này sẽ bị xóa.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () {
-              Navigator.pop(ctx);
-              if (widget.onCaseDeleted != null) {
-                widget.onCaseDeleted!(caseId);
-              }
-            },
-            child: const Text('Xóa'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -72,8 +44,12 @@ class _CaseListPanelState extends State<CaseListPanel> {
 
     final filteredCases = widget.cases.where((item) {
       if (_searchKeyword.isEmpty) return true;
-      final tenTomTat = (item['ten_tom_tat'] ?? item['ten_vu'] ?? '').toString().toLowerCase();
-      final tenDayDu = (item['ten_day_du'] ?? item['mo_ta'] ?? '').toString().toLowerCase();
+      final tenTomTat = (item['ten_tom_tat'] ?? item['ten_vu'] ?? '')
+          .toString()
+          .toLowerCase();
+      final tenDayDu = (item['ten_day_du'] ?? item['mo_ta'] ?? '')
+          .toString()
+          .toLowerCase();
       final keyword = _searchKeyword.toLowerCase();
       return tenTomTat.contains(keyword) || tenDayDu.contains(keyword);
     }).toList();
@@ -94,7 +70,7 @@ class _CaseListPanelState extends State<CaseListPanel> {
                     Icon(Icons.folder_outlined, size: 20, color: primaryColor),
                     const SizedBox(width: 8),
                     Text(
-                      'DANH SÁCH VỤ VIỆC',
+                      'DANH SÁCH VỤ VIỆC/VỤ ÁN',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -107,10 +83,7 @@ class _CaseListPanelState extends State<CaseListPanel> {
                 FilledButton.icon(
                   onPressed: widget.onNewCasePressed,
                   icon: const Icon(Icons.add, size: 16),
-                  label: const Text(
-                    'Tạo vụ việc',
-                    style: TextStyle(fontSize: 13),
-                  ),
+                  label: const Text('Thêm vụ', style: TextStyle(fontSize: 13)),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -211,8 +184,12 @@ class _CaseListPanelState extends State<CaseListPanel> {
                     itemBuilder: (context, index) {
                       final item = filteredCases[index];
                       final caseId = item['id'] ?? '';
-                      final tenTomTat = item['ten_tom_tat'] ?? item['ten_vu'] ?? 'Vụ việc không tên';
-                      final tenDayDu = item['ten_day_du'] ?? item['mo_ta'] ?? '';
+                      final tenTomTat =
+                          item['ten_tom_tat'] ??
+                          item['ten_vu'] ??
+                          'Vụ việc không tên';
+                      final tenDayDu =
+                          item['ten_day_du'] ?? item['mo_ta'] ?? '';
                       final soNguoi = item['so_luong_nguoi'] ?? 0;
                       final isSelected = widget.selectedCaseId == caseId;
 
@@ -242,37 +219,35 @@ class _CaseListPanelState extends State<CaseListPanel> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                CircleAvatar(
-                                  radius: 18,
-                                  backgroundColor: isSelected
-                                      ? primaryColor
-                                      : primaryColor.withValues(alpha: 0.1),
-                                  child: Icon(
-                                    Icons.folder,
-                                    size: 18,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : primaryColor,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        tenTomTat,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: primaryColor,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.file_copy,
+                                            color: primaryColor,
+                                            size: 21,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              tenTomTat,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: primaryColor,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                       if (tenDayDu.isNotEmpty) ...[
-                                        const SizedBox(height: 2),
+                                        const SizedBox(height: 6),
                                         Text(
                                           tenDayDu,
                                           style: TextStyle(
@@ -319,25 +294,13 @@ class _CaseListPanelState extends State<CaseListPanel> {
                                         alpha: 0.7,
                                       ),
                                     ),
-                                    tooltip: 'Chỉnh sửa tên / mô tả vụ việc',
+                                    tooltip: 'Chỉnh sửa tên/mô tả vụ việc',
                                     onPressed: () => widget.onCaseEdited!(
                                       caseId,
                                       tenTomTat,
                                       tenDayDu,
                                     ),
                                   ),
-                                IconButton(
-                                  icon: Icon(
-                                    Icons.delete_outline,
-                                    size: 18,
-                                    color: Colors.redAccent.withValues(
-                                      alpha: 0.8,
-                                    ),
-                                  ),
-                                  tooltip: 'Xóa vụ việc',
-                                  onPressed: () =>
-                                      _confirmDelete(context, caseId, tenTomTat),
-                                ),
                               ],
                             ),
                           ),
