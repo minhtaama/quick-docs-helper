@@ -475,7 +475,6 @@ class PersonDetailDialog extends StatelessWidget {
                       else
                         Column(
                           children: giaDinhList.asMap().entries.map((entry) {
-                            final idx = entry.key;
                             final item = Map<String, dynamic>.from(
                               entry.value as Map,
                             );
