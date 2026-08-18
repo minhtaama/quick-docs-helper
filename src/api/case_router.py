@@ -96,6 +96,12 @@ async def add_or_update_person(
             if isinstance(raw_list, list):
                 for item in raw_list:
                     if isinstance(item, dict):
+                        if isinstance(item["quan_he"], str):  
+                            item["gioi_tinh"] = "Nam" if item["quan_he"] in ["Bố", "Chồng", "Anh", "Con trai", "Em trai"] else "Nữ"
+                            if "Con" in item["quan_he"]:
+                                item["quan_he"] = "Con"
+                            if "Em" in item["quan_he"]:
+                                item["quan_he"] = "Em"
                         parsed_gia_dinh.append(FamilyData(**item))
         except Exception as e:
             print(f"Error parsing quan_he_gia_dinh: {e}")

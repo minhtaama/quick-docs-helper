@@ -458,7 +458,11 @@ class _PersonPageState extends State<PersonPage> {
 }
 
 // Widget tiêu đề section
-Widget _buildSectionHeader(BuildContext context, String title, {Widget? trailing}) {
+Widget _buildSectionHeader(
+  BuildContext context,
+  String title, {
+  Widget? trailing,
+}) {
   final theme = Theme.of(context);
   return Padding(
     padding: const EdgeInsets.only(top: 20.0, bottom: 12.0),
@@ -480,10 +484,7 @@ Widget _buildSectionHeader(BuildContext context, String title, {Widget? trailing
             thickness: 1,
           ),
         ),
-        if (trailing != null) ...[
-          const SizedBox(width: 12),
-          trailing,
-        ],
+        if (trailing != null) ...[const SizedBox(width: 12), trailing],
       ],
     ),
   );
@@ -838,11 +839,9 @@ class _RecordController {
   final TextEditingController thoiGianController;
   final TextEditingController noiDungController;
 
-  _RecordController({
-    String thoiGian = '',
-    String noiDung = '',
-  }) : thoiGianController = TextEditingController(text: thoiGian),
-       noiDungController = TextEditingController(text: noiDung);
+  _RecordController({String thoiGian = '', String noiDung = ''})
+    : thoiGianController = TextEditingController(text: thoiGian),
+      noiDungController = TextEditingController(text: noiDung);
 
   Map<String, dynamic> toMap() => {
     'thoi_gian': thoiGianController.text.trim(),
@@ -883,10 +882,7 @@ class _Section5CriminalRecord extends StatelessWidget {
             icon: const Icon(Icons.add_circle_outline, size: 16),
             label: const Text('Thêm tiền án, tiền sự'),
             style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               side: BorderSide(color: primaryColor.withValues(alpha: 0.5)),
             ),
           ),
@@ -1017,7 +1013,8 @@ class _Section5CriminalRecord extends StatelessWidget {
                       CustomTextInput(
                         controller: record.noiDungController,
                         label: 'Nội dung bản án / Quyết định xử phạt',
-                        hint: 'Tội danh, cơ quan xử lý, mức án, hình thức xử phạt...',
+                        hint:
+                            'Tội danh, cơ quan xử lý, mức án, hình thức xử phạt...',
                         icon: Icons.gavel_outlined,
                         minLines: 2,
                         maxLines: 4,
@@ -1085,7 +1082,19 @@ class _Section6FamilyRelations extends StatelessWidget {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
 
-    final relations = ['Bố', 'Mẹ', 'Vợ', 'Chồng', 'Con', 'Anh', 'Chị', 'Em'];
+    final relations = [
+      'Bố',
+      'Mẹ',
+      'Vợ',
+      'Chồng',
+      'Con trai',
+      'Con gái',
+      'Anh',
+      'Chị',
+      'Em trai',
+      'Em gái',
+      'Khác',
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1098,10 +1107,7 @@ class _Section6FamilyRelations extends StatelessWidget {
             icon: const Icon(Icons.person_add_alt_1, size: 16),
             label: const Text('Thêm người thân'),
             style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               side: BorderSide(color: primaryColor.withValues(alpha: 0.5)),
             ),
           ),
@@ -1193,22 +1199,23 @@ class _Section6FamilyRelations extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
-                                  child: ValueListenableBuilder<TextEditingValue>(
-                                    valueListenable: member.hoTenController,
-                                    builder: (context, val, _) {
-                                      return Text(
-                                        val.text.trim().isNotEmpty
-                                            ? val.text.trim()
-                                            : 'Người thân ${index + 1}',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      );
-                                    },
-                                  ),
+                                  child:
+                                      ValueListenableBuilder<TextEditingValue>(
+                                        valueListenable: member.hoTenController,
+                                        builder: (context, val, _) {
+                                          return Text(
+                                            val.text.trim().isNotEmpty
+                                                ? val.text.trim()
+                                                : 'Người thân ${index + 1}',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          );
+                                        },
+                                      ),
                                 ),
                               ],
                             ),

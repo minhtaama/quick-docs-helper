@@ -11,6 +11,7 @@ class RecordData(BaseModel):
 class FamilyData(BaseModel):
     """Schema đại diện cho một người thân/thành viên trong gia đình"""
     quan_he: str = ""
+    gioi_tinh: str = ""
     ho_ten: str = ""
     nam_sinh: str = ""
     nghe_nghiep: str = ""
