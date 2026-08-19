@@ -7,6 +7,7 @@ class DocPreviewPanel extends StatelessWidget {
   final String? selectedDisplayName;
   final String currentViewType;
   final VoidCallback onDownload;
+  final VoidCallback? onReload;
   final bool isDownloading;
 
   const DocPreviewPanel({
@@ -14,6 +15,7 @@ class DocPreviewPanel extends StatelessWidget {
     required this.selectedDisplayName,
     required this.currentViewType,
     required this.onDownload,
+    this.onReload,
     this.isDownloading = false,
   });
 
@@ -21,50 +23,38 @@ class DocPreviewPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Panel(
       backgroundColor: const Color(0xFFF1F3F4),
-      header: _DocPreviewHeader(selectedDisplayName: selectedDisplayName),
+      appBarIcon: Icons.visibility_outlined,
+      appBarTitle: 'Xem trước: ${selectedDisplayName ?? "Tài liệu"}',
+      appBarActions: [
+        if (onReload != null)
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Làm mới & Xóa cache xem trước',
+            onPressed: onReload,
+          ),
+        Padding(
+          padding: const EdgeInsets.only(right: 12.0),
+          child: FilledButton.icon(
+            onPressed: isDownloading ? null : onDownload,
+            icon: isDownloading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.download, size: 18),
+            label: const Text('Tải file Word'),
+          ),
+        ),
+      ],
       child: _DocPreviewContent(
         selectedDisplayName: selectedDisplayName,
         currentViewType: currentViewType,
         onDownload: onDownload,
         isDownloading: isDownloading,
-      ),
-    );
-  }
-}
-
-class _DocPreviewHeader extends StatelessWidget {
-  final String? selectedDisplayName;
-
-  const _DocPreviewHeader({this.selectedDisplayName});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16.0,
-        vertical: 10.0,
-      ),
-      color: theme.colorScheme.surface,
-      child: Row(
-        children: [
-          Icon(
-            Icons.visibility_outlined,
-            size: 18,
-            color: primaryColor.withValues(alpha: 0.7),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'Xem trước: ${selectedDisplayName ?? "Tài liệu"}',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: primaryColor,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -96,11 +86,7 @@ class _DocPreviewContent extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.desktop_windows,
-            size: 48,
-            color: Colors.grey,
-          ),
+          const Icon(Icons.desktop_windows, size: 48, color: Colors.grey),
           const SizedBox(height: 12),
           Text(
             'Xem trước văn bản: ${selectedDisplayName ?? ""}',

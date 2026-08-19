@@ -205,33 +205,6 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
           ),
         ],
       ),
-      actions: [
-        if (_selectedTemplateFile != null) ...[
-          IconButton(
-            onPressed: _forceReloadPreview,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Làm mới & Xóa cache xem trước (Force Reload)',
-          ),
-          const SizedBox(width: 4),
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: FilledButton.icon(
-              onPressed: _isDownloading ? null : _downloadCurrentDocx,
-              icon: _isDownloading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.download),
-              label: const Text('Tải file Word'),
-            ),
-          ),
-        ],
-      ],
     );
 
     if (_isLoadingTemplates) {
@@ -280,10 +253,7 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
       appBar: appBarWidget,
       tabs: const [
         Tab(icon: Icon(Icons.list_alt), text: 'Chọn Mẫu Văn Bản'),
-        Tab(
-          icon: Icon(Icons.remove_red_eye),
-          text: 'Xem Trước & Tải Về',
-        ),
+        Tab(icon: Icon(Icons.remove_red_eye), text: 'Xem Trước & Tải Về'),
       ],
       sideBar: DocTemplateSidebar(
         templates: _templates,
@@ -294,6 +264,7 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
         selectedDisplayName: _selectedDisplayName,
         currentViewType: _currentViewType,
         onDownload: _downloadCurrentDocx,
+        onReload: _forceReloadPreview,
         isDownloading: _isDownloading,
       ),
     );

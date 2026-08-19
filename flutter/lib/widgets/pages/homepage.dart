@@ -229,26 +229,17 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final hasSelectedCase = _selectedCaseId != null;
 
-    final sideBarWidget = Column(
-      children: [
-        WelcomeHeader(
-          onNewCasePressed: _showCreateCaseDialog,
-        ),
-        Expanded(
-          child: _isLoadingCases
-              ? const Center(child: CircularProgressIndicator())
-              : CaseListSidebar(
-                  cases: _cases,
-                  selectedCaseId: _selectedCaseId,
-                  onCaseSelected: _onSelectCase,
-                  onRefresh: _loadCases,
-                  onNewCasePressed: _showCreateCaseDialog,
-                  onCaseEdited: _showEditCaseDialog,
-                  onCaseDeleted: _deleteCase,
-                ),
-        ),
-      ],
-    );
+    final sideBarWidget = _isLoadingCases
+        ? const Center(child: CircularProgressIndicator())
+        : CaseListSidebar(
+            cases: _cases,
+            selectedCaseId: _selectedCaseId,
+            onCaseSelected: _onSelectCase,
+            onRefresh: _loadCases,
+            onNewCasePressed: _showCreateCaseDialog,
+            onCaseEdited: _showEditCaseDialog,
+            onCaseDeleted: _deleteCase,
+          );
 
     final detailWidget = hasSelectedCase
         ? CaseDetailPanel(
@@ -264,31 +255,10 @@ class _HomePageState extends State<HomePage> {
             onEditPersonPressed: _openEditPerson,
             onDeletePerson: _deletePerson,
           )
-        : WelcomePanel(
-            onNewCasePressed: _showCreateCaseDialog,
-          );
+        : WelcomePanel(onNewCasePressed: _showCreateCaseDialog);
 
     return SideBarPage(
-      appBar: AppBar(
-        leading: hasSelectedCase
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                tooltip: 'Quay lại danh sách',
-                onPressed: () {
-                  setState(() {
-                    _selectedCaseId = null;
-                    _selectedCaseDetails = null;
-                  });
-                },
-              )
-            : null,
-        title: Text(
-          hasSelectedCase
-              ? (_selectedCaseDetails?['ten_tom_tat'] ?? 'Chi tiết vụ việc')
-              : 'Quick Docs Helper - Quản Lý Hồ Sơ Vụ Việc',
-        ),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: const Text('Quick Docs Helper'), centerTitle: true),
       shouldShowDetailPanelOnMobile: hasSelectedCase,
       onMobileBack: () {
         setState(() {
