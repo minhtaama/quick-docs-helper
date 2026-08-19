@@ -3,17 +3,19 @@ import json
 import os
 import sys
 import hashlib
-from typing import Optional
+from typing import Optional, Any
+from abc import ABC, abstractmethod
 import subprocess
 from docxtpl import DocxTemplate, InlineImage
 from docx.shared import Mm
-from src.schemas.document_schema import PersonData, CaseData
+from src.schemas.document_schema import PersonData, CaseData, CustomDocumentData
 from src.config import BASE_DIR, TEMPLATES_DIR, CACHE_DIR
 
 
-class BaseDocxService:
+class BaseDocxService(ABC):
     """
-    Lớp dịch vụ cơ sở quản lý thư mục mẫu, thư mục cache và logic chuyển đổi PDF.
+    Layer base abstract service quản lý thư mục mẫu, thư mục cache và logic chuyển đổi PDF.
+    Mọi service cần kế thừa và hiện thực các abstract method tương ứng.
     """
 
     def __init__(self, template_dir: Optional[str] = None):
@@ -26,6 +28,31 @@ class BaseDocxService:
 
         self.cache_dir = CACHE_DIR
         os.makedirs(self.cache_dir, exist_ok=True)
+
+    @abstractmethod
+    def _resolve_template_path(self, template_filename: str) -> str:
+        """Trả về đường dẫn tuyệt đối đến tệp mẫu Word docx"""
+        pass
+
+    @abstractmethod
+    def get_templates(self) -> list[dict[str, Any]]:
+        """Lấy danh sách các mẫu văn bản từ file metadata.json tương ứng"""
+        pass
+
+    @abstractmethod
+    def _render_doc(self, template_filename: str, *args, **kwargs) -> DocxTemplate:
+        """Nạp dữ liệu vào template và trả về DocxTemplate đã render"""
+        pass
+
+    @abstractmethod
+    def _get_cache_hash(self, template_path: str, *args, **kwargs) -> str:
+        """Tạo mã băm MD5 duy nhất cho dữ liệu và mẫu để quản lý bộ đệm PDF"""
+        pass
+
+    @abstractmethod
+    def clear_cache(self, target_id: str):
+        """Xóa các tệp cache PDF liên quan đến đối tượng/tài liệu"""
+        pass
 
     def _convert_docx_to_pdf(self, temp_docx_path: str, cached_pdf_path: str) -> None:
         """
@@ -66,7 +93,7 @@ class BaseDocxService:
 
 class PersonDocxService(BaseDocxService):
     """
-    Dịch vụ xử lý xuất văn bản và tạo bản xem trước cấp Cá Nhân (Person Level).
+    Dịch vụ xử lý xuất văn bản và tạo bản xem trước cấp Cá Nhân / Đối Tượng (Person Level).
     """
 
     def _resolve_template_path(self, template_filename: str) -> str:
@@ -78,11 +105,10 @@ class PersonDocxService(BaseDocxService):
         raw_key = f"{person_data_str}_{tpl_mtime}"
         return hashlib.md5(raw_key.encode('utf-8')).hexdigest()[:12]
 
-    def get_templates(self) -> list[dict[str, str]]:
-        """
-        Lấy danh sách các mẫu văn bản dành cho đối tượng từ metadata.json trong templates/person/
-        """
+    def get_templates(self) -> list[dict[str, Any]]:
         metadata_path = os.path.join(self.template_dir, "person", "metadata.json")
+        if not os.path.exists(metadata_path):
+            return []
         try:
             with open(metadata_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -154,29 +180,19 @@ class PersonDocxService(BaseDocxService):
 
         return cached_pdf_path
 
-    def clear_cache(self, person_id: str):
+    def clear_cache(self, target_id: str):
         """Xóa cache PDF cũ của cá nhân"""
         try:
             if os.path.exists(self.cache_dir):
                 for filename in os.listdir(self.cache_dir):
-                    if person_id in filename:
+                    if target_id in filename:
                         file_path = os.path.join(self.cache_dir, filename)
                         try:
                             os.remove(file_path)
                         except Exception:
                             pass
         except Exception as e:
-            print(f"Error clearing cache for person {person_id}: {e}")
-
-    # Aliases for backward compatibility
-    def get_person_templates(self):
-        return self.get_templates()
-
-    def generate_pdf_from_person(self, template_filename: str, person_data: PersonData, force: bool = False):
-        return self.generate_pdf(template_filename, person_data, force)
-
-    def clear_person_cache(self, person_id: str):
-        return self.clear_cache(person_id)
+            print(f"Error clearing cache for person {target_id}: {e}")
 
 
 class CaseDocxService(BaseDocxService):
@@ -200,11 +216,10 @@ class CaseDocxService(BaseDocxService):
         raw_key = f"{case_data_str}_{tpl_mtime}"
         return hashlib.md5(raw_key.encode('utf-8')).hexdigest()[:12]
 
-    def get_templates(self) -> list[dict[str, str]]:
-        """
-        Lấy danh sách các mẫu văn bản dành cho vụ án từ metadata.json trong templates/case/
-        """
+    def get_templates(self) -> list[dict[str, Any]]:
         metadata_path = os.path.join(self.template_dir, "case", "metadata.json")
+        if not os.path.exists(metadata_path):
+            return []
         try:
             with open(metadata_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -275,16 +290,164 @@ class CaseDocxService(BaseDocxService):
 
         return cached_pdf_path
 
-    def clear_cache(self, case_id: str):
+    def clear_cache(self, target_id: str):
         """Xóa cache PDF cũ của vụ án"""
         try:
             if os.path.exists(self.cache_dir):
                 for filename in os.listdir(self.cache_dir):
-                    if case_id in filename:
+                    if target_id in filename:
                         file_path = os.path.join(self.cache_dir, filename)
                         try:
                             os.remove(file_path)
                         except Exception:
                             pass
         except Exception as e:
-            print(f"Error clearing cache for case {case_id}: {e}")
+            print(f"Error clearing cache for case {target_id}: {e}")
+
+
+class CustomDocxService(BaseDocxService):
+    """
+    Dịch vụ xử lý xuất văn bản và tạo bản xem trước cho các Mẫu Biên Bản Tùy Biến (Custom Documents).
+    Hỗ trợ truyền động các custom fields và kết hợp với dữ liệu con người nếu có.
+    """
+
+    def _resolve_template_path(self, template_filename: str) -> str:
+        return os.path.join(self.template_dir, "custom", template_filename)
+
+    def _get_cache_hash(
+        self,
+        template_path: str,
+        custom_doc: CustomDocumentData,
+        person_data: Optional[PersonData] = None
+    ) -> str:
+        doc_dict = {
+            "id": custom_doc.id,
+            "template_file": custom_doc.template_file,
+            "title": custom_doc.title,
+            "custom_fields": custom_doc.custom_fields,
+            "person": person_data.model_dump() if person_data else None
+        }
+        doc_str = json.dumps(doc_dict, sort_keys=True)
+        tpl_mtime = str(os.path.getmtime(template_path)) if os.path.exists(template_path) else ""
+        raw_key = f"{doc_str}_{tpl_mtime}"
+        return hashlib.md5(raw_key.encode('utf-8')).hexdigest()[:12]
+
+    def get_templates(self) -> list[dict[str, Any]]:
+        """
+        Lấy danh sách các mẫu văn bản tùy biến từ templates/custom/metadata.json
+        
+        Return:
+            list[dict[str, Any]]: Danh sách các mẫu văn bản tùy biến dưới dạng json
+        """
+        metadata_path = os.path.join(self.template_dir, "custom", "metadata.json")
+        if not os.path.exists(metadata_path):
+            return []
+        try:
+            with open(metadata_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return data
+                raise ValueError(f"metadata.json không đúng định dạng list: {type(data)}")
+        except Exception as e:
+            raise e
+
+    def _render_doc(
+        self,
+        template_filename: str,
+        custom_doc: CustomDocumentData,
+        person_data: Optional[PersonData] = None
+    ) -> DocxTemplate:
+        template_path = self._resolve_template_path(template_filename)
+        if not os.path.exists(template_path):
+            raise FileNotFoundError(f"Không tìm thấy file docx mẫu tùy biến: {template_path}")
+
+        template_doc = DocxTemplate(template_path)
+
+        # Tạo context ban đầu từ thông tin đối tượng (nếu có)
+        if person_data:
+            context = person_data.model_dump()
+            if person_data.image_path and os.path.exists(person_data.image_path):
+                try:
+                    img_obj = InlineImage(template_doc, image_descriptor=person_data.image_path, width=Mm(30))
+                except Exception as e:
+                    print(f"Error loading image into docx: {e}")
+                    img_obj = ""
+            else:
+                img_obj = ""
+            context["image"] = img_obj
+        else:
+            context = {}
+
+        # Thêm thông tin tiêu đề biên bản
+        context["doc_title"] = custom_doc.title
+
+        # Gộp toàn bộ các trường tùy biến do người dùng nhập vào context
+        if custom_doc.custom_fields:
+            context.update(custom_doc.custom_fields)
+
+        template_doc.render(context)
+        return template_doc
+
+    def generate_docx_bytes(
+        self,
+        template_filename: str,
+        custom_doc: CustomDocumentData,
+        person_data: Optional[PersonData] = None
+    ) -> io.BytesIO:
+        """Render tài liệu Word tùy biến trực tiếp vào bộ nhớ RAM"""
+        template_doc = self._render_doc(template_filename, custom_doc, person_data)
+        buffer = io.BytesIO()
+        template_doc.save(buffer)
+        buffer.seek(0)
+        return buffer
+
+    def generate_pdf(
+        self,
+        template_filename: str,
+        custom_doc: CustomDocumentData,
+        person_data: Optional[PersonData] = None,
+        force: bool = False
+    ) -> str:
+        """Render và chuyển đổi sang PDF cho biên bản tùy biến (kèm Cache)"""
+        template_path = self._resolve_template_path(template_filename)
+        cache_hash = self._get_cache_hash(template_path, custom_doc, person_data)
+        clean_tpl = template_filename.replace(".docx", "")
+        cached_pdf_name = f"custom_{clean_tpl}_{custom_doc.id}_{cache_hash}.pdf"
+        cached_pdf_path = os.path.join(self.cache_dir, cached_pdf_name)
+
+        if not force and os.path.exists(cached_pdf_path) and os.path.getsize(cached_pdf_path) > 0:
+            return cached_pdf_path
+
+        temp_docx_name = f"temp_custom_{custom_doc.id}_{cache_hash}.docx"
+        temp_docx_path = os.path.join(self.cache_dir, temp_docx_name)
+
+        template_doc = self._render_doc(template_filename, custom_doc, person_data)
+        template_doc.save(temp_docx_path)
+
+        try:
+            self._convert_docx_to_pdf(temp_docx_path, cached_pdf_path)
+        finally:
+            if os.path.exists(temp_docx_path):
+                try:
+                    os.remove(temp_docx_path)
+                except Exception:
+                    pass
+
+        if not os.path.exists(cached_pdf_path):
+            raise FileNotFoundError(f"Không thể tạo file PDF tùy biến: {cached_pdf_path}")
+
+        return cached_pdf_path
+
+    def clear_cache(self, target_id: str):
+        """Xóa cache PDF cũ của biên bản tùy biến"""
+        try:
+            if os.path.exists(self.cache_dir):
+                for filename in os.listdir(self.cache_dir):
+                    if target_id in filename:
+                        file_path = os.path.join(self.cache_dir, filename)
+                        try:
+                            os.remove(file_path)
+                        except Exception:
+                            pass
+        except Exception as e:
+            print(f"Error clearing cache for custom doc {target_id}: {e}")

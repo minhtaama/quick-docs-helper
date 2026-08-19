@@ -3,11 +3,12 @@ import json
 from typing import Optional
 from fastapi import APIRouter, Form, File, UploadFile, HTTPException, Response
 from src.schemas.document_schema import CaseData, CaseCreate, PersonData, FamilyData, RecordData
-from src.services.storage_service import StorageService
+from src.services.storage_service import CaseStorageService, PersonStorageService
 from src.services.docx_service import PersonDocxService, CaseDocxService
 
 router = APIRouter(prefix="/api/v1/cases", tags=["Cases & Persons"])
-storage_service = StorageService()
+case_storage = CaseStorageService()
+person_storage = PersonStorageService()
 person_docx_service = PersonDocxService()
 case_docx_service = CaseDocxService()
 
@@ -15,32 +16,32 @@ case_docx_service = CaseDocxService()
 @router.get("/", include_in_schema=False)
 async def list_cases():
     """Trả về danh sách tóm tắt tất cả các vụ án/vụ việc đã lưu trên hệ thống"""
-    return storage_service.list_cases()
+    return case_storage.list_cases()
 
 @router.post("", summary="Thêm hoặc cập nhật một vụ việc")
 @router.post("/", include_in_schema=False)
 async def add_or_update_case(payload: CaseCreate):
     """Tạo mới một vụ việc hoặc cập nhật tên/mô tả của vụ việc đã có"""
     if payload.id:
-        existing_case = storage_service.get_case(payload.id)
+        existing_case = case_storage.get_case(payload.id)
         if not existing_case:
             raise HTTPException(status_code=404, detail="Không tìm thấy vụ việc để cập nhật")
         existing_case.ten_tom_tat = payload.ten_tom_tat
         existing_case.ten_day_du = payload.ten_day_du
-        saved = storage_service.save_case(existing_case)
+        saved = case_storage.save_case(existing_case)
         return saved
 
     new_case = CaseData(
         ten_tom_tat=payload.ten_tom_tat,
         ten_day_du=payload.ten_day_du
     )
-    saved = storage_service.save_case(new_case)
+    saved = case_storage.save_case(new_case)
     return saved
 
 @router.get("/{case_id}", summary="Lấy chi tiết vụ việc")
 async def get_case(case_id: str):
     """Lấy toàn bộ thông tin vụ việc và danh sách con người bên trong"""
-    case = storage_service.get_case(case_id)
+    case = case_storage.get_case(case_id)
     if not case:
         raise HTTPException(status_code=404, detail="Không tìm thấy vụ việc")
     return case
@@ -48,7 +49,7 @@ async def get_case(case_id: str):
 @router.delete("/{case_id}", summary="Xóa vụ việc")
 async def delete_case(case_id: str):
     """Xóa hoàn toàn vụ việc và toàn bộ tệp tin dữ liệu/ảnh đính kèm"""
-    success = storage_service.delete_case(case_id)
+    success = case_storage.delete_case(case_id)
     if not success:
         raise HTTPException(status_code=404, detail="Không tìm thấy vụ việc để xóa")
     return {"message": "Đã xóa vụ việc thành công", "case_id": case_id}
@@ -85,7 +86,7 @@ async def add_or_update_person(
     image: Optional[UploadFile] = File(None)
 ):
     """Thêm một con người mới hoặc cập nhật thông tin con người kèm ảnh đại diện vào vụ việc"""
-    case = storage_service.get_case(case_id)
+    case = case_storage.get_case(case_id)
     if not case:
         raise HTTPException(status_code=404, detail="Không tìm thấy vụ việc")
 
@@ -157,7 +158,7 @@ async def add_or_update_person(
         if ext:
             image_ext = ext
 
-    saved_person = storage_service.add_or_update_person(
+    saved_person = person_storage.add_or_update_person(
         case_id=case_id,
         person_data=person_data,
         image_bytes=image_bytes,
@@ -174,7 +175,7 @@ async def add_or_update_person(
 @router.delete("/{case_id}/persons/{person_id}", summary="Xóa một cá nhân khỏi vụ việc")
 async def delete_person(case_id: str, person_id: str):
     """Xóa một con người khỏi vụ việc đã chọn"""
-    success = storage_service.delete_person(case_id, person_id)
+    success = person_storage.delete_person(case_id, person_id)
     if not success:
         raise HTTPException(status_code=404, detail="Không tìm thấy cá nhân hoặc vụ việc")
     person_docx_service.clear_cache(person_id)
@@ -183,7 +184,7 @@ async def delete_person(case_id: str, person_id: str):
 
 @router.get("/{case_id}/persons/{person_id}/image", summary="Lấy ảnh đại diện của cá nhân")
 async def get_person_image(case_id: str, person_id: str):
-    image_bytes = storage_service.get_person_image_bytes(case_id, person_id)
+    image_bytes = person_storage.get_person_image_bytes(case_id, person_id)
     if not image_bytes:
         raise HTTPException(status_code=404, detail="Không tìm thấy ảnh đại diện")
     return Response(content=image_bytes, media_type="image/png")

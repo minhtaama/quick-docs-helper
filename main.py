@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from src.config import Config
 from src.api.case_router import router as case_router
+from src.api.custom_doc_router import router as custom_doc_router
 from src.api.generate_router import router as generate_router
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -50,6 +51,7 @@ app.add_middleware(
 
 # 1. Đăng ký các API Routers
 app.include_router(case_router)
+app.include_router(custom_doc_router)
 app.include_router(generate_router)
 
 # 2. Đăng ký StaticFiles tại gốc "/" với html=True để phục vụ trọn bộ Flutter Web

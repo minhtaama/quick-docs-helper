@@ -81,6 +81,16 @@ class CaseCreate(BaseModel):
                 data["ten_day_du"] = data["mo_ta"]
         return data
 
+class CustomDocumentData(BaseModel):
+    """Schema đại diện cho một văn bản tùy biến có chứa các trường động"""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    template_file: str = ""
+    title: str = ""
+    person_id: Optional[str] = None
+    custom_fields: dict[str, Any] = Field(default_factory=dict)
+    created_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    updated_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
 class CaseData(BaseModel):
     """
     Schema chứa thông tin tổng thể của một vụ án/vụ việc
@@ -91,6 +101,7 @@ class CaseData(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     updated_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     con_nguoi_list: list[PersonData] = []
+    custom_documents: list[CustomDocumentData] = []
 
     @model_validator(mode="before")
     @classmethod

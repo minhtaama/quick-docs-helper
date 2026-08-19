@@ -5,14 +5,17 @@ from urllib.parse import quote
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
-from src.services.docx_service import PersonDocxService, CaseDocxService
-from src.services.storage_service import StorageService
+from src.services.docx_service import PersonDocxService, CaseDocxService, CustomDocxService
+from src.services.storage_service import CaseStorageService, PersonStorageService, CustomDocStorageService
 
 
 router = APIRouter(prefix="/api/v1/generate", tags=["Document Generation"])
 person_docx_service = PersonDocxService()
 case_docx_service = CaseDocxService()
-storage_service = StorageService()
+custom_docx_service = CustomDocxService()
+case_storage = CaseStorageService()
+person_storage = PersonStorageService()
+custom_doc_storage = CustomDocStorageService()
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
@@ -40,7 +43,7 @@ async def get_person_pdf_data(
     Kết xuất file Word cá nhân và chuyển sang PDF (có Cache), trả về stream nhị phân application/octet-stream
     kèm Cache-Control để phản hồi ngay lập tức trong 0ms.
     """
-    person = storage_service.get_person(case_id, person_id)
+    person = person_storage.get_person(case_id, person_id)
     if not person:
         raise HTTPException(status_code=404, detail="Không tìm thấy thông tin cá nhân trong vụ việc")
 
@@ -99,7 +102,7 @@ async def download_person_docx(
     person_id: str,
     template_file: str = Query("209_ly_lich_ca_nhan.docx", description="Tên file mẫu docx")
 ):
-    person = storage_service.get_person(case_id, person_id)
+    person = person_storage.get_person(case_id, person_id)
     if not person:
         raise HTTPException(status_code=404, detail="Không tìm thấy thông tin cá nhân trong vụ việc")
 
@@ -109,7 +112,7 @@ async def download_person_docx(
             person_data=person
         )
         templates_list = person_docx_service.get_templates()
-        matched = [tpl["display_name"] for tpl in templates_list if tpl["file_name"] == template_file]
+        matched = [tpl["display_name"] for tpl in templates_list if tpl.get("file_name") == template_file]
         display_tpl_name = matched[0] if matched else template_file.replace(".docx", "")
         safe_person_name = person.ho_ten.strip() if person.ho_ten.strip() else "Không tên"
         download_filename = f"{display_tpl_name} - {safe_person_name}.docx"
@@ -150,7 +153,7 @@ async def get_case_pdf_data(
     Kết xuất file Word vụ việc và chuyển sang PDF (có Cache), trả về stream nhị phân application/octet-stream
     kèm Cache-Control để phản hồi ngay lập tức trong 0ms.
     """
-    case = storage_service.get_case(case_id)
+    case = case_storage.get_case(case_id)
     if not case:
         raise HTTPException(status_code=404, detail="Không tìm thấy thông tin vụ việc")
 
@@ -207,7 +210,7 @@ async def download_case_docx(
     case_id: str,
     template_file: str = Query("danh_sach_doi_tuong.docx", description="Tên file mẫu docx")
 ):
-    case = storage_service.get_case(case_id)
+    case = case_storage.get_case(case_id)
     if not case:
         raise HTTPException(status_code=404, detail="Không tìm thấy thông tin vụ việc")
 
@@ -217,7 +220,7 @@ async def download_case_docx(
             case_data=case
         )
         templates_list = case_docx_service.get_templates()
-        matched = [tpl["display_name"] for tpl in templates_list if tpl["file_name"] == template_file]
+        matched = [tpl["display_name"] for tpl in templates_list if tpl.get("file_name") == template_file]
         display_tpl_name = matched[0] if matched else template_file.replace(".docx", "")
         safe_case_name = case.ten_tom_tat.strip() if case.ten_tom_tat.strip() else "VuViec"
         download_filename = f"{display_tpl_name} - {safe_case_name}.docx"
@@ -235,3 +238,121 @@ async def download_case_docx(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi tạo tài liệu Word vụ việc: {str(e)}")
+
+
+# ==============================================================================
+# 3. CÁC API XUẤT VĂN BẢN TÙY BIẾN (CUSTOM DOCUMENT LEVEL)
+# ==============================================================================
+
+@router.get("/templates/custom", summary="Lấy danh sách các mẫu văn bản tùy biến")
+async def get_custom_templates():
+    """
+    Trả về danh sách các mẫu văn bản tùy biến từ thư mục templates/custom/metadata.json
+    kèm theo định nghĩa danh sách các trường động (custom fields).
+    """
+    return custom_docx_service.get_templates()
+
+@router.get("/custom/{case_id}/{doc_id}/pdf-data", summary="Lấy luồng dữ liệu PDF biên bản tùy biến để PDF.js render")
+async def get_custom_pdf_data(
+    case_id: str,
+    doc_id: str,
+    force: bool = Query(False, description="Bắt buộc render lại và bỏ qua cache"),
+):
+    """
+    Kết xuất file Word tùy biến và chuyển sang PDF (có Cache), trả về stream nhị phân application/octet-stream
+    kèm Cache-Control để phản hồi ngay lập tức trong 0ms.
+    """
+    custom_doc = custom_doc_storage.get_custom_doc(case_id, doc_id)
+    if not custom_doc:
+        raise HTTPException(status_code=404, detail="Không tìm thấy biên bản tùy biến trong vụ việc")
+
+    person = None
+    if custom_doc.person_id:
+        person = person_storage.get_person(case_id, custom_doc.person_id)
+
+    try:
+        pdf_path = custom_docx_service.generate_pdf(
+            template_filename=custom_doc.template_file,
+            custom_doc=custom_doc,
+            person_data=person,
+            force=force
+        )
+        headers = {
+            "Content-Disposition": "inline; filename=preview.bin",
+        }
+        if not force:
+            headers["Cache-Control"] = "public, max-age=86400"
+        else:
+            headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+            headers["Pragma"] = "no-cache"
+
+        return FileResponse(
+            pdf_path,
+            media_type="application/octet-stream",
+            headers=headers
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi tạo tài liệu PDF tùy biến: {str(e)}")
+
+@router.get("/custom/{case_id}/{doc_id}/preview-viewer", summary="Trang HTML xem trước tài liệu PDF tùy biến qua PDF.js Canvas")
+async def get_custom_preview_viewer(
+    request: Request,
+    case_id: str,
+    doc_id: str,
+    force: bool = Query(False, description="Bắt buộc render lại và bỏ qua cache"),
+    t: Optional[str] = Query(None, description="Timestamp tránh cache")
+):
+    """
+    Trả về giao diện Web sử dụng Mozilla PDF.js vẽ từng trang A4 lên HTML5 Canvas cho biên bản tùy biến.
+    """
+    cur_time = t or str(int(time.time() * 1000))
+    force_param = f"&force=true&t={cur_time}" if force else f"&t={cur_time}"
+    pdf_data_url = f"/api/v1/generate/custom/{case_id}/{doc_id}/pdf-data?{force_param.lstrip('&')}"
+
+    return templates.TemplateResponse(
+        request=request,
+        name="preview_viewer.html",
+        context={
+            "pdf_data_url": pdf_data_url,
+            "force": force
+        }
+    )
+
+@router.post("/custom/{case_id}/{doc_id}/download", summary="Tải file Word biên bản tùy biến")
+async def download_custom_docx(
+    case_id: str,
+    doc_id: str
+):
+    custom_doc = custom_doc_storage.get_custom_doc(case_id, doc_id)
+    if not custom_doc:
+        raise HTTPException(status_code=404, detail="Không tìm thấy biên bản tùy biến trong vụ việc")
+
+    person = None
+    if custom_doc.person_id:
+        person = person_storage.get_person(case_id, custom_doc.person_id)
+
+    try:
+        buffer = custom_docx_service.generate_docx_bytes(
+            template_filename=custom_doc.template_file,
+            custom_doc=custom_doc,
+            person_data=person
+        )
+        templates_list = custom_docx_service.get_templates()
+        matched = [tpl["display_name"] for tpl in templates_list if tpl.get("file_name") == custom_doc.template_file]
+        display_tpl_name = matched[0] if matched else custom_doc.template_file.replace(".docx", "")
+        safe_title = custom_doc.title.strip() if custom_doc.title.strip() else "BienBan"
+        download_filename = f"{display_tpl_name} - {safe_title}.docx"
+
+        encoded_filename = quote(download_filename)
+        safe_ascii_filename = custom_doc.template_file.replace(".docx", "")
+        headers = {
+            "Content-Disposition": f"attachment; filename=\"{safe_ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
+        }
+
+        return StreamingResponse(
+            buffer,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers=headers
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi tạo tài liệu Word tùy biến: {str(e)}")

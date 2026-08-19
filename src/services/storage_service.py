@@ -4,12 +4,12 @@ import shutil
 from typing import Optional
 from datetime import datetime
 from src.config import CASES_DIR
-from src.schemas.document_schema import CaseData, PersonData
+from src.schemas.document_schema import CaseData, PersonData, CustomDocumentData
 
-class StorageService:
+
+class BaseStorageService:
     """
-    Service quản lý lưu trữ dữ liệu Vụ án (Cases) và Con người (Persons)
-    dưới dạng các file JSON và tệp tin hình ảnh trên máy chủ.
+    Class quản lý cấu trúc thư mục và đọc/ghi file case.json.
     """
 
     def __init__(self, cases_dir: str = CASES_DIR):
@@ -24,34 +24,6 @@ class StorageService:
 
     def _get_case_images_folder(self, case_id: str) -> str:
         return os.path.join(self._get_case_folder(case_id), "images")
-
-    def list_cases(self) -> list[dict]:
-        """Lấy danh sách tóm tắt tất cả các vụ án hiện có"""
-        results = []
-        if not os.path.exists(self.cases_dir):
-            return results
-
-        for entry in os.listdir(self.cases_dir):
-            folder_path = os.path.join(self.cases_dir, entry)
-            if os.path.isdir(folder_path):
-                json_path = os.path.join(folder_path, "case.json")
-                if os.path.exists(json_path):
-                    try:
-                        with open(json_path, "r", encoding="utf-8") as f:
-                            data = json.load(f)
-                            ten_tom_tat = data.get("ten_tom_tat") or "Chưa đặt tên"
-                            ten_day_du = data.get("ten_day_du") or ""
-                            results.append({
-                                "id": data.get("id", entry),
-                                "ten_tom_tat": ten_tom_tat,
-                                "ten_day_du": ten_day_du,
-                                "so_luong_nguoi": len(data.get("con_nguoi_list", [])),
-                                "created_at": data.get("created_at", ""),
-                                "updated_at": data.get("updated_at", "")
-                            })
-                    except Exception:
-                        pass
-        return results
 
     def get_case(self, case_id: str) -> Optional[CaseData]:
         """Đọc chi tiết một vụ án từ file case.json"""
@@ -80,6 +52,41 @@ class StorageService:
 
         return case_data
 
+
+class CaseStorageService(BaseStorageService):
+    """
+    Service lưu trữ và quản lý cấp Vụ án (Case Level).
+    """
+
+    def list_cases(self) -> list[dict]:
+        """Lấy danh sách tóm tắt tất cả các vụ án hiện có"""
+        results = []
+        if not os.path.exists(self.cases_dir):
+            return results
+
+        for entry in os.listdir(self.cases_dir):
+            folder_path = os.path.join(self.cases_dir, entry)
+            if os.path.isdir(folder_path):
+                json_path = os.path.join(folder_path, "case.json")
+                if os.path.exists(json_path):
+                    try:
+                        with open(json_path, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            ten_tom_tat = data.get("ten_tom_tat") or "Chưa đặt tên"
+                            ten_day_du = data.get("ten_day_du") or ""
+                            results.append({
+                                "id": data.get("id", entry),
+                                "ten_tom_tat": ten_tom_tat,
+                                "ten_day_du": ten_day_du,
+                                "so_luong_nguoi": len(data.get("con_nguoi_list", [])),
+                                "so_luong_custom_docs": len(data.get("custom_documents", [])),
+                                "created_at": data.get("created_at", ""),
+                                "updated_at": data.get("updated_at", "")
+                            })
+                    except Exception:
+                        pass
+        return results
+
     def delete_case(self, case_id: str) -> bool:
         """Xóa toàn bộ thư mục của một vụ án"""
         case_folder = self._get_case_folder(case_id)
@@ -87,6 +94,12 @@ class StorageService:
             shutil.rmtree(case_folder, ignore_errors=True)
             return True
         return False
+
+
+class PersonStorageService(BaseStorageService):
+    """
+    Service lưu trữ và quản lý Đối tượng / Con người trong vụ án (Person Level).
+    """
 
     def add_or_update_person(
         self,
@@ -100,7 +113,6 @@ class StorageService:
         if not case:
             return None
 
-        # Nếu có ảnh đính kèm, lưu file ảnh vào thư mục images/ của case
         if image_bytes:
             images_folder = self._get_case_images_folder(case_id)
             os.makedirs(images_folder, exist_ok=True)
@@ -110,11 +122,9 @@ class StorageService:
                 f.write(image_bytes)
             person_data.image_path = img_path
 
-        # Kiểm tra xem person đã tồn tại chưa để cập nhật hoặc thêm mới
         found = False
         for idx, p in enumerate(case.con_nguoi_list):
             if p.id == person_data.id:
-                # Nếu không upload ảnh mới, giữ lại đường dẫn ảnh cũ
                 if not image_bytes and p.image_path:
                     person_data.image_path = p.image_path
                 case.con_nguoi_list[idx] = person_data
@@ -158,3 +168,65 @@ class StorageService:
             with open(person.image_path, "rb") as f:
                 return f.read()
         return None
+
+
+class CustomDocStorageService(BaseStorageService):
+    """
+    Dịch vụ lưu trữ và quản lý các văn bản custom trong vụ án (Custom Document Level).
+    """
+
+    def list_custom_docs(self, case_id: str) -> list[CustomDocumentData]:
+        """Lấy danh sách tất cả các văn bản custom trong vụ án"""
+        case = self.get_case(case_id)
+        if not case:
+            return []
+        return case.custom_documents
+
+    def get_custom_doc(self, case_id: str, doc_id: str) -> Optional[CustomDocumentData]:
+        """Lấy thông tin chi tiết một văn bản custom"""
+        case = self.get_case(case_id)
+        if not case:
+            return None
+        for doc in case.custom_documents:
+            if doc.id == doc_id:
+                return doc
+        return None
+
+    def add_or_update_custom_doc(
+        self,
+        case_id: str,
+        doc_data: CustomDocumentData
+    ) -> Optional[CustomDocumentData]:
+        """Thêm mới hoặc cập nhật thông tin một văn bản custom vào vụ án"""
+        case = self.get_case(case_id)
+        if not case:
+            return None
+
+        doc_data.updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        found = False
+        for idx, doc in enumerate(case.custom_documents):
+            if doc.id == doc_data.id:
+                case.custom_documents[idx] = doc_data
+                found = True
+                break
+
+        if not found:
+            case.custom_documents.append(doc_data)
+
+        self.save_case(case)
+        return doc_data
+
+    def delete_custom_doc(self, case_id: str, doc_id: str) -> bool:
+        """Xóa một văn bản custom khỏi vụ án"""
+        case = self.get_case(case_id)
+        if not case:
+            return False
+
+        original_count = len(case.custom_documents)
+        case.custom_documents = [d for d in case.custom_documents if d.id != doc_id]
+
+        if len(case.custom_documents) < original_count:
+            self.save_case(case)
+            return True
+        return False
