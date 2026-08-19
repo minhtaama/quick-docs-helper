@@ -4,6 +4,8 @@ import 'package:universal_html/html.dart' as html;
 import 'dart:ui_web' as ui_web;
 import '../../services/api_service.dart';
 import '../common/sidebar_page.dart';
+import 'sidebars/doc_template_sidebar.dart';
+import 'panels/doc_preview_panel.dart';
 
 class ExportDocsPage extends StatefulWidget {
   final String caseId;
@@ -169,7 +171,6 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
 
     final String titleText = widget.isCaseLevel
         ? 'Xuất Tài Liệu Vụ Việc'
@@ -262,7 +263,7 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
               Icon(
                 Icons.folder_off_outlined,
                 size: 48,
-                color: primaryColor.withValues(alpha: 0.4),
+                color: theme.colorScheme.primary.withValues(alpha: 0.4),
               ),
               const SizedBox(height: 12),
               Text(
@@ -275,189 +276,6 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
       );
     }
 
-    // DANH SÁCH MẪU BÊN TRÁI
-    final templateListWidget = Container(
-      color: theme.colorScheme.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'DANH SÁCH VĂN BẢN (${_templates.length})',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: primaryColor.withValues(alpha: 0.8),
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 4,
-              ),
-              itemCount: _templates.length,
-              itemBuilder: (context, index) {
-                final tpl = _templates[index];
-                final fileName = tpl['file_name'] ?? '';
-                final displayName =
-                    tpl['display_name'] ?? fileName.replaceAll('.docx', '');
-                final isSelected = fileName == _selectedTemplateFile;
-
-                return Card(
-                  elevation: isSelected ? 2 : 0,
-                  margin: const EdgeInsets.only(bottom: 8.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                    side: BorderSide(
-                      color: isSelected
-                          ? primaryColor
-                          : theme.colorScheme.outline.withValues(
-                              alpha: 0.15,
-                            ),
-                      width: isSelected ? 1.5 : 1.0,
-                    ),
-                  ),
-                  color: isSelected
-                      ? theme.colorScheme.surfaceContainerHighest
-                            .withValues(alpha: 0.5)
-                      : theme.colorScheme.surface,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(8.0),
-                    onTap: () => _onSelectTemplate(tpl),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8.0),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? primaryColor
-                                  : primaryColor.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(6.0),
-                            ),
-                            child: Icon(
-                              Icons.description,
-                              size: 20,
-                              color: isSelected ? Colors.white : primaryColor,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              displayName,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.w600,
-                                color: primaryColor,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (isSelected)
-                            Icon(
-                              Icons.check_circle,
-                              color: primaryColor,
-                              size: 18,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-
-    // KHUNG XEM TRƯỚC BÊN PHẢI (GOOGLE DOCS PREVIEW)
-    final previewWidget = Container(
-      color: const Color(0xFFF1F3F4),
-      child: Column(
-        children: [
-          // Toolbar đầu trang Preview
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 10.0,
-            ),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              border: Border(
-                bottom: BorderSide(
-                  color: theme.colorScheme.outline.withValues(
-                    alpha: 0.15,
-                  ),
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.visibility_outlined,
-                  size: 18,
-                  color: primaryColor.withValues(alpha: 0.7),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Xem trước: ${_selectedDisplayName ?? "Tài liệu"}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: primaryColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Nội dung tài liệu Docx hiển thị
-          Expanded(
-            child: kIsWeb
-                ? HtmlElementView(
-                    key: ValueKey(_currentViewType),
-                    viewType: _currentViewType,
-                  )
-                : Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.desktop_windows,
-                          size: 48,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Xem trước văn bản: ${_selectedDisplayName ?? ""}',
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                        const SizedBox(height: 12),
-                        FilledButton.icon(
-                          onPressed: _downloadCurrentDocx,
-                          icon: const Icon(Icons.download),
-                          label: const Text('Tải xuống file Word'),
-                        ),
-                      ],
-                    ),
-                  ),
-          ),
-        ],
-      ),
-    );
-
     return SideBarPage(
       appBar: appBarWidget,
       tabs: const [
@@ -467,8 +285,17 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
           text: 'Xem Trước & Tải Về',
         ),
       ],
-      sideBar: templateListWidget,
-      child: previewWidget,
+      sideBar: DocTemplateSidebar(
+        templates: _templates,
+        selectedTemplateFile: _selectedTemplateFile,
+        onSelectTemplate: _onSelectTemplate,
+      ),
+      child: DocPreviewPanel(
+        selectedDisplayName: _selectedDisplayName,
+        currentViewType: _currentViewType,
+        onDownload: _downloadCurrentDocx,
+        isDownloading: _isDownloading,
+      ),
     );
   }
 }

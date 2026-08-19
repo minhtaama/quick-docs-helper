@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
-import 'panels/welcome_view.dart';
-import 'sidebars/case_list_panel.dart';
+import 'panels/welcome_panel.dart';
+import 'sidebars/case_list_sidebar.dart';
 import 'panels/case_detail_panel.dart';
 import '../common/case_edit_dialog.dart';
 import '../common/sidebar_page.dart';
@@ -231,14 +231,13 @@ class _HomePageState extends State<HomePage> {
 
     final sideBarWidget = Column(
       children: [
-        WelcomeView(
-          isCompact: true,
+        WelcomeHeader(
           onNewCasePressed: _showCreateCaseDialog,
         ),
         Expanded(
           child: _isLoadingCases
               ? const Center(child: CircularProgressIndicator())
-              : CaseListPanel(
+              : CaseListSidebar(
                   cases: _cases,
                   selectedCaseId: _selectedCaseId,
                   onCaseSelected: _onSelectCase,
@@ -265,8 +264,7 @@ class _HomePageState extends State<HomePage> {
             onEditPersonPressed: _openEditPerson,
             onDeletePerson: _deletePerson,
           )
-        : WelcomeView(
-            isCompact: false,
+        : WelcomePanel(
             onNewCasePressed: _showCreateCaseDialog,
           );
 

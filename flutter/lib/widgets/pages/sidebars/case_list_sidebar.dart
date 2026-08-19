@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class CaseListPanel extends StatefulWidget {
+class CaseListSidebar extends StatefulWidget {
   final List<Map<String, dynamic>> cases;
   final String? selectedCaseId;
   final ValueChanged<String> onCaseSelected;
@@ -11,7 +11,7 @@ class CaseListPanel extends StatefulWidget {
   final Future<void> Function(String caseId)? onCaseDeleted;
   final bool isMobile;
 
-  const CaseListPanel({
+  const CaseListSidebar({
     super.key,
     required this.cases,
     required this.selectedCaseId,
@@ -24,10 +24,10 @@ class CaseListPanel extends StatefulWidget {
   });
 
   @override
-  State<CaseListPanel> createState() => _CaseListPanelState();
+  State<CaseListSidebar> createState() => _CaseListSidebarState();
 }
 
-class _CaseListPanelState extends State<CaseListPanel> {
+class _CaseListSidebarState extends State<CaseListSidebar> {
   final _searchController = TextEditingController();
   String _searchKeyword = '';
 

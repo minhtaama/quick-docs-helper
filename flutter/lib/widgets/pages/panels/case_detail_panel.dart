@@ -1,8 +1,10 @@
 import '../../../services/api_service.dart';
 import '../export_docs_page.dart';
 import '../../common/person_detail_dialog.dart';
+import '../../common/panel.dart';
 import 'package:flutter/material.dart';
 
+/// Panel hiển thị chi tiết vụ án và danh sách đối tượng
 class CaseDetailPanel extends StatelessWidget {
   final Map<String, dynamic>? caseData;
   final bool isLoading;
@@ -16,6 +18,40 @@ class CaseDetailPanel extends StatelessWidget {
     super.key,
     required this.caseData,
     this.isLoading = false,
+    this.onRefresh,
+    required this.onAddPersonPressed,
+    this.onEditCasePressed,
+    this.onEditPersonPressed,
+    this.onDeletePerson,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Panel(
+      isLoading: isLoading,
+      padding: const EdgeInsets.all(24.0),
+      child: _CaseDetailContent(
+        caseData: caseData,
+        onRefresh: onRefresh,
+        onAddPersonPressed: onAddPersonPressed,
+        onEditCasePressed: onEditCasePressed,
+        onEditPersonPressed: onEditPersonPressed,
+        onDeletePerson: onDeletePerson,
+      ),
+    );
+  }
+}
+
+class _CaseDetailContent extends StatelessWidget {
+  final Map<String, dynamic>? caseData;
+  final VoidCallback? onRefresh;
+  final VoidCallback onAddPersonPressed;
+  final VoidCallback? onEditCasePressed;
+  final Function(Map<String, dynamic> person)? onEditPersonPressed;
+  final Future<void> Function(String personId, String hoTen)? onDeletePerson;
+
+  const _CaseDetailContent({
+    required this.caseData,
     this.onRefresh,
     required this.onAddPersonPressed,
     this.onEditCasePressed,
@@ -60,10 +96,6 @@ class CaseDetailPanel extends StatelessWidget {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
 
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
     if (caseData == null) {
       return Center(
         child: Column(
@@ -92,11 +124,9 @@ class CaseDetailPanel extends StatelessWidget {
     final caseId = caseData!['id'] ?? '';
     final updatedAt = caseData!['updated_at'] ?? '';
 
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
           // Header Vụ Án
           LayoutBuilder(
             builder: (context, headerConstraints) {
@@ -266,8 +296,7 @@ class CaseDetailPanel extends StatelessWidget {
                   ),
           ),
         ],
-      ),
-    );
+      );
   }
 }
 
