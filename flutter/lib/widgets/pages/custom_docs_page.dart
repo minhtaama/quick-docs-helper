@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:universal_html/html.dart' as html;
 import 'dart:ui_web' as ui_web;
 import '../../services/api_service.dart';
-import '../common/custom_fields_dialog.dart';
 import '../common/panel.dart';
 import '../common/sidebar_page.dart';
+import 'panels/custom_doc_editor_panel.dart';
 
 class CustomDocsPage extends StatefulWidget {
   final String caseId;
@@ -31,7 +31,10 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
   Map<String, dynamic>? _selectedDoc;
   bool _isLoading = true;
   bool _isDownloading = false;
-  bool _isDialogOpen = false;
+  bool _isEditingMode = false;
+  bool _isSaving = false;
+  Map<String, dynamic>? _activeTemplate;
+  Map<String, dynamic>? _activeEditingDoc;
   int _previewReloadCounter = 0;
 
   String? get _personId => widget.isCaseLevel ? null : widget.person?['id']?.toString();
@@ -87,9 +90,16 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
     if (_selectedDoc?['id'] != doc['id']) {
       setState(() {
         _selectedDoc = doc;
+        _isEditingMode = false;
         _previewReloadCounter++;
         _registerCurrentIframe();
       });
+    } else {
+      if (_isEditingMode) {
+        setState(() {
+          _isEditingMode = false;
+        });
+      }
     }
   }
 
@@ -141,111 +151,57 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
       return;
     }
 
-    setState(() => _isDialogOpen = true);
-
-    try {
-      // Bước 1: Chọn mẫu Word
-      Map<String, dynamic>? selectedTemplate;
-      if (_templates.length == 1) {
-        selectedTemplate = _templates.first;
-      } else {
-        selectedTemplate = await showDialog<Map<String, dynamic>>(
-          context: context,
-          builder: (ctx) => SimpleDialog(
-            title: const Text('Chọn mẫu văn bản tùy biến'),
-            children: _templates.map((tpl) {
-              return SimpleDialogOption(
-                onPressed: () => Navigator.of(ctx).pop(tpl),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.description_outlined, color: Colors.blue),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              tpl['display_name'] ?? '',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            Text(
-                              tpl['file_name'] ?? '',
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        );
-      }
-
-      if (selectedTemplate == null || !mounted) return;
-
-      // Bước 2: Mở CustomFieldsDialog để điền thông tin
-      final fields = (selectedTemplate['fields'] as List?)
-              ?.map((e) => Map<String, dynamic>.from(e as Map))
-              .toList() ??
-          [];
-
-      final result = await showDialog<Map<String, dynamic>>(
+    Map<String, dynamic>? selectedTemplate;
+    if (_templates.length == 1) {
+      selectedTemplate = _templates.first;
+    } else {
+      selectedTemplate = await showDialog<Map<String, dynamic>>(
         context: context,
-        barrierDismissible: false,
-        builder: (ctx) => CustomFieldsDialog(
-          templateDisplayName: selectedTemplate!['display_name'] ?? '',
-          templateFileName: selectedTemplate['file_name'] ?? '',
-          fields: fields,
-          initialValues: const {},
-          availablePersons: _availablePersons,
+        builder: (ctx) => SimpleDialog(
+          title: const Text('Chọn mẫu văn bản tùy biến'),
+          children: _templates.map((tpl) {
+            return SimpleDialogOption(
+              onPressed: () => Navigator.of(ctx).pop(tpl),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.description_outlined, color: Colors.blue),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tpl['display_name'] ?? '',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            tpl['file_name'] ?? '',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
         ),
       );
-
-      if (result == null || !mounted) return;
-
-      final newDocPayload = {
-        'template_file': selectedTemplate['file_name'],
-        'title': result['title'],
-        'custom_fields': result['custom_fields'],
-      };
-
-      final savedDoc = await CustomDocApiService.instance.save(
-        caseId: widget.caseId,
-        docData: newDocPayload,
-        personId: _personId,
-      );
-
-      setState(() {
-        _customDocs.insert(0, savedDoc);
-        _selectedDoc = savedDoc;
-        _previewReloadCounter++;
-        _registerCurrentIframe(force: true);
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã tạo và lưu biên bản thành công!')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tạo biên bản: $e'), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isDialogOpen = false);
-      }
     }
+
+    if (selectedTemplate == null || !mounted) return;
+
+    setState(() {
+      _activeTemplate = selectedTemplate;
+      _activeEditingDoc = null;
+      _isEditingMode = true;
+    });
   }
 
-  Future<void> _editCurrentDoc() async {
+  void _editCurrentDoc() {
     if (_selectedDoc == null) return;
 
     final templateFile = _selectedDoc!['template_file'] as String? ?? '';
@@ -258,67 +214,67 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
       },
     );
 
-    final fields = (matchedTemplate['fields'] as List?)
-            ?.map((e) => Map<String, dynamic>.from(e as Map))
-            .toList() ??
-        [];
+    setState(() {
+      _activeTemplate = matchedTemplate;
+      _activeEditingDoc = _selectedDoc;
+      _isEditingMode = true;
+    });
+  }
 
-    final initialValues = Map<String, dynamic>.from(
-      _selectedDoc!['custom_fields'] as Map? ?? {},
-    );
+  Future<void> _onSaveEditor(Map<String, dynamic> formData) async {
+    if (_activeTemplate == null) return;
 
-    setState(() => _isDialogOpen = true);
+    setState(() => _isSaving = true);
 
     try {
-      final result = await showDialog<Map<String, dynamic>>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => CustomFieldsDialog(
-          templateDisplayName: matchedTemplate['display_name'] ?? '',
-          templateFileName: templateFile,
-          initialTitle: _selectedDoc!['title'] ?? '',
-          fields: fields,
-          initialValues: initialValues,
-          availablePersons: _availablePersons,
-        ),
-      );
+      final isUpdating = _activeEditingDoc != null;
+      final payload = isUpdating
+          ? Map<String, dynamic>.from(_activeEditingDoc!)
+          : <String, dynamic>{};
 
-      if (result == null || !mounted) return;
-
-      final updatedPayload = Map<String, dynamic>.from(_selectedDoc!);
-      updatedPayload['title'] = result['title'];
-      updatedPayload['custom_fields'] = result['custom_fields'];
+      payload['template_file'] = _activeTemplate!['file_name'];
+      payload['title'] = formData['title'];
+      payload['custom_fields'] = formData['custom_fields'];
 
       final savedDoc = await CustomDocApiService.instance.save(
         caseId: widget.caseId,
-        docData: updatedPayload,
+        docData: payload,
         personId: _personId,
       );
 
       setState(() {
-        final idx = _customDocs.indexWhere((d) => d['id'] == savedDoc['id']);
-        if (idx != -1) {
-          _customDocs[idx] = savedDoc;
+        if (isUpdating) {
+          final idx = _customDocs.indexWhere((d) => d['id'] == savedDoc['id']);
+          if (idx != -1) {
+            _customDocs[idx] = savedDoc;
+          }
+        } else {
+          _customDocs.insert(0, savedDoc);
         }
         _selectedDoc = savedDoc;
+        _isEditingMode = false;
+        _isSaving = false;
         _previewReloadCounter++;
         _registerCurrentIframe(force: true);
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã cập nhật biên bản thành công!')),
+          SnackBar(
+            content: Text(
+              isUpdating
+                  ? 'Đã cập nhật biên bản thành công!'
+                  : 'Đã tạo và lưu biên bản thành công!',
+            ),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
+        setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi cập nhật biên bản: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Lỗi lưu biên bản: $e'), backgroundColor: Colors.red),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isDialogOpen = false);
       }
     }
   }
@@ -327,52 +283,45 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
     final docId = doc['id']?.toString();
     if (docId == null) return;
 
-    setState(() => _isDialogOpen = true);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận xóa biên bản'),
+        content: Text('Bạn có chắc chắn muốn xóa "${doc['title']}" không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
 
-    try {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Xác nhận xóa biên bản'),
-          content: Text('Bạn có chắc chắn muốn xóa "${doc['title']}" không?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Hủy'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Xóa'),
-            ),
-          ],
-        ),
+    if (confirmed == true && mounted) {
+      final success = await CustomDocApiService.instance.delete(
+        docId,
+        caseId: widget.caseId,
+        personId: _personId,
       );
 
-      if (confirmed == true && mounted) {
-        final success = await CustomDocApiService.instance.delete(
-          docId,
-          caseId: widget.caseId,
-          personId: _personId,
+      if (success && mounted) {
+        setState(() {
+          _customDocs.removeWhere((d) => d['id'] == docId);
+          if (_selectedDoc?['id'] == docId) {
+            _selectedDoc = _customDocs.isNotEmpty ? _customDocs.first : null;
+            _isEditingMode = false;
+            _previewReloadCounter++;
+            _registerCurrentIframe(force: true);
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã xóa biên bản thành công!')),
         );
-
-        if (success && mounted) {
-          setState(() {
-            _customDocs.removeWhere((d) => d['id'] == docId);
-            if (_selectedDoc?['id'] == docId) {
-              _selectedDoc = _customDocs.isNotEmpty ? _customDocs.first : null;
-              _previewReloadCounter++;
-              _registerCurrentIframe(force: true);
-            }
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Đã xóa biên bản thành công!')),
-          );
-        }
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isDialogOpen = false);
       }
     }
   }
@@ -647,6 +596,44 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
   }
 
   Widget _buildPanelWidget(BuildContext context) {
+    // 1. Chế độ Soạn thảo trên Tờ văn bản A4 tương tác
+    if (_isEditingMode && _activeTemplate != null) {
+      final templateFile = _activeTemplate!['file_name'] as String? ?? '';
+      final templateDisplayName = _activeTemplate!['display_name'] as String? ?? 'Biên bản';
+      final fields = (_activeTemplate!['fields'] as List?)
+              ?.map((e) => Map<String, dynamic>.from(e as Map))
+              .toList() ??
+          [];
+
+      final initialTitle = _activeEditingDoc?['title'] as String? ?? templateDisplayName;
+      final initialValues = Map<String, dynamic>.from(
+        _activeEditingDoc?['custom_fields'] as Map? ?? {},
+      );
+
+      final level = widget.isCaseLevel ? 'case' : 'person';
+
+      return CustomDocEditorPanel(
+        key: ValueKey('editor-$templateFile-${_activeEditingDoc?['id']}'),
+        templateDisplayName: templateDisplayName,
+        templateFileName: templateFile,
+        level: level,
+        initialTitle: initialTitle,
+        fields: fields,
+        initialValues: initialValues,
+        availablePersons: _availablePersons,
+        caseData: widget.caseData,
+        person: widget.person,
+        isSaving: _isSaving,
+        onCancel: () {
+          setState(() {
+            _isEditingMode = false;
+          });
+        },
+        onSave: _onSaveEditor,
+      );
+    }
+
+    // 2. Chưa chọn biên bản nào
     if (_selectedDoc == null) {
       return Panel(
         appBarIcon: Icons.article_outlined,
@@ -678,36 +665,7 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
       );
     }
 
-    if (_isDialogOpen) {
-      return Panel(
-        backgroundColor: const Color(0xFFF1F3F4),
-        appBarIcon: Icons.edit_note_rounded,
-        appBarTitle: 'Đang mở hộp thoại: ${_selectedDoc!['title'] ?? ""}',
-        child: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.edit_document, size: 54, color: Colors.grey),
-              SizedBox(height: 14),
-              Text(
-                'Đang điền thông tin trong hộp thoại...',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black54,
-                ),
-              ),
-              SizedBox(height: 6),
-              Text(
-                'Vui lòng hoàn thành hoặc đóng hộp thoại để xem trước tài liệu.',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
+    // 3. Chế độ Xem trước PDF
     return Panel(
       backgroundColor: const Color(0xFFF1F3F4),
       appBarIcon: Icons.visibility_outlined,

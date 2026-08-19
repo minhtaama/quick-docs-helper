@@ -583,6 +583,32 @@ class CustomDocApiService extends BaseApiService {
     }
   }
 
+  /// Lấy cấu trúc layout chi tiết của file docx mẫu
+  Future<Map<String, dynamic>?> getTemplateLayout({
+    required String level,
+    required String templateFilename,
+  }) async {
+    try {
+      final encoded = Uri.encodeComponent(templateFilename);
+      final response = await http.get(
+        Uri.parse(
+          '${BaseApiService.baseUrl}/api/v1/generate/templates/custom/$level/$encoded/layout',
+        ),
+      );
+      if (response.statusCode == 200) {
+        final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is Map) {
+          return Map<String, dynamic>.from(decoded);
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('CustomDocApiService.getTemplateLayout error: $e');
+      return null;
+    }
+  }
+
+
   @override
   String getPreviewUrl({
     required String caseId,

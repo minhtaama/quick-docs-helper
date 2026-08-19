@@ -40,5 +40,78 @@
         "placeholder": "Ghi nhận ý kiến, giải trình..."
       }
     ]
+  },
+  {
+    "file_name": "bien_ban_ghi_loi_khai.docx",
+    "display_name": "Biên bản ghi lời khai",
+    "fields": [
+      {
+        "name": "lap_bb",
+        "label": "Ngày lập biên bản",
+        "type": "date",
+        "placeholder": "19/08/2026"
+      },
+      {
+        "name": "noi_lap_bien_ban",
+        "label": "Địa điểm lập biên bản",
+        "type": "text",
+        "placeholder": "Trụ sở Công an..."
+      },
+      {
+        "name": "ten_dieu_tra_vien",
+        "label": "Tôi",
+        "type": "text",
+        "placeholder": ""
+      },
+      {
+        "name": "thuoc_co_quan",
+        "label": "Thuộc cơ quan",
+        "type": "text",
+        "placeholder": "Cơ quan Cảnh sát điều tra Công an thành phố Hà Nội"
+      },
+      {
+        "name": "can_bo_ghi_loi_khai",
+        "label": "Cán bộ ghi lời khai",
+        "type": "text",
+        "placeholder": ""
+      },
+      {
+        "name": "tu_cach_tham_gia_to_tung",
+        "label": "Tư cách tham gia tố tụng",
+        "type": "text",
+        "placeholder": "Người tố giác, báo tin về tội phạm, kiến nghị khởi tố (Điều 56); người bị tố giác, người bị kiến nghị khởi tố (Điều 57); người bị giữ trong trường hợp khẩn cấp, người bị bắt (Điều 58); người bị tạm giữ (Điều 59); bị hại (Điều 62); nguyên đơn dân sự (Điều 63); bị đơn dân sự (Điều 64); người có quyền lợi, nghĩa vụ có liên quan đến vụ án (Điều 65); người làm chứng (Điều 66); người chứng kiến (Điều 67); người đại diện theo pháp luật của pháp nhân (Điều 435, Điều 442)."
+      },
+      {
+        "name": "dieu_blhs",
+        "label": "Điều",
+        "type": "text",
+        "placeholder": ""
+      },
+      {
+        "name": "hoi_va_dap",
+        "label": "Hỏi và Đáp",
+        "type": "list",
+        "item_schema": [
+          {
+            "name": "cau_hoi",
+            "label": "Hỏi",
+            "type": "textarea",
+            "placeholder": "Nhập câu hỏi"
+          },
+          {
+            "name": "cau_tra_loi",
+            "label": "Đáp",
+            "type": "textarea",
+            "placeholder": "Nhập câu đáp"
+          }
+        ]
+      },
+      {
+        "name": "ket_thuc",
+        "label": "Ngày kết thúc",
+        "type": "date",
+        "placeholder": "19/08/2026"
+      }
+    ]
   }
 ]

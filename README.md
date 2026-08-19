@@ -43,6 +43,7 @@ quick-docs-helper/
 ## 3. Hướng Dẫn Soạn Thảo Mẫu Văn Bản Word (.docx)
 
 Hệ thống sử dụng engine **`docxtpl` (Jinja2)** để điền dữ liệu tự động. Bạn có thể sử dụng Microsoft Word hoặc LibreOffice Writer để thiết kế file mẫu `.docx` và đặt vào thư mục tương ứng:
+
 * `templates/person/`: Mẫu văn bản riêng cho từng đối tượng.
 * `templates/case/`: Mẫu văn bản chung cho toàn bộ vụ án.
 
@@ -53,44 +54,49 @@ Hệ thống sử dụng engine **`docxtpl` (Jinja2)** để điền dữ liệu
 Khi soạn thảo mẫu cho từng cá nhân, bạn sử dụng trực tiếp các tên biến sau bên trong dấu ngoặc kép `{{ ten_bien }}`:
 
 #### A. Thông tin cá nhân cơ bản
-| Tên biến | Kiểu dữ liệu | Ý nghĩa / Ví dụ |
-|:---|:---|:---|
-| `{{ id }}` | Chuỗi | Mã định danh duy nhất (UUID) của đối tượng |
-| `{{ ho_ten }}` | Chuỗi | Họ và tên đối tượng (ví dụ: `Nguyễn Văn Trỗi`) |
-| `{{ gioi_tinh }}` | Chuỗi | Giới tính (`Nam`, `Nữ`...) |
-| `{{ ngay_sinh }}` | Chuỗi | Ngày sinh (ví dụ: `15`) |
-| `{{ thang_sinh }}` | Chuỗi | Tháng sinh (ví dụ: `08`) |
-| `{{ nam_sinh }}` | Chuỗi | Năm sinh (ví dụ: `1990`) |
-| `{{ noi_sinh }}` | Chuỗi | Nơi sinh (Xã/Phường, Quận/Huyện, Tỉnh/TP) |
-| `{{ que_quan }}` | Chuỗi | Quê quán / Nguyên quán |
-| `{{ quoc_tich }}` | Chuỗi | Quốc tịch (ví dụ: `Việt Nam`) |
-| `{{ dan_toc }}` | Chuỗi | Dân tộc (ví dụ: `Kinh`, `Tày`...) |
-| `{{ ton_giao }}` | Chuỗi | Tôn giáo (ví dụ: `Không`, `Phật giáo`...) |
+
+| Tên biến           | Kiểu dữ liệu | Ý nghĩa / Ví dụ                                |
+| :----------------- | :----------- | :--------------------------------------------- |
+| `{{ id }}`         | Chuỗi        | Mã định danh duy nhất (UUID) của đối tượng     |
+| `{{ ho_ten }}`     | Chuỗi        | Họ và tên đối tượng (ví dụ: `Nguyễn Văn Trỗi`) |
+| `{{ gioi_tinh }}`  | Chuỗi        | Giới tính (`Nam`, `Nữ`...)                     |
+| `{{ ngay_sinh }}`  | Chuỗi        | Ngày sinh (ví dụ: `15`)                        |
+| `{{ thang_sinh }}` | Chuỗi        | Tháng sinh (ví dụ: `08`)                       |
+| `{{ nam_sinh }}`   | Chuỗi        | Năm sinh (ví dụ: `1990`)                       |
+| `{{ noi_sinh }}`   | Chuỗi        | Nơi sinh (Xã/Phường, Quận/Huyện, Tỉnh/TP)      |
+| `{{ que_quan }}`   | Chuỗi        | Quê quán / Nguyên quán                         |
+| `{{ quoc_tich }}`  | Chuỗi        | Quốc tịch (ví dụ: `Việt Nam`)                  |
+| `{{ dan_toc }}`    | Chuỗi        | Dân tộc (ví dụ: `Kinh`, `Tày`...)              |
+| `{{ ton_giao }}`   | Chuỗi        | Tôn giáo (ví dụ: `Không`, `Phật giáo`...)      |
 
 #### B. Thông tin Giấy tờ & Cư trú
-| Tên biến | Kiểu dữ liệu | Ý nghĩa / Ví dụ |
-|:---|:---|:---|
-| `{{ cccd }}` | Chuỗi | Số thẻ CCCD / CMND (12 chữ số) |
-| `{{ ngay_cccd }}` | Chuỗi | Ngày cấp thẻ CCCD |
-| `{{ thang_cccd }}` | Chuỗi | Tháng cấp thẻ CCCD |
-| `{{ nam_cccd }}` | Chuỗi | Năm cấp thẻ CCCD |
-| `{{ noi_cap_cccd }}` | Chuỗi | Nơi cấp CCCD (ví dụ: `Cục Cảnh sát QLHC về TTXH`) |
-| `{{ noi_thuong_tru }}` | Chuỗi | Nơi đăng ký thường trú (Hộ khẩu) |
-| `{{ noi_tam_tru }}` | Chuỗi | Nơi đăng ký tạm trú |
-| `{{ noi_o_hien_tai }}` | Chuỗi | Nơi ở hiện nay / Nơi cư trú thực tế |
+
+| Tên biến               | Kiểu dữ liệu | Ý nghĩa / Ví dụ                                   |
+| :--------------------- | :----------- | :------------------------------------------------ |
+| `{{ cccd }}`           | Chuỗi        | Số thẻ CCCD / CMND (12 chữ số)                    |
+| `{{ ngay_cccd }}`      | Chuỗi        | Ngày cấp thẻ CCCD                                 |
+| `{{ thang_cccd }}`     | Chuỗi        | Tháng cấp thẻ CCCD                                |
+| `{{ nam_cccd }}`       | Chuỗi        | Năm cấp thẻ CCCD                                  |
+| `{{ noi_cap_cccd }}`   | Chuỗi        | Nơi cấp CCCD (ví dụ: `Cục Cảnh sát QLHC về TTXH`) |
+| `{{ noi_thuong_tru }}` | Chuỗi        | Nơi đăng ký thường trú (Hộ khẩu)                  |
+| `{{ noi_tam_tru }}`    | Chuỗi        | Nơi đăng ký tạm trú                               |
+| `{{ noi_o_hien_tai }}` | Chuỗi        | Nơi ở hiện nay / Nơi cư trú thực tế               |
 
 #### C. Học vấn, Nghề nghiệp & Tổ chức
-| Tên biến | Kiểu dữ liệu | Ý nghĩa / Ví dụ |
-|:---|:---|:---|
-| `{{ hoc_van }}` | Chuỗi | Trình độ học vấn phổ thông (ví dụ: `12/12`) |
-| `{{ nghe_nghiep }}` | Chuỗi | Nghề nghiệp hiện tại (ví dụ: `Tự do`, `Lái xe`...) |
-| `{{ noi_lam_viec }}` | Chuỗi | Nơi làm việc / Cơ quan |
-| `{{ chuc_vu }}` | Chuỗi | Chức vụ |
-| `{{ doan_the }}` | Chuỗi | Đoàn thể / Đảng phái |
-| `{{ image }}` | Hình ảnh | Ảnh thẻ chân dung 3x4cm (Hệ thống tự chèn `InlineImage`) |
+
+| Tên biến             | Kiểu dữ liệu | Ý nghĩa / Ví dụ                                          |
+| :------------------- | :----------- | :------------------------------------------------------- |
+| `{{ hoc_van }}`      | Chuỗi        | Trình độ học vấn phổ thông (ví dụ: `12/12`)              |
+| `{{ nghe_nghiep }}`  | Chuỗi        | Nghề nghiệp hiện tại (ví dụ: `Tự do`, `Lái xe`...)       |
+| `{{ noi_lam_viec }}` | Chuỗi        | Nơi làm việc / Cơ quan                                   |
+| `{{ chuc_vu }}`      | Chuỗi        | Chức vụ                                                  |
+| `{{ doan_the }}`     | Chuỗi        | Đoàn thể / Đảng phái                                     |
+| `{{ image }}`        | Hình ảnh     | Ảnh thẻ chân dung 3x4cm (Hệ thống tự chèn `InlineImage`) |
 
 #### D. Danh sách Tiền án, Tiền sự (`tien_an_tien_su`)
+
 Là một danh sách gồm các bản ghi tiền án/tiền sự. Sử dụng vòng lặp:
+
 ```jinja2
 {%p if tien_an_tien_su %}
 {%p for item in tien_an_tien_su %}
@@ -100,14 +106,17 @@ Là một danh sách gồm các bản ghi tiền án/tiền sự. Sử dụng v�
 Không có tiền án, tiền sự.
 {%p endif %}
 ```
+
 * `{{ loop.index }}`: Số thứ tự tăng dần từ 1.
 * `{{ item.thoi_gian }}`: Thời gian / Năm bị xử lý.
 * `{{ item.noi_dung }}`: Nội dung hành vi vi phạm / Bản án / Quyết định xử phạt.
 
 #### E. Danh sách Quan hệ gia đình (`quan_he_gia_dinh`)
+
 Có thể hiển thị dạng danh sách đoạn văn hoặc dạng bảng biểu:
 
 * **Cách 1: Lặp dạng đoạn văn bản (`{%p for %}`)**:
+
 ```jinja2
 {%p for item in quan_he_gia_dinh %}
 - {{ item.quan_he }}: {{ item.ho_ten }} (Sinh năm: {{ item.nam_sinh }}), Nghề nghiệp: {{ item.nghe_nghiep }}, Nơi ở: {{ item.noi_o }}
@@ -115,13 +124,14 @@ Có thể hiển thị dạng danh sách đoạn văn hoặc dạng bảng biể
 ```
 
 * **Cách 2: Lặp từng hàng trong bảng Word (`{%tr for %}`)**:
+
 Tạo bảng 3 hàng như sau:
 
-| STT | Quan hệ | Họ và tên | Năm sinh | Nghề nghiệp | Nơi ở hiện nay |
-|:---:|:---:|:---:|:---:|:---:|:---:|
-| `{%tr for item in quan_he_gia_dinh %}` | | | | | |
-| `{{ loop.index }}` | `{{ item.quan_he }}` | `{{ item.ho_ten }}` | `{{ item.nam_sinh }}` | `{{ item.nghe_nghiep }}` | `{{ item.noi_o }}` |
-| `{%tr endfor %}` | | | | | |
+| STT                                    | Quan hệ              | Họ và tên           | Năm sinh              | Nghề nghiệp              | Nơi ở hiện nay     |
+| :------------------------------------: | :------------------: | :-----------------: | :-------------------: | :----------------------: | :----------------: |
+| `{%tr for item in quan_he_gia_dinh %}` |                      |                     |                       |                          |                    |
+| `{{ loop.index }}`                     | `{{ item.quan_he }}` | `{{ item.ho_ten }}` | `{{ item.nam_sinh }}` | `{{ item.nghe_nghiep }}` | `{{ item.noi_o }}` |
+| `{%tr endfor %}`                       |                      |                     |                       |                          |                    |
 
 ---
 
@@ -130,17 +140,20 @@ Tạo bảng 3 hàng như sau:
 Khi soạn thảo mẫu báo cáo tổng hợp hoặc danh sách vụ án, dữ liệu context cung cấp 2 đối tượng chính:
 
 #### A. Thông tin vụ án (`case`)
-| Tên biến | Kiểu dữ liệu | Ý nghĩa / Ví dụ |
-|:---|:---|:---|
-| `{{ case.id }}` | Chuỗi | Mã ID của vụ án |
-| `{{ case.ten_tom_tat }}` | Chuỗi | Tên tóm tắt / Ký hiệu vụ việc (ví dụ: `Vụ án ma túy X`) |
-| `{{ case.ten_day_du }}` | Chuỗi | Tên đầy đủ / Nội dung tóm tắt chi tiết vụ án |
-| `{{ case.created_at }}` | Chuỗi | Thời điểm tạo hồ sơ vụ án |
-| `{{ case.updated_at }}` | Chuỗi | Thời điểm cập nhật dữ liệu gần nhất |
-| `{{ con_nguoi_list \| length }}` | Số nguyên | Tổng số lượng đối tượng trong vụ án |
+
+| Tên biến                 | Kiểu dữ liệu | Ý nghĩa / Ví dụ                                         |
+| :----------------------- | :----------- | :------------------------------------------------------ |
+| `{{ case.id }}`          | Chuỗi        | Mã ID của vụ án                                         |
+| `{{ case.ten_tom_tat }}` | Chuỗi        | Tên tóm tắt / Ký hiệu vụ việc (ví dụ: `Vụ án ma túy X`) |
+| `{{ case.ten_day_du }}`  | Chuỗi        | Tên đầy đủ / Nội dung tóm tắt chi tiết vụ án            |
+| `{{ case.created_at }}`  | Chuỗi        | Thời điểm tạo hồ sơ vụ án                               |
+| `{{ case.updated_at }}`  | Chuỗi        | Thời điểm cập nhật dữ liệu gần nhất                     |
+| `{{ con_nguoi_list \     | length }}`   | Số nguyên                                               |
 
 #### B. Danh sách toàn bộ đối tượng trong vụ án (`con_nguoi_list`)
+
 Mỗi phần tử `p` trong `con_nguoi_list` chứa đầy đủ tất cả các trường thông tin của đối tượng như ở mục 3.1:
+
 * `p.ho_ten`: Họ và tên
 * `p.gioi_tinh`: Giới tính
 * `p.ngay_sinh`, `p.thang_sinh`, `p.nam_sinh`: Ngày, tháng, năm sinh
@@ -154,6 +167,7 @@ Mỗi phần tử `p` trong `con_nguoi_list` chứa đầy đủ tất cả các
 #### C. Các cách lặp danh sách đối tượng trong Word:
 
 * **Cách 1: Lặp danh sách chi tiết (Dạng đoạn văn bản)**:
+
 ```jinja2
 {% for p in con_nguoi_list %}
 {{ loop.index }}. Họ và tên: {{ p.ho_ten }} (Sinh ngày: {{ p.ngay_sinh }}/{{ p.thang_sinh }}/{{ p.nam_sinh }} - Số CCCD: {{ p.cccd }})
@@ -165,23 +179,26 @@ Mỗi phần tử `p` trong `con_nguoi_list` chứa đầy đủ tất cả các
 ```
 
 * **Cách 2: Bảng danh sách đối tượng trong Word (Cú pháp `{%tr for %}`)**:
+
 Tạo bảng trong Microsoft Word gồm 3 hàng:
 
-| STT | Họ và tên | Ngày sinh | Số CCCD | Nơi thường trú | Nơi ở hiện nay |
-|:---:|:---|:---:|:---:|:---|:---|
-| `{%tr for p in con_nguoi_list %}` | | | | | |
-| `{{ loop.index }}` | `{{ p.ho_ten }}` | `{{ p.ngay_sinh }}/{{ p.thang_sinh }}/{{ p.nam_sinh }}` | `{{ p.cccd }}` | `{{ p.noi_thuong_tru }}` | `{{ p.noi_o_hien_tai }}` |
-| `{%tr endfor %}` | | | | | |
+| STT                               | Họ và tên        | Ngày sinh                                               | Số CCCD        | Nơi thường trú           | Nơi ở hiện nay           |
+| :-------------------------------: | :--------------- | :-----------------------------------------------------: | :------------: | :----------------------- | :----------------------- |
+| `{%tr for p in con_nguoi_list %}` |                  |                                                         |                |                          |                          |
+| `{{ loop.index }}`                | `{{ p.ho_ten }}` | `{{ p.ngay_sinh }}/{{ p.thang_sinh }}/{{ p.nam_sinh }}` | `{{ p.cccd }}` | `{{ p.noi_thuong_tru }}` | `{{ p.noi_o_hien_tai }}` |
+| `{%tr endfor %}`                  |                  |                                                         |                |                          |                          |
 
 ---
 
 ### 3.3. Hướng Dẫn Cấu Hình Mẫu Văn Bản Tùy Biến (Custom Documents)
 
 Hệ thống hỗ trợ các mẫu văn bản động có chứa các trường tùy biến (`custom_fields`) cho cả 2 cấp độ:
+
 * `templates/custom/case/`: Chứa file Word `.docx` và `metadata.json` cấp vụ án.
 * `templates/custom/person/`: Chứa file Word `.docx` và `metadata.json` cấp đối tượng cá nhân.
 
 #### A. Cấu trúc file `metadata.json`
+
 Mỗi file `metadata.json` là một danh sách JSON mô tả các mẫu và các trường nhập liệu tương ứng:
 
 ```json
@@ -222,6 +239,7 @@ Mỗi file `metadata.json` là một danh sách JSON mô tả các mẫu và cá
 ```
 
 #### B. Các kiểu dữ liệu (`type`) được hỗ trợ:
+
 1. **`text`**: Ô nhập văn bản một dòng.
 2. **`textarea`**: Ô nhập văn bản nhiều dòng.
 3. **`date`**: Ô chọn ngày tháng với giao diện lịch.
@@ -229,19 +247,82 @@ Mỗi file `metadata.json` là một danh sách JSON mô tả các mẫu và cá
 5. **`table` / `list`**: Bảng dữ liệu nhiều hàng linh hoạt. Cấu hình các cột bên trong qua `item_schema` (chỉ nhận `text`, `textarea`, `date`).
 
 #### C. Cách gọi biến trong file Word (.docx) của Custom Document:
-* Biến đơn: `{{ nguoi_chung_kien }}`, `{{ ngay_thuc_hien }}`
-* Biến danh sách đối tượng (`persons`):
+
+* **Biến Ngày Tự Động Sinh Tiền Tố (Dynamic Date)**:
+  * Trong `metadata.json`, bạn chỉ cần khai báo tên gốc của trường ngày (không cần thêm tiền tố `ngay_`), ví dụ: `"name": "lap_bb"`, `"type": "date"`.
+  * Hệ thống tự động phân tách và sinh sẵn 3 biến tương ứng trong file Word:
+    * `{{ ngay_lap_bb }}`: Ngày (ví dụ: `19`)
+    * `{{ thang_lap_bb }}`: Tháng (ví dụ: `08`)
+    * `{{ nam_lap_bb }}`: Năm (ví dụ: `2026`)
+    * `{{ lap_bb }}`: Chuỗi ngày đầy đủ (`19/08/2026`)
+  * **Trên giao diện Soạn thảo A4**: Cụm từ `ngày {{ ngay_lap_bb }} tháng {{ thang_lap_bb }} năm {{ nam_lap_bb }}` sẽ tự động được gộp thành **1 ô `DateTimeInput` duy nhất** gọn gàng, hỗ trợ cả gõ phím trực tiếp (`19082026`) và chọn lịch.
+
+* **Biến Danh sách / Bảng Động Khái Quát Hóa (Dynamic List & Table)**:
+  * Khi file Word có vòng lặp `{% for item in loop_var %}` chứa các biến con `{{ item.ten_truong }}` (ví dụ `{{ item.cau_hoi }}`, `{{ item.cau_tra_loi }}`):
+    ```jinja2
+    {% for item in hoi_va_dap %}
+    Hỏi: {{ item.cau_hoi }}
+    Đáp: {{ item.cau_tra_loi }}
+    {% endfor %}
+    ```
+  * Hệ thống sẽ **tự động nhận diện** và hiển thị thành bảng/danh sách nhập liệu trực tiếp trên tờ A4 với các ô nhập nhiều dòng và nút `[+ Thêm dòng]`.
+
+
+#### D. Truy cập Dữ liệu Vụ Án (`case`) trong Custom Document
+
+Khi soạn thảo bất kỳ Custom Document nào (cả cấp vụ án và cấp cá nhân), bạn luôn có thể truy xuất trực tiếp các thông tin chung của hồ sơ vụ án thông qua đối tượng `case`:
+
+| Tên biến                    | Kiểu dữ liệu | Ý nghĩa / Ví dụ                                                      |
+| :-------------------------- | :----------- | :------------------------------------------------------------------- |
+| `{{ case.id }}`             | Chuỗi        | Mã ID của vụ án                                                      |
+| `{{ case.ten_tom_tat }}`    | Chuỗi        | Tên tóm tắt / Ký hiệu vụ việc (ví dụ: `Vụ trộm cắp tài sản X`)       |
+| `{{ case.ten_day_du }}`     | Chuỗi        | Tên đầy đủ / Nội dung tóm tắt vụ việc                                |
+| `{{ case.created_at }}`     | Chuỗi        | Ngày tạo hồ sơ                                                       |
+| `{{ case.updated_at }}`     | Chuỗi        | Ngày cập nhật dữ liệu                                                |
+| `{{ case.con_nguoi_list }}` | Danh sách    | Danh sách toàn bộ đối tượng có trong vụ án (`p.ho_ten`, `p.cccd`...) |
+
+* **Ví dụ lặp danh sách đối tượng trong vụ án từ Custom Document**:
 ```jinja2
-{% for p in danh_sach_nhan_chung %}
-{{ loop.index }}. Họ tên: {{ p.ho_ten }} - CCCD: {{ p.cccd }} - Nơi ở: {{ p.noi_o_hien_tai }}
+{% for p in case.con_nguoi_list %}
+- Đối tượng {{ loop.index }}: {{ p.ho_ten }} (Sinh năm: {{ p.nam_sinh }} - CCCD: {{ p.cccd }})
 {% endfor %}
 ```
-* Bảng dữ liệu động (`table` / `list`):
-```jinja2
-{%tr for item in bang_tang_vat %}
-{{ loop.index }} | {{ item.ten_vat }} | {{ item.dac_diem }} | {{ item.ngay_thu_nhan }}
-{%tr endfor %}
-```
+
+#### E. Truy cập Dữ liệu Cá nhân chính (`person`) trong Custom Document
+
+Khi tạo Custom Document cấp đối tượng cá nhân (`templates/custom/person/`), hệ thống tự động nạp toàn bộ thông tin của đối tượng đó vào đối tượng `person`. Bạn có thể sử dụng trực tiếp mà không cần khai báo lại trong `metadata.json`:
+
+| Tên biến                               | Kiểu dữ liệu | Ý nghĩa / Ví dụ                                       |
+| :------------------------------------- | :----------- | :---------------------------------------------------- |
+| `{{ person.ho_ten }}`                  | Chuỗi        | Họ và tên đối tượng (ví dụ: `Nguyễn Văn A`)           |
+| `{{ person.gioi_tinh }}`               | Chuỗi        | Giới tính (`Nam` / `Nữ`)                              |
+| `{{ person.ngay_thang_nam_sinh }}`     | Chuỗi        | Ngày tháng năm sinh đầy đủ (ví dụ: `21/04/1985`)      |
+| `{{ person.ngay_sinh }}`               | Chuỗi        | Ngày sinh                                             |
+| `{{ person.thang_sinh }}`              | Chuỗi        | Tháng sinh                                            |
+| `{{ person.nam_sinh }}`                | Chuỗi        | Năm sinh                                              |
+| `{{ person.noi_sinh }}`                | Chuỗi        | Nơi sinh                                              |
+| `{{ person.que_quan }}`                | Chuỗi        | Quê quán                                              |
+| `{{ person.quoc_tich }}`               | Chuỗi        | Quốc tịch (ví dụ: `Việt Nam`)                         |
+| `{{ person.dan_toc }}`                 | Chuỗi        | Dân tộc (ví dụ: `Kinh`)                               |
+| `{{ person.ton_giao }}`                | Chuỗi        | Tôn giáo                                              |
+| `{{ person.cccd }}`                    | Chuỗi        | Số CCCD / CMND                                        |
+| `{{ person.ngay_cccd }}`               | Chuỗi        | Ngày cấp CCCD                                         |
+| `{{ person.noi_cap_cccd }}`            | Chuỗi        | Nơi cấp CCCD                                          |
+| `{{ person.noi_thuong_tru }}`          | Chuỗi        | Nơi đăng ký thường trú                                |
+| `{{ person.noi_tam_tru }}`             | Chuỗi        | Nơi tạm trú                                           |
+| `{{ person.noi_o_hien_tai }}`          | Chuỗi        | Nơi ở hiện nay / Cư trú thực tế                       |
+| `{{ person.hoc_van }}`                 | Chuỗi        | Trình độ học vấn                                      |
+| `{{ person.nghe_nghiep }}`             | Chuỗi        | Nghề nghiệp                                           |
+| `{{ person.noi_lam_viec }}`            | Chuỗi        | Nơi làm việc                                          |
+| `{{ person.sdt }}`                     | Chuỗi        | Số điện thoại liên hệ                                 |
+| `{{ person.image }}`                   | Hình ảnh     | Ảnh thẻ chân dung 3x4 (tự chèn ảnh)                   |
+| `{{ person.tien_an_tien_su }}`         | Danh sách    | Danh sách tiền án tiền sự (`thoi_gian`, `noi_dung`)   |
+| `{{ person.quan_he_gia_dinh }}`        | Danh sách    | Thân nhân (`quan_he`, `ho_ten`, `nam_sinh`, `noi_o`)  |
+
+#### F. Các biến hệ thống tự động:
+* `{{ ngay_hien_tai }}`, `{{ thang_hien_tai }}`, `{{ nam_hien_tai }}`: Ngày, tháng, năm tại thời điểm kết xuất văn bản.
+* `{{ doc_title }}`: Tiêu đề bản ghi biên bản do người dùng đặt khi lưu.
+
 
 ---
 
@@ -250,16 +331,20 @@ Mỗi file `metadata.json` là một danh sách JSON mô tả các mẫu và cá
 Đây là phương thức triển khai chuẩn và nhanh nhất trên máy chủ VPS Ubuntu/Debian có cài đặt aaPanel.
 
 ### Bước 1: Cài đặt Docker trên VPS aaPanel
+
 1. Đăng nhập vào bảng điều khiển **aaPanel**.
 2. Vào mục **App Store** -> Tìm kiếm **Docker** -> Nhấn **Install**.
 3. Kiểm tra dịch vụ Docker trong Terminal:
+
    ```bash
    docker --version
    docker compose version
    ```
 
 ### Bước 2: Kéo mã nguồn từ Git về VPS
+
 Mở Terminal trên aaPanel hoặc SSH vào VPS và di chuyển tới thư mục muốn lưu trữ:
+
 ```bash
 cd /www/wwwroot/
 git clone <URL_KHO_LUU_TRU_GIT_CUA_BAN> quick-docs-helper
@@ -267,19 +352,24 @@ cd quick-docs-helper
 ```
 
 ### Bước 3: Khởi chạy ứng dụng bằng Docker Compose
+
 Chạy lệnh sau để build và khởi chạy container dưới nền:
+
 ```bash
 docker compose up -d --build
 ```
 
 Container sẽ tự động:
+
 * Cài đặt môi trường Python 3.10, LibreOffice Writer và đầy đủ font Unicode tiếng Việt.
 * Mount thư mục `./data` và `./templates` từ VPS vào container (dữ liệu và mẫu biểu được bảo toàn vĩnh viễn khi cập nhật code).
 * Khởi chạy Web Server tại cổng `8000`.
 
 ### Bước 4: Cấu hình Tên Miền (Domain / Reverse Proxy)
+
 1. Trên aaPanel: Vào mục **Website** -> **Add Site** -> Nhập Domain của bạn.
 2. Nhấn vào tên Domain vừa tạo -> Chọn tab **Reverse Proxy** -> **Add Reverse Proxy**:
+
    * **Proxy Name**: `quickdocs`
    * **Target URL**: `http://127.0.0.1:8000`
    * **Sent Domain**: `$host`
@@ -287,7 +377,9 @@ Container sẽ tự động:
 4. Truy cập ứng dụng an toàn qua giao thức: `https://your-domain.com`
 
 ### Bước 5: Cập nhật ứng dụng khi có code mới
+
 Mỗi khi có cập nhật mới trên kho Git:
+
 ```bash
 cd /www/wwwroot/quick-docs-helper
 git pull
@@ -299,11 +391,13 @@ docker compose up -d --build
 ## 5. Hướng Dẫn Chạy Ở Môi Trường Phát Triển Cục Bộ (Local Development)
 
 ### a. Yêu cầu môi trường
+
 * Python 3.10+
 * Flutter SDK 3.x
 * Phần mềm Microsoft Word (Windows) hoặc LibreOffice (Linux/macOS)
 
 ### b. Chạy Backend FastAPI
+
 ```bash
 # 1. Tạo môi trường ảo
 python -m venv .venv
@@ -319,6 +413,7 @@ python main.py
 ```
 
 ### c. Chạy Frontend Flutter Web độc lập (khi debug UI)
+
 ```bash
 cd flutter
 flutter pub get
@@ -330,9 +425,9 @@ flutter run -d chrome
 ## 6. Xử Lý Sự Cố Thường Gặp (Troubleshooting)
 
 * **Lỗi không kết xuất được PDF trên VPS Linux:**
-  * Kiểm tra log container: `docker compose logs -f`
-  * Đảm bảo file Word template không bị khóa hoặc đặt sai đường dẫn trong `templates/person/` hoặc `templates/case/`.
+    - Kiểm tra log container: `docker compose logs -f`
+    - Đảm bảo file Word template không bị khóa hoặc đặt sai đường dẫn trong `templates/person/` hoặc `templates/case/`.
 * **Cập nhật giao diện Flutter không hiển thị trên Web:**
-  * Xóa cache trình duyệt (nhấn `Ctrl + Shift + R` hoặc `Ctrl + F5`) để tải lại toàn bộ file tĩnh JavaScript/Wasm mới nhất.
+    - Xóa cache trình duyệt (nhấn `Ctrl + Shift + R` hoặc `Ctrl + F5`) để tải lại toàn bộ file tĩnh JavaScript/Wasm mới nhất.
 * **Mẫu Word bảng không lặp hàng:**
-  * Đảm bảo hàng mở vòng lặp có chứa `{%tr for ... %}` và hàng đóng vòng lặp chứa `{%tr endfor %}`. Không đặt thẻ lặp ngoài bảng.
+    - Đảm bảo hàng mở vòng lặp có chứa `{%tr for ... %}` và hàng đóng vòng lặp chứa `{%tr endfor %}`. Không đặt thẻ lặp ngoài bảng.

@@ -259,6 +259,23 @@ async def get_custom_templates(level: str = Query("case", description="case ho�
     """Trả về danh sách các mẫu văn bản tùy biến theo cấp độ tương ứng"""
     return custom_docx_service.get_templates(level=level)
 
+@router.get("/templates/custom/{level}/{template_filename}/layout", summary="Bóc tách cấu trúc bố cục DOCX tương tác")
+async def get_custom_template_layout(
+    level: str,
+    template_filename: str
+):
+    """
+    Trả về cấu trúc cây phần tử (đoạn văn, bảng biểu, căn lề, biến Jinja2) của file Word mẫu
+    để hiển thị tờ giấy A4 tương tác trên giao diện người dùng.
+    """
+    try:
+        return custom_docx_service.get_template_layout(template_filename=template_filename, level=level)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi bóc tách layout docx: {str(e)}")
+
+
 @router.get("/custom/{case_id}/{doc_id}/pdf-data", summary="Lấy luồng dữ liệu PDF biên bản tùy biến để PDF.js render")
 async def get_custom_pdf_data(
     case_id: str,
