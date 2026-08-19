@@ -244,37 +244,52 @@ async def download_case_docx(
 # 3. CÁC API XUẤT VĂN BẢN TÙY BIẾN (CUSTOM DOCUMENT LEVEL)
 # ==============================================================================
 
+@router.get("/templates/custom/case", summary="Lấy danh sách các mẫu văn bản tùy biến cấp vụ án")
+async def get_custom_case_templates():
+    """Trả về danh sách các mẫu văn bản tùy biến từ templates/custom/case/metadata.json"""
+    return custom_docx_service.get_templates(level="case")
+
+@router.get("/templates/custom/person", summary="Lấy danh sách các mẫu văn bản tùy biến cấp cá nhân")
+async def get_custom_person_templates():
+    """Trả về danh sách các mẫu văn bản tùy biến từ templates/custom/person/metadata.json"""
+    return custom_docx_service.get_templates(level="person")
+
 @router.get("/templates/custom", summary="Lấy danh sách các mẫu văn bản tùy biến")
-async def get_custom_templates():
-    """
-    Trả về danh sách các mẫu văn bản tùy biến từ thư mục templates/custom/metadata.json
-    kèm theo định nghĩa danh sách các trường động (custom fields).
-    """
-    return custom_docx_service.get_templates()
+async def get_custom_templates(level: str = Query("case", description="case hoặc person")):
+    """Trả về danh sách các mẫu văn bản tùy biến theo cấp độ tương ứng"""
+    return custom_docx_service.get_templates(level=level)
 
 @router.get("/custom/{case_id}/{doc_id}/pdf-data", summary="Lấy luồng dữ liệu PDF biên bản tùy biến để PDF.js render")
 async def get_custom_pdf_data(
     case_id: str,
     doc_id: str,
+    person_id: Optional[str] = Query(None, description="ID của cá nhân nếu là biên bản cấp cá nhân"),
     force: bool = Query(False, description="Bắt buộc render lại và bỏ qua cache"),
 ):
     """
-    Kết xuất file Word tùy biến và chuyển sang PDF (có Cache), trả về stream nhị phân application/octet-stream
-    kèm Cache-Control để phản hồi ngay lập tức trong 0ms.
+    Kết xuất file Word tùy biến và chuyển sang PDF (có Cache), trả về stream nhị phân application/octet-stream.
     """
-    custom_doc = custom_doc_storage.get_custom_doc(case_id, doc_id)
+    case = case_storage.get_case(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Không tìm thấy vụ việc")
+
+    custom_doc = custom_doc_storage.get_custom_doc(case_id, doc_id, person_id=person_id)
     if not custom_doc:
-        raise HTTPException(status_code=404, detail="Không tìm thấy biên bản tùy biến trong vụ việc")
+        raise HTTPException(status_code=404, detail="Không tìm thấy biên bản tùy biến trong dữ liệu")
 
     person = None
-    if custom_doc.person_id:
-        person = person_storage.get_person(case_id, custom_doc.person_id)
+    level = "case"
+    if person_id:
+        person = person_storage.get_person(case_id, person_id)
+        level = "person"
 
     try:
         pdf_path = custom_docx_service.generate_pdf(
             template_filename=custom_doc.template_file,
             custom_doc=custom_doc,
+            case_data=case,
             person_data=person,
+            level=level,
             force=force
         )
         headers = {
@@ -299,6 +314,7 @@ async def get_custom_preview_viewer(
     request: Request,
     case_id: str,
     doc_id: str,
+    person_id: Optional[str] = Query(None, description="ID của cá nhân nếu có"),
     force: bool = Query(False, description="Bắt buộc render lại và bỏ qua cache"),
     t: Optional[str] = Query(None, description="Timestamp tránh cache")
 ):
@@ -306,8 +322,9 @@ async def get_custom_preview_viewer(
     Trả về giao diện Web sử dụng Mozilla PDF.js vẽ từng trang A4 lên HTML5 Canvas cho biên bản tùy biến.
     """
     cur_time = t or str(int(time.time() * 1000))
+    person_param = f"&person_id={person_id}" if person_id else ""
     force_param = f"&force=true&t={cur_time}" if force else f"&t={cur_time}"
-    pdf_data_url = f"/api/v1/generate/custom/{case_id}/{doc_id}/pdf-data?{force_param.lstrip('&')}"
+    pdf_data_url = f"/api/v1/generate/custom/{case_id}/{doc_id}/pdf-data?{person_param.lstrip('&')}{force_param}"
 
     return templates.TemplateResponse(
         request=request,
@@ -321,23 +338,32 @@ async def get_custom_preview_viewer(
 @router.post("/custom/{case_id}/{doc_id}/download", summary="Tải file Word biên bản tùy biến")
 async def download_custom_docx(
     case_id: str,
-    doc_id: str
+    doc_id: str,
+    person_id: Optional[str] = Query(None, description="ID của cá nhân nếu có")
 ):
-    custom_doc = custom_doc_storage.get_custom_doc(case_id, doc_id)
+    case = case_storage.get_case(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Không tìm thấy vụ việc")
+
+    custom_doc = custom_doc_storage.get_custom_doc(case_id, doc_id, person_id=person_id)
     if not custom_doc:
         raise HTTPException(status_code=404, detail="Không tìm thấy biên bản tùy biến trong vụ việc")
 
     person = None
-    if custom_doc.person_id:
-        person = person_storage.get_person(case_id, custom_doc.person_id)
+    level = "case"
+    if person_id:
+        person = person_storage.get_person(case_id, person_id)
+        level = "person"
 
     try:
         buffer = custom_docx_service.generate_docx_bytes(
             template_filename=custom_doc.template_file,
             custom_doc=custom_doc,
-            person_data=person
+            case_data=case,
+            person_data=person,
+            level=level
         )
-        templates_list = custom_docx_service.get_templates()
+        templates_list = custom_docx_service.get_templates(level=level)
         matched = [tpl["display_name"] for tpl in templates_list if tpl.get("file_name") == custom_doc.template_file]
         display_tpl_name = matched[0] if matched else custom_doc.template_file.replace(".docx", "")
         safe_title = custom_doc.title.strip() if custom_doc.title.strip() else "BienBan"

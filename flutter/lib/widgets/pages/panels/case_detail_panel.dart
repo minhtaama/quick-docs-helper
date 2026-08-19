@@ -1,6 +1,8 @@
 import '../../../services/api_service.dart';
 import '../export_docs_page.dart';
+import '../custom_docs_page.dart';
 import '../../common/person_detail_dialog.dart';
+import '../../common/quick_action_card.dart';
 import '../../common/panel.dart';
 import 'package:flutter/material.dart';
 
@@ -200,93 +202,151 @@ class _CaseDetailContent extends StatelessWidget {
               ],
             );
 
-            final headerActions = Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                FilledButton.tonalIcon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ExportDocsPage(
-                          caseId: caseId,
-                          caseData: caseData,
-                          isCaseLevel: true,
-                        ),
+            final editCaseButton = onEditCasePressed != null
+                ? OutlinedButton.icon(
+                    onPressed: onEditCasePressed,
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    label: const Text('Chỉnh sửa hồ sơ'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
                       ),
+                    ),
+                  )
+                : const SizedBox.shrink();
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(18.0),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        primaryColor.withValues(alpha: 0.04),
+                        primaryColor.withValues(alpha: 0.0),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16.0),
+                    border: Border.all(
+                      color: primaryColor.withValues(alpha: 0.18),
+                      width: 1.0,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryColor.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: isHeaderCompact
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            titleAndDescription,
+                            if (onEditCasePressed != null) ...[
+                              const SizedBox(height: 14),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: editCaseButton,
+                              ),
+                            ],
+                          ],
+                        )
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(child: titleAndDescription),
+                            if (onEditCasePressed != null) ...[
+                              const SizedBox(width: 16),
+                              editCaseButton,
+                            ],
+                          ],
+                        ),
+                ),
+                const SizedBox(height: 16),
+
+                // KHUNG CHỌN NHANH HÀNH ĐỘNG (QUICK SELECT BOX)
+                LayoutBuilder(
+                  builder: (context, cardConstraints) {
+                    final customDocs = caseData!['custom_documents'] as List? ?? [];
+                    final isCompactCards = cardConstraints.maxWidth < 720;
+
+                    final cards = [
+                      QuickActionCard(
+                        icon: Icons.description_outlined,
+                        title: 'Văn bản hệ thống',
+                        subtitle: 'Xuất các biểu mẫu tố tụng chuẩn',
+                        color: const Color(0xFF1976D2),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ExportDocsPage(
+                                caseId: caseId,
+                                caseData: caseData,
+                                isCaseLevel: true,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      QuickActionCard(
+                        icon: Icons.note_alt_outlined,
+                        title: 'Văn bản tùy biến',
+                        subtitle: 'Quản lý các biên bản nghiệp vụ động',
+                        badge: '${customDocs.length} bản ghi',
+                        color: const Color(0xFFE65100),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CustomDocsPage(
+                                caseId: caseId,
+                                caseData: caseData,
+                                isCaseLevel: true,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      QuickActionCard(
+                        icon: Icons.person_add_alt_1_outlined,
+                        title: 'Thêm đối tượng',
+                        subtitle: 'Thêm bị can hoặc người liên quan',
+                        color: const Color(0xFF2E7D32),
+                        onTap: onAddPersonPressed,
+                      ),
+                    ];
+
+                    if (isCompactCards) {
+                      return Column(
+                        children: cards
+                            .map((c) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8.0),
+                                  child: c,
+                                ))
+                            .toList(),
+                      );
+                    }
+
+                    return Row(
+                      children: cards
+                          .map((c) => Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                  child: c,
+                                ),
+                              ))
+                          .toList(),
                     );
                   },
-                  icon: const Icon(Icons.description_outlined, size: 18),
-                  label: const Text('Văn bản chung'),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    backgroundColor: primaryColor,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: onAddPersonPressed,
-                  icon: const Icon(Icons.person_add_alt_1, size: 18),
-                  label: const Text('Thêm người'),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                  ),
                 ),
               ],
-            );
-
-            return Container(
-              padding: const EdgeInsets.all(18.0),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    primaryColor.withValues(alpha: 0.04),
-                    primaryColor.withValues(alpha: 0.0),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16.0),
-                border: Border.all(
-                  color: primaryColor.withValues(alpha: 0.18),
-                  width: 1.0,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: primaryColor.withValues(alpha: 0.03),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: isHeaderCompact
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        titleAndDescription,
-                        const SizedBox(height: 14),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: headerActions,
-                        ),
-                      ],
-                    )
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(child: titleAndDescription),
-                        const SizedBox(width: 20),
-                        headerActions,
-                      ],
-                    ),
             );
           },
         ),
@@ -703,7 +763,7 @@ class _PersonActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final exportButton = FilledButton.icon(
+    final standardExportButton = FilledButton.tonalIcon(
       onPressed: () {
         Navigator.push(
           context,
@@ -712,10 +772,31 @@ class _PersonActions extends StatelessWidget {
           ),
         );
       },
-      icon: const Icon(Icons.description_outlined, size: 16),
-      label: const Text('Văn bản cá nhân'),
+      icon: const Icon(Icons.description_outlined, size: 15),
+      label: const Text('Văn bản chuẩn'),
       style: FilledButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        visualDensity: VisualDensity.compact,
+      ),
+    );
+
+    final customExportButton = OutlinedButton.icon(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CustomDocsPage(
+              caseId: caseId,
+              person: person,
+              isCaseLevel: false,
+            ),
+          ),
+        );
+      },
+      icon: const Icon(Icons.note_alt_outlined, size: 15),
+      label: const Text('Văn bản tùy biến'),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         visualDensity: VisualDensity.compact,
       ),
     );
@@ -730,8 +811,13 @@ class _PersonActions extends StatelessWidget {
 
     return Row(
       mainAxisSize: MainAxisSize.min,
-      spacing: 6,
-      children: [exportButton, if (onEditPerson != null) editButton],
+      children: [
+        standardExportButton,
+        const SizedBox(width: 6),
+        customExportButton,
+        const SizedBox(width: 4),
+        editButton,
+      ],
     );
   }
 }

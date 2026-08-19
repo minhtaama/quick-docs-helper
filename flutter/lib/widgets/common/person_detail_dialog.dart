@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../pages/export_docs_page.dart';
+import '../pages/custom_docs_page.dart';
 
 class PersonDetailDialog extends StatelessWidget {
   final String caseId;
@@ -632,7 +633,25 @@ class PersonDetailDialog extends StatelessWidget {
                         backgroundColor: primaryColor,
                       ),
                       icon: const Icon(Icons.description_outlined, size: 16),
-                      label: const Text('Văn bản cá nhân'),
+                      label: const Text('Văn bản chuẩn'),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CustomDocsPage(
+                              caseId: caseId,
+                              person: person,
+                              isCaseLevel: false,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.note_alt_outlined, size: 16),
+                      label: const Text('Văn bản tùy biến'),
                     ),
                     if (onEdit != null) ...[
                       const SizedBox(width: 8),

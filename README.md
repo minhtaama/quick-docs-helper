@@ -175,6 +175,76 @@ Tạo bảng trong Microsoft Word gồm 3 hàng:
 
 ---
 
+### 3.3. Hướng Dẫn Cấu Hình Mẫu Văn Bản Tùy Biến (Custom Documents)
+
+Hệ thống hỗ trợ các mẫu văn bản động có chứa các trường tùy biến (`custom_fields`) cho cả 2 cấp độ:
+* `templates/custom/case/`: Chứa file Word `.docx` và `metadata.json` cấp vụ án.
+* `templates/custom/person/`: Chứa file Word `.docx` và `metadata.json` cấp đối tượng cá nhân.
+
+#### A. Cấu trúc file `metadata.json`
+Mỗi file `metadata.json` là một danh sách JSON mô tả các mẫu và các trường nhập liệu tương ứng:
+
+```json
+[
+  {
+    "file_name": "bien_ban_nhan_dang.docx",
+    "display_name": "Biên bản nhận dạng",
+    "fields": [
+      {
+        "name": "nguoi_chung_kien",
+        "label": "Người chứng kiến",
+        "type": "text",
+        "placeholder": "Họ tên người chứng kiến..."
+      },
+      {
+        "name": "ngay_thuc_hien",
+        "label": "Ngày tiến hành",
+        "type": "date"
+      },
+      {
+        "name": "danh_sach_nhan_chung",
+        "label": "Những người tham gia nhận dạng",
+        "type": "persons"
+      },
+      {
+        "name": "bang_tang_vat",
+        "label": "Danh mục tang vật / ảnh nhận dạng",
+        "type": "table",
+        "item_schema": [
+          { "name": "ten_vat", "label": "Tên đồ vật / ảnh", "type": "text" },
+          { "name": "dac_diem", "label": "Đặc điểm nhận dạng", "type": "textarea" },
+          { "name": "ngay_thu_nhan", "label": "Ngày thu nhận", "type": "date" }
+        ]
+      }
+    ]
+  }
+]
+```
+
+#### B. Các kiểu dữ liệu (`type`) được hỗ trợ:
+1. **`text`**: Ô nhập văn bản một dòng.
+2. **`textarea`**: Ô nhập văn bản nhiều dòng.
+3. **`date`**: Ô chọn ngày tháng với giao diện lịch.
+4. **`persons`**: Chọn một hoặc nhiều đối tượng từ vụ án hoặc toàn hệ thống (dữ liệu lưu danh sách `person_id`, khi render vào file Word tự động chuyển thành danh sách object đối tượng đầy đủ thông tin).
+5. **`table` / `list`**: Bảng dữ liệu nhiều hàng linh hoạt. Cấu hình các cột bên trong qua `item_schema` (chỉ nhận `text`, `textarea`, `date`).
+
+#### C. Cách gọi biến trong file Word (.docx) của Custom Document:
+* Biến đơn: `{{ nguoi_chung_kien }}`, `{{ ngay_thuc_hien }}`
+* Biến danh sách đối tượng (`persons`):
+```jinja2
+{% for p in danh_sach_nhan_chung %}
+{{ loop.index }}. Họ tên: {{ p.ho_ten }} - CCCD: {{ p.cccd }} - Nơi ở: {{ p.noi_o_hien_tai }}
+{% endfor %}
+```
+* Bảng dữ liệu động (`table` / `list`):
+```jinja2
+{%tr for item in bang_tang_vat %}
+{{ loop.index }} | {{ item.ten_vat }} | {{ item.dac_diem }} | {{ item.ngay_thu_nhan }}
+{%tr endfor %}
+```
+
+---
+
 ## 4. Hướng Dẫn Triển Khai Trên VPS (aaPanel / Linux) Bằng Git & Docker
 
 Đây là phương thức triển khai chuẩn và nhanh nhất trên máy chủ VPS Ubuntu/Debian có cài đặt aaPanel.

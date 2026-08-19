@@ -1,0 +1,75 @@
+[
+  {
+    "file_name": "bien_ban_lam_viec.docx",
+    "display_name": "Biên bản làm việc",
+    "fields": [
+      {
+        "name": "custom_field_1",
+        "label": "Người tham gia / chứng kiến",
+        "type": "text",
+        "placeholder": "Nhập họ tên, chức vụ người tham gia..."
+      },
+      {
+        "name": "custom_field_2",
+        "label": "Nội dung làm việc",
+        "type": "textarea",
+        "placeholder": "Nhập chi tiết nội dung cuộc làm việc..."
+      }
+    ]
+  },
+  {
+    "file_name": "bien_ban_tam_giu_do_vat.docx",
+    "display_name": "Biên bản tạm giữ đồ vật, tài liệu",
+    "fields": [
+      {
+        "name": "dia_diem_lap",
+        "label": "Địa điểm lập biên bản",
+        "type": "text",
+        "placeholder": "Ví dụ: Tại trụ sở Công an phường..."
+      },
+      {
+        "name": "ngay_lap",
+        "label": "Ngày lập biên bản",
+        "type": "date"
+      },
+      {
+        "name": "danh_sach_nguoi_chung_kien",
+        "label": "Người chứng kiến / tham gia",
+        "type": "persons"
+      },
+      {
+        "name": "bang_do_vat_tam_giu",
+        "label": "Danh mục đồ vật, tài liệu tạm giữ",
+        "type": "table",
+        "item_schema": [
+          {
+            "name": "ten_do_vat",
+            "label": "Tên đồ vật / tài liệu",
+            "type": "text"
+          },
+          {
+            "name": "so_luong",
+            "label": "Số lượng / Chủng loại",
+            "type": "text"
+          },
+          {
+            "name": "tinh_trang",
+            "label": "Tình trạng / Đặc điểm nhận dạng",
+            "type": "textarea"
+          },
+          {
+            "name": "noi_tam_giu",
+            "label": "Biện pháp bảo quản / niêm phong",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "name": "y_kien_trinh_bay",
+        "label": "Ý kiến của người có đồ vật / người liên quan",
+        "type": "textarea",
+        "placeholder": "Ghi nhận ý kiến giải trình, cam đoan..."
+      }
+    ]
+  }
+]

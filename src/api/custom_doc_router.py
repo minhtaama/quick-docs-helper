@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from typing import Optional
+from fastapi import APIRouter, HTTPException, Query
 from src.schemas.document_schema import CustomDocumentData
 from src.services.storage_service import CustomDocStorageService
 from src.services.docx_service import CustomDocxService
@@ -8,24 +9,24 @@ custom_storage = CustomDocStorageService()
 custom_docx_service = CustomDocxService()
 
 
-@router.get("", summary="Lấy danh sách tất cả các biên bản tùy biến trong vụ án")
+@router.get("", summary="Lấy danh sách tất cả các biên bản tùy biến trong vụ án hoặc đối tượng")
 @router.get("/", include_in_schema=False)
-async def list_custom_docs(case_id: str):
+async def list_custom_docs(case_id: str, person_id: Optional[str] = Query(None)):
     """
-    Trả về danh sách toàn bộ các biên bản tùy biến thuộc về một vụ việc cụ thể.
+    Trả về danh sách toàn bộ các biên bản tùy biến thuộc về một vụ việc hoặc một đối tượng.
     """
     case = custom_storage.get_case(case_id)
     if not case:
         raise HTTPException(status_code=404, detail="Không tìm thấy thông tin vụ việc")
-    return custom_storage.list_custom_docs(case_id)
+    return custom_storage.list_custom_docs(case_id, person_id=person_id)
 
 
 @router.get("/{doc_id}", summary="Lấy chi tiết một biên bản tùy biến")
-async def get_custom_doc(case_id: str, doc_id: str):
+async def get_custom_doc(case_id: str, doc_id: str, person_id: Optional[str] = Query(None)):
     """
     Lấy thông tin chi tiết của một biên bản tùy biến theo ID.
     """
-    doc = custom_storage.get_custom_doc(case_id, doc_id)
+    doc = custom_storage.get_custom_doc(case_id, doc_id, person_id=person_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Không tìm thấy biên bản tùy biến")
     return doc
@@ -33,15 +34,19 @@ async def get_custom_doc(case_id: str, doc_id: str):
 
 @router.post("", summary="Thêm hoặc cập nhật một biên bản tùy biến")
 @router.post("/", include_in_schema=False)
-async def add_or_update_custom_doc(case_id: str, payload: CustomDocumentData):
+async def add_or_update_custom_doc(
+    case_id: str,
+    payload: CustomDocumentData,
+    person_id: Optional[str] = Query(None)
+):
     """
-    Tạo mới một biên bản tùy biến hoặc cập nhật dữ liệu của biên bản đã lưu trong vụ việc.
+    Tạo mới một biên bản tùy biến hoặc cập nhật dữ liệu của biên bản đã lưu trong vụ việc hoặc đối tượng.
     """
     case = custom_storage.get_case(case_id)
     if not case:
         raise HTTPException(status_code=404, detail="Không tìm thấy thông tin vụ việc")
 
-    saved_doc = custom_storage.add_or_update_custom_doc(case_id, payload)
+    saved_doc = custom_storage.add_or_update_custom_doc(case_id, payload, person_id=person_id)
     if not saved_doc:
         raise HTTPException(status_code=500, detail="Không thể lưu biên bản tùy biến")
 
@@ -51,14 +56,15 @@ async def add_or_update_custom_doc(case_id: str, payload: CustomDocumentData):
 
 
 @router.delete("/{doc_id}", summary="Xóa một biên bản tùy biến")
-async def delete_custom_doc(case_id: str, doc_id: str):
+async def delete_custom_doc(case_id: str, doc_id: str, person_id: Optional[str] = Query(None)):
     """
-    Xóa một biên bản tùy biến khỏi vụ việc đã chọn.
+    Xóa một biên bản tùy biến khỏi vụ việc hoặc đối tượng đã chọn.
     """
-    success = custom_storage.delete_custom_doc(case_id, doc_id)
+    success = custom_storage.delete_custom_doc(case_id, doc_id, person_id=person_id)
     if not success:
         raise HTTPException(status_code=404, detail="Không tìm thấy biên bản tùy biến để xóa")
 
     # Xóa cache PDF liên quan
     custom_docx_service.clear_cache(doc_id)
     return {"message": "Đã xóa biên bản tùy biến thành công", "doc_id": doc_id}
+

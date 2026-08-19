@@ -460,11 +460,17 @@ class CustomDocApiService extends BaseApiService {
   static CustomDocApiService get instance => _instance;
 
   @override
-  Future<List<Map<String, dynamic>>> getAll({String? caseId}) async {
+  Future<List<Map<String, dynamic>>> getAll({
+    String? caseId,
+    String? personId,
+  }) async {
     if (caseId == null || caseId.isEmpty) return [];
     try {
+      final personQuery = personId != null ? '?person_id=$personId' : '';
       final response = await http.get(
-        Uri.parse('${BaseApiService.baseUrl}/api/v1/cases/$caseId/custom-docs'),
+        Uri.parse(
+          '${BaseApiService.baseUrl}/api/v1/cases/$caseId/custom-docs$personQuery',
+        ),
       );
       if (response.statusCode == 200) {
         final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
@@ -483,19 +489,16 @@ class CustomDocApiService extends BaseApiService {
   }
 
   @override
-  Future<Map<String, dynamic>?> getById(String id, {String? caseId}) async {
+  Future<Map<String, dynamic>?> getById(
+    String id, {
+    String? caseId,
+    String? personId,
+  }) async {
     if (caseId == null || caseId.isEmpty) return null;
     try {
-      final response = await http.get(
-        Uri.parse(
-          '${BaseApiService.baseUrl}/api/v1/cases/$caseId/custom-docs/$id',
-        ),
-      );
-      if (response.statusCode == 200) {
-        final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
-        if (decoded is Map) {
-          return Map<String, dynamic>.from(decoded);
-        }
+      final docs = await getAll(caseId: caseId, personId: personId);
+      for (final doc in docs) {
+        if (doc['id'] == id) return doc;
       }
       return null;
     } catch (e) {
@@ -508,10 +511,14 @@ class CustomDocApiService extends BaseApiService {
   Future<Map<String, dynamic>> save({
     required String caseId,
     required Map<String, dynamic> docData,
+    String? personId,
   }) async {
     try {
+      final personQuery = personId != null ? '?person_id=$personId' : '';
       final response = await http.post(
-        Uri.parse('${BaseApiService.baseUrl}/api/v1/cases/$caseId/custom-docs'),
+        Uri.parse(
+          '${BaseApiService.baseUrl}/api/v1/cases/$caseId/custom-docs$personQuery',
+        ),
         headers: {'Content-Type': 'application/json; charset=UTF-8'},
         body: jsonEncode(docData),
       );
@@ -530,12 +537,17 @@ class CustomDocApiService extends BaseApiService {
   }
 
   @override
-  Future<bool> delete(String id, {String? caseId}) async {
+  Future<bool> delete(
+    String id, {
+    String? caseId,
+    String? personId,
+  }) async {
     if (caseId == null || caseId.isEmpty) return false;
     try {
+      final personQuery = personId != null ? '?person_id=$personId' : '';
       final response = await http.delete(
         Uri.parse(
-          '${BaseApiService.baseUrl}/api/v1/cases/$caseId/custom-docs/$id',
+          '${BaseApiService.baseUrl}/api/v1/cases/$caseId/custom-docs/$id$personQuery',
         ),
       );
       return response.statusCode == 200;
@@ -546,10 +558,14 @@ class CustomDocApiService extends BaseApiService {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getTemplates() async {
+  Future<List<Map<String, dynamic>>> getTemplates({
+    String level = 'case',
+  }) async {
     try {
       final response = await http.get(
-        Uri.parse('${BaseApiService.baseUrl}/api/v1/generate/templates/custom'),
+        Uri.parse(
+          '${BaseApiService.baseUrl}/api/v1/generate/templates/custom/$level',
+        ),
       );
       if (response.statusCode == 200) {
         final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
@@ -572,13 +588,15 @@ class CustomDocApiService extends BaseApiService {
     required String caseId,
     String? targetId,
     required String templateFilename,
+    String? personId,
     bool force = false,
     int? timestamp,
   }) {
     final docId = targetId ?? '';
     final t = timestamp ?? DateTime.now().millisecondsSinceEpoch;
+    final personParam = personId != null ? '&person_id=$personId' : '';
     final forceParam = force ? '&force=true&t=$t' : '&t=$t';
-    return '${BaseApiService.baseUrl}/api/v1/generate/custom/$caseId/$docId/preview-viewer?$forceParam';
+    return '${BaseApiService.baseUrl}/api/v1/generate/custom/$caseId/$docId/preview-viewer?$personParam$forceParam';
   }
 
   @override
@@ -586,13 +604,15 @@ class CustomDocApiService extends BaseApiService {
     required String caseId,
     String? targetId,
     required String templateFilename,
+    String? personId,
     String? title,
   }) async {
     try {
       final docId = targetId ?? '';
+      final personParam = personId != null ? '?person_id=$personId' : '';
       final response = await http.post(
         Uri.parse(
-          '${BaseApiService.baseUrl}/api/v1/generate/custom/$caseId/$docId/download',
+          '${BaseApiService.baseUrl}/api/v1/generate/custom/$caseId/$docId/download$personParam',
         ),
       );
 

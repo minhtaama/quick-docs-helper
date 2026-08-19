@@ -2,9 +2,9 @@ import os
 import json
 from typing import Optional
 from fastapi import APIRouter, Form, File, UploadFile, HTTPException, Response
-from src.schemas.document_schema import CaseData, CaseCreate, PersonData, FamilyData, RecordData
-from src.services.storage_service import CaseStorageService, PersonStorageService
-from src.services.docx_service import PersonDocxService, CaseDocxService
+from src.schemas.document_schema import CaseData, CaseCreate, PersonData, FamilyData, RecordData, CustomDocumentData
+from src.services.storage_service import CaseStorageService, PersonStorageService, CustomDocStorageService
+from src.services.docx_service import PersonDocxService, CaseDocxService, CustomDocxService
 
 router = APIRouter(prefix="/api/v1/cases", tags=["Cases & Persons"])
 case_storage = CaseStorageService()
@@ -188,3 +188,53 @@ async def get_person_image(case_id: str, person_id: str):
     if not image_bytes:
         raise HTTPException(status_code=404, detail="Không tìm thấy ảnh đại diện")
     return Response(content=image_bytes, media_type="image/png")
+
+# ==============================================================================
+# QUẢN LÝ VĂN BẢN TÙY BIẾN (CUSTOM DOCUMENTS)
+# ==============================================================================
+custom_doc_storage = CustomDocStorageService()
+custom_docx_service = CustomDocxService()
+
+@router.get("/{case_id}/custom-docs", summary="Lấy danh sách biên bản tùy biến của vụ án hoặc đối tượng")
+async def list_custom_docs(
+    case_id: str,
+    person_id: Optional[str] = None
+):
+    """Lấy danh sách tất cả các biên bản tùy biến đã tạo cho vụ việc hoặc đối tượng"""
+    return custom_doc_storage.list_custom_docs(case_id, person_id=person_id)
+
+@router.post("/{case_id}/custom-docs", summary="Thêm hoặc cập nhật biên bản tùy biến")
+async def add_or_update_custom_doc(
+    case_id: str,
+    payload: CustomDocumentData,
+    person_id: Optional[str] = None
+):
+    """Lưu thông tin biên bản tùy biến và dọn dẹp cache render cũ"""
+    saved = custom_doc_storage.add_or_update_custom_doc(
+        case_id=case_id,
+        doc_data=payload,
+        person_id=person_id
+    )
+    if not saved:
+        raise HTTPException(status_code=404, detail="Không tìm thấy vụ việc hoặc đối tượng để lưu biên bản")
+
+    custom_docx_service.clear_cache(payload.id)
+    return saved
+
+@router.delete("/{case_id}/custom-docs/{doc_id}", summary="Xóa biên bản tùy biến")
+async def delete_custom_doc(
+    case_id: str,
+    doc_id: str,
+    person_id: Optional[str] = None
+):
+    """Xóa một biên bản tùy biến khỏi vụ việc hoặc đối tượng"""
+    success = custom_doc_storage.delete_custom_doc(
+        case_id=case_id,
+        doc_id=doc_id,
+        person_id=person_id
+    )
+    if not success:
+        raise HTTPException(status_code=404, detail="Không tìm thấy biên bản để xóa")
+
+    custom_docx_service.clear_cache(doc_id)
+    return {"message": "Đã xóa biên bản tùy biến thành công", "doc_id": doc_id}

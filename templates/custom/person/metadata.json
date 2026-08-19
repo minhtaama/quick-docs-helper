@@ -1,23 +1,5 @@
 [
   {
-    "file_name": "bien_ban_lam_viec.docx",
-    "display_name": "Biên bản làm việc",
-    "fields": [
-      {
-        "name": "custom_field_1",
-        "label": "Người tham gia / chứng kiến",
-        "type": "text",
-        "placeholder": "Nhập họ tên, chức vụ người tham gia..."
-      },
-      {
-        "name": "custom_field_2",
-        "label": "Nội dung làm việc",
-        "type": "textarea",
-        "placeholder": "Nhập chi tiết nội dung cuộc làm việc..."
-      }
-    ]
-  },
-  {
     "file_name": "bien_ban_nhan_dang.docx",
     "display_name": "Biên bản nhận dạng",
     "fields": [

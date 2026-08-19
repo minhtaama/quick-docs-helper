@@ -172,22 +172,30 @@ class PersonStorageService(BaseStorageService):
 
 class CustomDocStorageService(BaseStorageService):
     """
-    Dịch vụ lưu trữ và quản lý các văn bản custom trong vụ án (Custom Document Level).
+    Dịch vụ lưu trữ và quản lý các văn bản custom trong vụ án (Case Level & Person Level).
     """
 
-    def list_custom_docs(self, case_id: str) -> list[CustomDocumentData]:
-        """Lấy danh sách tất cả các văn bản custom trong vụ án"""
+    def list_custom_docs(self, case_id: str, person_id: Optional[str] = None) -> list[CustomDocumentData]:
+        """Lấy danh sách các văn bản custom của vụ án hoặc của một đối tượng"""
         case = self.get_case(case_id)
         if not case:
             return []
+        if person_id:
+            for p in case.con_nguoi_list:
+                if p.id == person_id:
+                    return p.custom_documents
+            return []
         return case.custom_documents
 
-    def get_custom_doc(self, case_id: str, doc_id: str) -> Optional[CustomDocumentData]:
-        """Lấy thông tin chi tiết một văn bản custom"""
-        case = self.get_case(case_id)
-        if not case:
-            return None
-        for doc in case.custom_documents:
+    def get_custom_doc(
+        self,
+        case_id: str,
+        doc_id: str,
+        person_id: Optional[str] = None
+    ) -> Optional[CustomDocumentData]:
+        """Lấy thông tin chi tiết một văn bản custom của vụ án hoặc đối tượng"""
+        docs = self.list_custom_docs(case_id, person_id)
+        for doc in docs:
             if doc.id == doc_id:
                 return doc
         return None
@@ -195,38 +203,69 @@ class CustomDocStorageService(BaseStorageService):
     def add_or_update_custom_doc(
         self,
         case_id: str,
-        doc_data: CustomDocumentData
+        doc_data: CustomDocumentData,
+        person_id: Optional[str] = None
     ) -> Optional[CustomDocumentData]:
-        """Thêm mới hoặc cập nhật thông tin một văn bản custom vào vụ án"""
+        """Thêm mới hoặc cập nhật một văn bản custom vào vụ án hoặc đối tượng"""
         case = self.get_case(case_id)
         if not case:
             return None
 
         doc_data.updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        found = False
-        for idx, doc in enumerate(case.custom_documents):
-            if doc.id == doc_data.id:
-                case.custom_documents[idx] = doc_data
-                found = True
-                break
-
-        if not found:
-            case.custom_documents.append(doc_data)
+        if person_id:
+            person_found = False
+            for p in case.con_nguoi_list:
+                if p.id == person_id:
+                    person_found = True
+                    found = False
+                    for idx, doc in enumerate(p.custom_documents):
+                        if doc.id == doc_data.id:
+                            p.custom_documents[idx] = doc_data
+                            found = True
+                            break
+                    if not found:
+                        p.custom_documents.append(doc_data)
+                    break
+            if not person_found:
+                return None
+        else:
+            found = False
+            for idx, doc in enumerate(case.custom_documents):
+                if doc.id == doc_data.id:
+                    case.custom_documents[idx] = doc_data
+                    found = True
+                    break
+            if not found:
+                case.custom_documents.append(doc_data)
 
         self.save_case(case)
         return doc_data
 
-    def delete_custom_doc(self, case_id: str, doc_id: str) -> bool:
-        """Xóa một văn bản custom khỏi vụ án"""
+    def delete_custom_doc(
+        self,
+        case_id: str,
+        doc_id: str,
+        person_id: Optional[str] = None
+    ) -> bool:
+        """Xóa một văn bản custom khỏi vụ án hoặc đối tượng"""
         case = self.get_case(case_id)
         if not case:
             return False
 
-        original_count = len(case.custom_documents)
-        case.custom_documents = [d for d in case.custom_documents if d.id != doc_id]
-
-        if len(case.custom_documents) < original_count:
-            self.save_case(case)
-            return True
-        return False
+        if person_id:
+            for p in case.con_nguoi_list:
+                if p.id == person_id:
+                    orig_count = len(p.custom_documents)
+                    p.custom_documents = [d for d in p.custom_documents if d.id != doc_id]
+                    if len(p.custom_documents) < orig_count:
+                        self.save_case(case)
+                        return True
+            return False
+        else:
+            orig_count = len(case.custom_documents)
+            case.custom_documents = [d for d in case.custom_documents if d.id != doc_id]
+            if len(case.custom_documents) < orig_count:
+                self.save_case(case)
+                return True
+            return False

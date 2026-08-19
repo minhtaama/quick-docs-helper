@@ -4,6 +4,7 @@ import os
 import sys
 import hashlib
 from typing import Optional, Any
+from datetime import datetime
 from abc import ABC, abstractmethod
 import subprocess
 from docxtpl import DocxTemplate, InlineImage
@@ -308,16 +309,20 @@ class CaseDocxService(BaseDocxService):
 class CustomDocxService(BaseDocxService):
     """
     Dịch vụ xử lý xuất văn bản và tạo bản xem trước cho các Mẫu Biên Bản Tùy Biến (Custom Documents).
-    Hỗ trợ truyền động các custom fields và kết hợp với dữ liệu con người nếu có.
+    Hỗ trợ truyền động các custom fields cho cả cấp Vụ án (case) và cấp Đối tượng (person).
     """
 
-    def _resolve_template_path(self, template_filename: str) -> str:
+    def _resolve_template_path(self, template_filename: str, level: str = "case") -> str:
+        level_path = os.path.join(self.template_dir, "custom", level, template_filename)
+        if os.path.exists(level_path):
+            return level_path
         return os.path.join(self.template_dir, "custom", template_filename)
 
     def _get_cache_hash(
         self,
         template_path: str,
         custom_doc: CustomDocumentData,
+        case_data: Optional[CaseData] = None,
         person_data: Optional[PersonData] = None
     ) -> str:
         doc_dict = {
@@ -325,6 +330,7 @@ class CustomDocxService(BaseDocxService):
             "template_file": custom_doc.template_file,
             "title": custom_doc.title,
             "custom_fields": custom_doc.custom_fields,
+            "case": case_data.model_dump() if case_data else None,
             "person": person_data.model_dump() if person_data else None
         }
         doc_str = json.dumps(doc_dict, sort_keys=True)
@@ -332,40 +338,63 @@ class CustomDocxService(BaseDocxService):
         raw_key = f"{doc_str}_{tpl_mtime}"
         return hashlib.md5(raw_key.encode('utf-8')).hexdigest()[:12]
 
-    def get_templates(self) -> list[dict[str, Any]]:
+    def get_templates(self, level: str = "case") -> list[dict[str, Any]]:
         """
-        Lấy danh sách các mẫu văn bản tùy biến từ templates/custom/metadata.json
-        
-        Return:
-            list[dict[str, Any]]: Danh sách các mẫu văn bản tùy biến dưới dạng json
+        Lấy danh sách các mẫu văn bản tùy biến từ templates/custom/{level}/metadata.json
         """
-        metadata_path = os.path.join(self.template_dir, "custom", "metadata.json")
+        metadata_path = os.path.join(self.template_dir, "custom", level, "metadata.json")
         if not os.path.exists(metadata_path):
-            return []
+            legacy_path = os.path.join(self.template_dir, "custom", "metadata.json")
+            if not os.path.exists(legacy_path):
+                return []
+            metadata_path = legacy_path
+
         try:
             with open(metadata_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list):
                     return data
-                raise ValueError(f"metadata.json không đúng định dạng list: {type(data)}")
+                return []
         except Exception as e:
-            raise e
+            print(f"Error loading custom metadata {level}: {e}")
+            return []
 
     def _render_doc(
         self,
         template_filename: str,
         custom_doc: CustomDocumentData,
-        person_data: Optional[PersonData] = None
+        case_data: Optional[CaseData] = None,
+        person_data: Optional[PersonData] = None,
+        level: str = "case"
     ) -> DocxTemplate:
-        template_path = self._resolve_template_path(template_filename)
+        template_path = self._resolve_template_path(template_filename, level)
         if not os.path.exists(template_path):
             raise FileNotFoundError(f"Không tìm thấy file docx mẫu tùy biến: {template_path}")
 
         template_doc = DocxTemplate(template_path)
 
-        # Tạo context ban đầu từ thông tin đối tượng (nếu có)
+        context: dict[str, Any] = {
+            "doc_title": custom_doc.title,
+            "ngay_hien_tai": datetime.now().day,
+            "thang_hien_tai": datetime.now().month,
+            "nam_hien_tai": datetime.now().year,
+        }
+
+        # Gộp thông tin vụ án (nếu có)
+        if case_data:
+            case_dict = case_data.model_dump()
+            context["case"] = case_dict
+            context["vu_an"] = case_dict
+            context["con_nguoi_list"] = [p.model_dump() for p in case_data.con_nguoi_list]
+            context["danh_sach_doi_tuong"] = context["con_nguoi_list"]
+
+        # Gộp thông tin cá nhân (nếu có)
         if person_data:
-            context = person_data.model_dump()
+            person_dict = person_data.model_dump()
+            context.update(person_dict)
+            context["person"] = person_dict
+            context["doi_tuong"] = person_dict
+
             if person_data.image_path and os.path.exists(person_data.image_path):
                 try:
                     img_obj = InlineImage(template_doc, image_descriptor=person_data.image_path, width=Mm(30))
@@ -375,15 +404,21 @@ class CustomDocxService(BaseDocxService):
             else:
                 img_obj = ""
             context["image"] = img_obj
-        else:
-            context = {}
 
-        # Thêm thông tin tiêu đề biên bản
-        context["doc_title"] = custom_doc.title
-
-        # Gộp toàn bộ các trường tùy biến do người dùng nhập vào context
+        # Xử lý các trường custom_fields và tự động chuyển đổi type persons (danh sách ID -> full object)
         if custom_doc.custom_fields:
-            context.update(custom_doc.custom_fields)
+            # Tra cứu map person_id -> full dict
+            persons_map: dict[str, dict] = {}
+            if case_data:
+                for p in case_data.con_nguoi_list:
+                    persons_map[p.id] = p.model_dump()
+
+            for key, val in custom_doc.custom_fields.items():
+                if isinstance(val, list) and len(val) > 0 and isinstance(val[0], str) and val[0] in persons_map:
+                    # Chuyển mảng các person_id thành mảng các person dict
+                    context[key] = [persons_map[pid] for pid in val if pid in persons_map]
+                else:
+                    context[key] = val
 
         template_doc.render(context)
         return template_doc
@@ -392,10 +427,12 @@ class CustomDocxService(BaseDocxService):
         self,
         template_filename: str,
         custom_doc: CustomDocumentData,
-        person_data: Optional[PersonData] = None
+        case_data: Optional[CaseData] = None,
+        person_data: Optional[PersonData] = None,
+        level: str = "case"
     ) -> io.BytesIO:
         """Render tài liệu Word tùy biến trực tiếp vào bộ nhớ RAM"""
-        template_doc = self._render_doc(template_filename, custom_doc, person_data)
+        template_doc = self._render_doc(template_filename, custom_doc, case_data, person_data, level)
         buffer = io.BytesIO()
         template_doc.save(buffer)
         buffer.seek(0)
@@ -405,14 +442,16 @@ class CustomDocxService(BaseDocxService):
         self,
         template_filename: str,
         custom_doc: CustomDocumentData,
+        case_data: Optional[CaseData] = None,
         person_data: Optional[PersonData] = None,
+        level: str = "case",
         force: bool = False
     ) -> str:
         """Render và chuyển đổi sang PDF cho biên bản tùy biến (kèm Cache)"""
-        template_path = self._resolve_template_path(template_filename)
-        cache_hash = self._get_cache_hash(template_path, custom_doc, person_data)
+        template_path = self._resolve_template_path(template_filename, level)
+        cache_hash = self._get_cache_hash(template_path, custom_doc, case_data, person_data)
         clean_tpl = template_filename.replace(".docx", "")
-        cached_pdf_name = f"custom_{clean_tpl}_{custom_doc.id}_{cache_hash}.pdf"
+        cached_pdf_name = f"custom_{level}_{clean_tpl}_{custom_doc.id}_{cache_hash}.pdf"
         cached_pdf_path = os.path.join(self.cache_dir, cached_pdf_name)
 
         if not force and os.path.exists(cached_pdf_path) and os.path.getsize(cached_pdf_path) > 0:
@@ -421,7 +460,7 @@ class CustomDocxService(BaseDocxService):
         temp_docx_name = f"temp_custom_{custom_doc.id}_{cache_hash}.docx"
         temp_docx_path = os.path.join(self.cache_dir, temp_docx_name)
 
-        template_doc = self._render_doc(template_filename, custom_doc, person_data)
+        template_doc = self._render_doc(template_filename, custom_doc, case_data, person_data, level)
         template_doc.save(temp_docx_path)
 
         try:

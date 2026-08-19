@@ -17,6 +17,15 @@ class FamilyData(BaseModel):
     nghe_nghiep: str = ""
     noi_o: str = ""
 
+class CustomDocumentData(BaseModel):
+    """Schema đại diện cho một văn bản tùy biến có chứa các trường động"""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    template_file: str = ""
+    title: str = ""
+    custom_fields: dict[str, Any] = Field(default_factory=dict)
+    created_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    updated_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
 class PersonData(BaseModel):
     """
     Schema chứa thông tin con người trong vụ án/vụ việc
@@ -47,6 +56,7 @@ class PersonData(BaseModel):
     doan_the: str = ""
     tien_an_tien_su: list[RecordData] = []
     quan_he_gia_dinh: list[FamilyData] = []
+    custom_documents: list[CustomDocumentData] = []
     image_path: Optional[str] = None
 
     @field_validator("tien_an_tien_su", mode="before")
@@ -80,16 +90,6 @@ class CaseCreate(BaseModel):
             if "mo_ta" in data and not data.get("ten_day_du"):
                 data["ten_day_du"] = data["mo_ta"]
         return data
-
-class CustomDocumentData(BaseModel):
-    """Schema đại diện cho một văn bản tùy biến có chứa các trường động"""
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    template_file: str = ""
-    title: str = ""
-    person_id: Optional[str] = None
-    custom_fields: dict[str, Any] = Field(default_factory=dict)
-    created_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    updated_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
 class CaseData(BaseModel):
     """
