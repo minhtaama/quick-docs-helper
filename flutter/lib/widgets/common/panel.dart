@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'app_button.dart';
+import 'app_container.dart';
 
 /// Chế độ hiển thị của Panel dựa theo bối cảnh trong SideBarPage
 enum PanelMode {
@@ -86,8 +88,8 @@ class Panel extends StatelessWidget {
 
     if (mode == PanelMode.mobileDetail) {
       if (onMobileBack != null) {
-        leadingWidget = IconButton(
-          icon: const Icon(Icons.arrow_back),
+        leadingWidget = AppIconButton(
+          icon: Icons.arrow_back,
           tooltip: 'Quay lại danh sách',
           onPressed: onMobileBack,
         );
@@ -151,13 +153,13 @@ class Panel extends StatelessWidget {
 
     // Trường hợp 2: Mobile Tabs -> Ẩn AppBar của Panel (do SideBarPage + TabBar đã đảm nhiệm)
     if (mode == PanelMode.mobileTabs) {
-      return Container(color: bgColor, child: bodyContent);
+      return AppContainer(color: bgColor, child: bodyContent);
     }
 
     // Trường hợp 3: Desktop -> Hiển thị AppBar/Header bên trong cột phải (tắt automaticallyImplyLeading)
     final panelAppBar = _buildAppBar(context, mode, null);
 
-    return Container(
+    return AppContainer(
       color: bgColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

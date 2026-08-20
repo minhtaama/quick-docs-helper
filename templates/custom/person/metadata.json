@@ -46,7 +46,7 @@
     "display_name": "Biên bản ghi lời khai",
     "fields": [
       {
-        "name": "lap_bb",
+        "name": "ngay_lap_bb",
         "label": "Ngày lập biên bản",
         "type": "date",
         "placeholder": "19/08/2026"
@@ -107,7 +107,7 @@
         ]
       },
       {
-        "name": "ket_thuc",
+        "name": "ngay_ket_thuc",
         "label": "Ngày kết thúc",
         "type": "date",
         "placeholder": "19/08/2026"

@@ -12,6 +12,7 @@ class ExportDocsPage extends StatefulWidget {
   final Map<String, dynamic>? person;
   final Map<String, dynamic>? caseData;
   final bool isCaseLevel;
+  final String? initialTemplateFile;
 
   const ExportDocsPage({
     super.key,
@@ -19,6 +20,7 @@ class ExportDocsPage extends StatefulWidget {
     this.person,
     this.caseData,
     this.isCaseLevel = false,
+    this.initialTemplateFile,
   });
 
   @override
@@ -63,8 +65,17 @@ class _ExportDocsPageState extends State<ExportDocsPage> {
         _templates = templates;
         _isLoadingTemplates = false;
         if (_templates.isNotEmpty) {
-          _selectedTemplateFile = _templates.first['file_name'];
-          _selectedDisplayName = _templates.first['display_name'];
+          if (widget.initialTemplateFile != null) {
+            final matched = _templates.firstWhere(
+              (t) => t['file_name'] == widget.initialTemplateFile,
+              orElse: () => _templates.first,
+            );
+            _selectedTemplateFile = matched['file_name'];
+            _selectedDisplayName = matched['display_name'];
+          } else {
+            _selectedTemplateFile = _templates.first['file_name'];
+            _selectedDisplayName = _templates.first['display_name'];
+          }
           _registerCurrentIframe();
         }
       });

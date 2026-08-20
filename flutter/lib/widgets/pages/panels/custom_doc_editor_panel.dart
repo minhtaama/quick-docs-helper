@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:universal_html/html.dart' as html;
+import '../../common/app_button.dart';
 import '../../common/panel.dart';
 import '../../common/text_input.dart';
 import '../../common/date_time_input.dart';
@@ -46,10 +50,17 @@ class _CustomDocEditorPanelState extends State<CustomDocEditorPanel> {
 
   bool _isLoadingLayout = false;
   List<Map<String, dynamic>> _layoutElements = [];
+  double _zoomScale = 1.0;
+
+  StreamSubscription? _domWheelSub;
+  StreamSubscription? _domTouchStartSub;
+  StreamSubscription? _domTouchMoveSub;
+  StreamSubscription? _domTouchEndSub;
 
   @override
   void initState() {
     super.initState();
+    _attachDomZoomListeners();
     _titleController = TextEditingController(
       text: widget.initialTitle.isNotEmpty
           ? widget.initialTitle
@@ -80,11 +91,78 @@ class _CustomDocEditorPanelState extends State<CustomDocEditorPanel> {
 
   @override
   void dispose() {
+    _detachDomZoomListeners();
     _titleController.dispose();
     for (final c in _textControllers.values) {
       c.dispose();
     }
     super.dispose();
+  }
+
+  void _attachDomZoomListeners() {
+    if (kIsWeb) {
+      try {
+        _domWheelSub = html.window.onWheel.listen((e) {
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            final delta = (-e.deltaY * 0.01).clamp(-0.4, 0.4);
+            if (mounted) {
+              setState(() {
+                _zoomScale = (_zoomScale + delta).clamp(0.6, 3.0);
+              });
+            }
+          }
+        });
+
+        double touchStartDist = 0.0;
+        double pinchBaseScale = 1.0;
+
+        _domTouchStartSub = html.window.onTouchStart.listen((e) {
+          if (e.touches != null && e.touches!.length == 2) {
+            final t1 = e.touches![0];
+            final t2 = e.touches![1];
+            touchStartDist =
+                (Offset(t1.page.x.toDouble(), t1.page.y.toDouble()) -
+                        Offset(t2.page.x.toDouble(), t2.page.y.toDouble()))
+                    .distance;
+            pinchBaseScale = _zoomScale;
+          }
+        });
+
+        _domTouchMoveSub = html.window.onTouchMove.listen((e) {
+          if (e.touches != null &&
+              e.touches!.length == 2 &&
+              touchStartDist > 0) {
+            e.preventDefault();
+            final t1 = e.touches![0];
+            final t2 = e.touches![1];
+            final currentDist =
+                (Offset(t1.page.x.toDouble(), t1.page.y.toDouble()) -
+                        Offset(t2.page.x.toDouble(), t2.page.y.toDouble()))
+                    .distance;
+            final ratio = currentDist / touchStartDist;
+            if (mounted) {
+              setState(() {
+                _zoomScale = (pinchBaseScale * ratio).clamp(0.6, 2.0);
+              });
+            }
+          }
+        });
+
+        _domTouchEndSub = html.window.onTouchEnd.listen((e) {
+          if (e.touches != null && e.touches!.length < 2) {
+            touchStartDist = 0.0;
+          }
+        });
+      } catch (_) {}
+    }
+  }
+
+  void _detachDomZoomListeners() {
+    _domWheelSub?.cancel();
+    _domTouchStartSub?.cancel();
+    _domTouchMoveSub?.cancel();
+    _domTouchEndSub?.cancel();
   }
 
   Future<void> _loadLayout() async {
@@ -192,76 +270,143 @@ class _CustomDocEditorPanelState extends State<CustomDocEditorPanel> {
       appBarIcon: Icons.edit_document,
       appBarTitle: 'Soạn thảo: ${widget.templateDisplayName}',
       appBarActions: [
-        TextButton.icon(
+        // Thanh công cụ Zoom phóng to thu nhỏ tờ A4
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppIconButton(
+              icon: Icons.remove,
+              size: 18,
+              tooltip: 'Thu nhỏ tờ A4 (Ctrl + Cuộn chuột)',
+              onPressed: () {
+                setState(() {
+                  _zoomScale = (_zoomScale - 0.1).clamp(0.6, 2.0);
+                });
+              },
+            ),
+            InkWell(
+              borderRadius: BorderRadius.circular(4),
+              onTap: () {
+                setState(() {
+                  _zoomScale = 1.0;
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                child: Text(
+                  '${(_zoomScale * 100).round()}%',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            AppIconButton(
+              icon: Icons.add,
+              size: 18,
+              tooltip: 'Phóng to tờ A4 (Ctrl + Cuộn chuột)',
+              onPressed: () {
+                setState(() {
+                  _zoomScale = (_zoomScale + 0.1).clamp(0.6, 2.0);
+                });
+              },
+            ),
+          ],
+        ),
+        const SizedBox(width: 8),
+        AppButton.text(
           onPressed: widget.onCancel,
-          icon: const Icon(Icons.arrow_back_rounded, size: 18),
-          label: const Text('Quay lại'),
+          icon: Icons.arrow_back_rounded,
+          label: 'Quay lại',
         ),
         const SizedBox(width: 8),
         Padding(
           padding: const EdgeInsets.only(right: 12.0),
-          child: FilledButton.icon(
+          child: AppButton.primary(
             onPressed: widget.isSaving ? null : _submit,
-            icon: widget.isSaving
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.save_rounded, size: 18),
-            label: const Text('Lưu & Xem trước PDF'),
+            isLoading: widget.isSaving,
+            icon: Icons.save_rounded,
+            label: 'Lưu & Xem trước PDF',
           ),
         ),
       ],
-      child: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 820),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Box Tên lưu trữ biên bản nằm ở ngoài phía trên tờ A4
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 20),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.vertical,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 28,
+                ),
+                child: Center(
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: _zoomScale, end: _zoomScale),
+                    duration: const Duration(milliseconds: 120),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, animScale, child) {
+                      return SizedBox(width: 820 * animScale, child: child);
+                    },
+                    child: FittedBox(
+                      fit: BoxFit.fitWidth,
+                      alignment: Alignment.topCenter,
+                      child: SizedBox(
+                        width: 820,
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Box Tên lưu trữ biên bản nằm ở ngoài phía trên tờ A4
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 20),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.04,
+                                      ),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: CustomTextInput(
+                                  controller: _titleController,
+                                  label:
+                                      'Tên lưu trữ biên bản / Tiêu đề hồ sơ (*)',
+                                  isRequired: true,
+                                  icon: Icons.bookmark_border_rounded,
+                                  validator: (v) =>
+                                      v == null || v.trim().isEmpty
+                                      ? 'Vui lòng nhập tên biên bản'
+                                      : null,
+                                ),
+                              ),
+
+                              // Tờ giấy A4 chuẩn Microsoft Word
+                              _buildA4PaperSheet(context),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
-                    child: CustomTextInput(
-                      controller: _titleController,
-                      label: 'Tên lưu trữ biên bản / Tiêu đề hồ sơ (*)',
-                      isRequired: true,
-                      icon: Icons.bookmark_border_rounded,
-                      validator: (v) => v == null || v.trim().isEmpty
-                          ? 'Vui lòng nhập tên biên bản'
-                          : null,
+                      ),
                     ),
                   ),
-
-                  // Tờ giấy A4 chuẩn Microsoft Word
-                  _buildA4PaperSheet(context),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -895,17 +1040,17 @@ class _InlinePersonsSection extends StatelessWidget {
                     ),
             ),
             actions: [
-              TextButton(
+              AppButton.text(
                 onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Hủy'),
+                label: 'Hủy',
               ),
               const SizedBox(width: 8),
-              FilledButton(
+              AppButton.primary(
                 onPressed: () {
                   onChanged(tempSelected.toList());
                   Navigator.of(ctx).pop();
                 },
-                child: const Text('Xác nhận'),
+                label: 'Xác nhận',
               ),
             ],
           );

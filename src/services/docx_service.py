@@ -3,6 +3,8 @@ import json
 import os
 import sys
 import hashlib
+import shutil
+import subprocess
 from typing import Optional, Any
 from datetime import datetime
 from abc import ABC, abstractmethod
@@ -77,7 +79,17 @@ class BaseDocxService(ABC):
                 raise RuntimeError(f"Lỗi chuyển đổi Word sang PDF: {e}")
         else:
             try:
-                cmd = ["soffice", "--headless", "--convert-to", "pdf", "--outdir", self.cache_dir, temp_docx_path]
+                soffice_bin = shutil.which("soffice") or shutil.which("libreoffice") or "soffice"
+                cmd = [
+                    soffice_bin,
+                    "--headless",
+                    "--norestore",
+                    "--nofirststartwizard",
+                    "--nologo",
+                    "--convert-to", "pdf",
+                    "--outdir", self.cache_dir,
+                    temp_docx_path
+                ]
                 res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
                 base_name = os.path.splitext(os.path.basename(temp_docx_path))[0] + ".pdf"
                 generated_pdf = os.path.join(self.cache_dir, base_name)
@@ -87,7 +99,8 @@ class BaseDocxService(ABC):
                             os.remove(cached_pdf_path)
                         os.rename(generated_pdf, cached_pdf_path)
                 else:
-                    raise RuntimeError(f"LibreOffice không tạo được file PDF. Output: {res.stderr}")
+                    err_msg = res.stderr.strip() if res.stderr else (res.stdout.strip() if res.stdout else "Không có log chi tiết")
+                    raise RuntimeError(f"LibreOffice không tạo được file PDF (Mã thoát: {res.returncode}): {err_msg}")
             except Exception as e:
                 print(f"Error converting docx to pdf via LibreOffice on Linux: {e}")
                 raise RuntimeError(f"Lỗi chuyển đổi Word sang PDF trên Linux: {e}")

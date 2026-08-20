@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../common/app_button.dart';
+import '../../common/app_container.dart';
 import '../../common/panel.dart';
 
 /// Panel hiển thị màn hình chào mừng khi chưa chọn vụ việc
@@ -14,7 +16,7 @@ class WelcomePanel extends StatelessWidget {
 
     return Panel(
       child: Center(
-        child: Container(
+        child: AppContainer(
           constraints: const BoxConstraints(maxWidth: 500),
           padding: const EdgeInsets.all(32.0),
           child: Column(
@@ -53,20 +55,16 @@ class WelcomePanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              Container(
+              AppContainer(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 12,
                 ),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest.withValues(
-                    alpha: 0.4,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: theme.colorScheme.outline.withValues(alpha: 0.15),
-                  ),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.4,
                 ),
+                borderRadius: 8,
+                borderColor: theme.colorScheme.outline.withValues(alpha: 0.15),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -89,18 +87,13 @@ class WelcomePanel extends StatelessWidget {
               ),
               if (onNewCasePressed != null) ...[
                 const SizedBox(height: 16),
-                OutlinedButton.icon(
+                AppButton.outlined(
                   onPressed: onNewCasePressed,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Tạo Vụ Việc Mới'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                  icon: Icons.add,
+                  label: 'Tạo Vụ Việc Mới',
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
                   ),
                 ),
               ],

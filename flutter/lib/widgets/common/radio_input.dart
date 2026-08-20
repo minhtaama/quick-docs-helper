@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_container.dart';
 
 class CustomRadioInput extends StatelessWidget {
   final String? label;
@@ -23,18 +24,13 @@ class CustomRadioInput extends StatelessWidget {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
 
-    return Container(
+    return AppContainer(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3.5),
-      decoration: BoxDecoration(
-        color:
-            theme.inputDecorationTheme.fillColor ??
-            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(4.0),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 1),
-          width: 1,
-        ),
-      ),
+      color:
+          theme.inputDecorationTheme.fillColor ??
+          theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+      borderRadius: 4.0,
+      borderColor: theme.colorScheme.outline.withValues(alpha: 1),
       child: Row(
         children: [
           if (icon != null && label != null) ...[

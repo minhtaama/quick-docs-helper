@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_button.dart';
 import 'panel.dart';
 
 /// Widget bố cục 2 cột (Sidebar bên trái & Nội dung chính bên phải)
@@ -85,8 +86,8 @@ class _SideBarPageState extends State<SideBarPage> {
 
     if (effectiveLeading == null) {
       if (canPopRoute) {
-        effectiveLeading = IconButton(
-          icon: const Icon(Icons.arrow_back),
+        effectiveLeading = AppIconButton(
+          icon: Icons.arrow_back,
           tooltip: 'Quay lại',
           onPressed: () => Navigator.maybePop(context),
         );

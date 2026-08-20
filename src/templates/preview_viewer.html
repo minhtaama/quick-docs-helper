@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=3.0">
     <title>Xem trước văn bản</title>
     <!-- Mozilla PDF.js CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -12,18 +13,28 @@
             padding: 0;
             box-sizing: border-box;
         }
-        html, body {
+
+        html,
+        body {
             width: 100%;
             height: 100%;
-            overflow-x: hidden;
-            overflow-y: auto;
+            overflow: auto;
             background-color: #525659;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+            touch-action: pan-x pan-y;
+        }
+
+        #viewer-wrapper {
+            min-width: 100%;
+            min-height: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px 10px;
+            padding: 24px 16px 80px 16px;
+            box-sizing: border-box;
         }
+
         #loading {
             position: fixed;
             top: 50%;
@@ -35,13 +46,15 @@
             flex-direction: column;
             align-items: center;
             gap: 12px;
-            z-index: 10;
-            background: rgba(0,0,0,0.65);
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.75);
             padding: 20px 28px;
             border-radius: 12px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-            backdrop-filter: blur(4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            pointer-events: none;
         }
+
         .spinner {
             width: 32px;
             height: 32px;
@@ -50,30 +63,42 @@
             border-radius: 50%;
             animation: spin 0.7s linear infinite;
         }
+
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
+
         #pdf-container {
             display: flex;
             flex-direction: column;
             align-items: center;
             width: 100%;
-            max-width: 900px;
+            transform-origin: top center;
+            will-change: transform;
         }
+
         .pdf-page {
             background: #ffffff;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-            border-radius: 3px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+            border-radius: 4px;
             margin-bottom: 24px;
             overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
+            position: relative;
         }
+
         .pdf-page canvas {
             display: block;
         }
+
         #error-box {
             display: none;
             background: #fde8e8;
@@ -87,29 +112,206 @@
             font-size: 14px;
             line-height: 1.5;
         }
+
+        /* Floating Zoom Toolbar */
+        #zoom-toolbar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 90;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(30, 30, 30, 0.88);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 6px 10px;
+            border-radius: 28px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            opacity: 0.92;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        #zoom-toolbar:hover {
+            opacity: 1;
+            transform: translateX(-50%) scale(1.02);
+        }
+
+        .zoom-btn {
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.15s ease, transform 0.1s ease;
+            outline: none;
+        }
+
+        .zoom-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .zoom-btn:active {
+            transform: scale(0.92);
+        }
+
+        #zoom-label {
+            color: #ffffff;
+            font-size: 12.5px;
+            font-weight: 600;
+            padding: 4px 8px;
+            min-width: 52px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: background 0.15s;
+        }
+
+        #zoom-label:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .zoom-divider {
+            width: 1px;
+            height: 18px;
+            background: rgba(255, 255, 255, 0.2);
+            margin: 0 2px;
+        }
     </style>
 </head>
+
 <body>
     <div id="loading">
         <div class="spinner"></div>
         <span>Đang nạp bản xem trước chuẩn 100%...</span>
     </div>
     <div id="error-box"></div>
-    <div id="pdf-container"></div>
+
+    <div id="viewer-wrapper">
+        <div id="pdf-container"></div>
+    </div>
+
+    <!-- Floating Zoom Controls -->
+    <div id="zoom-toolbar">
+        <button class="zoom-btn" id="btn-zoom-out" title="Thu nhỏ (Ctrl + Cuộn chuột xuống)">−</button>
+        <span id="zoom-label" title="Nhấn để đặt lại 100%">100%</span>
+        <button class="zoom-btn" id="btn-zoom-in" title="Phóng to (Ctrl + Cuộn chuột lên)">+</button>
+        <div class="zoom-divider"></div>
+        <button class="zoom-btn" id="btn-fit-width" title="Khớp chiều rộng trang" style="font-size: 13px;">⤢</button>
+    </div>
 
     <script>
         const pdfDataUrl = "{{ pdf_data_url | safe }}";
         const container = document.getElementById("pdf-container");
         const loading = document.getElementById("loading");
         const errorBox = document.getElementById("error-box");
+        const zoomLabel = document.getElementById("zoom-label");
+        const btnZoomIn = document.getElementById("btn-zoom-in");
+        const btnZoomOut = document.getElementById("btn-zoom-out");
+        const btnFitWidth = document.getElementById("btn-fit-width");
 
         pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-        // Khởi tạo bộ nhớ đệm phía Client (RAM Cache)
         window.__clientPdfCache = window.__clientPdfCache || {};
         const isForce = "{{ 'true' if force else 'false' }}" === "true";
 
-        async function renderPdf() {
+        let currentPdfDoc = null;
+        let renderedZoom = 1.0;
+        let targetZoom = 1.0;
+        const minZoom = 0.45;
+        const maxZoom = 3.5;
+        let isRendering = false;
+        let reRenderTimer = null;
+
+        function updateZoomLabel() {
+            zoomLabel.textContent = Math.round(targetZoom * 100) + "%";
+        }
+
+        function applyLiveScale() {
+            const visualRatio = targetZoom / renderedZoom;
+            container.style.transform = `scale(${visualRatio})`;
+            updateZoomLabel();
+        }
+
+        async function renderAllPages() {
+            if (!currentPdfDoc || isRendering) return;
+            isRendering = true;
+
+            try {
+                container.innerHTML = "";
+                container.style.transform = "none";
+                renderedZoom = targetZoom;
+
+                const baseTargetWidth = Math.min(window.innerWidth - 48, 840);
+                const currentWidth = baseTargetWidth * renderedZoom;
+
+                for (let pageNum = 1; pageNum <= currentPdfDoc.numPages; pageNum++) {
+                    const page = await currentPdfDoc.getPage(pageNum);
+
+                    const unscaledViewport = page.getViewport({ scale: 1.0 });
+                    const scale = (currentWidth / unscaledViewport.width);
+                    const viewport = page.getViewport({ scale: scale });
+
+                    const pageDiv = document.createElement("div");
+                    pageDiv.className = "pdf-page";
+                    pageDiv.style.width = Math.round(viewport.width) + "px";
+                    pageDiv.style.height = Math.round(viewport.height) + "px";
+
+                    const canvas = document.createElement("canvas");
+                    const context = canvas.getContext("2d");
+
+                    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+                    canvas.width = Math.round(viewport.width * dpr);
+                    canvas.height = Math.round(viewport.height * dpr);
+                    canvas.style.width = Math.round(viewport.width) + "px";
+                    canvas.style.height = Math.round(viewport.height) + "px";
+
+                    context.scale(dpr, dpr);
+
+                    pageDiv.appendChild(canvas);
+                    container.appendChild(pageDiv);
+
+                    await page.render({
+                        canvasContext: context,
+                        viewport: viewport
+                    }).promise;
+                }
+            } catch (err) {
+                console.error("PDF Render error:", err);
+            } finally {
+                isRendering = false;
+                container.style.transform = "none";
+            }
+        }
+
+        function setZoom(newZoom, instantReRender = false) {
+            newZoom = Math.max(minZoom, Math.min(maxZoom, newZoom));
+            targetZoom = newZoom;
+
+            // 1. Áp dụng CSS transform NGAY LẬP TỨC (0ms) để phản hồi mượt mà
+            applyLiveScale();
+
+            // 2. Debounce vẽ lại Canvas với độ phân giải siêu nét
+            clearTimeout(reRenderTimer);
+            if (instantReRender) {
+                renderAllPages();
+            } else {
+                reRenderTimer = setTimeout(() => {
+                    renderAllPages();
+                }, 180);
+            }
+        }
+
+        async function initPdf() {
             try {
                 let arrayBuffer;
                 if (!isForce && window.__clientPdfCache[pdfDataUrl]) {
@@ -124,44 +326,11 @@
                 }
 
                 const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-                const pdf = await loadingTask.promise;
+                currentPdfDoc = await loadingTask.promise;
 
                 loading.style.display = "none";
-                container.innerHTML = "";
-
-                // Render tuần tự từng trang A4
-                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-                    const page = await pdf.getPage(pageNum);
-                    
-                    const unscaledViewport = page.getViewport({ scale: 1.0 });
-                    const targetWidth = Math.min(window.innerWidth - 40, 820);
-                    const scale = targetWidth / unscaledViewport.width;
-                    const viewport = page.getViewport({ scale: Math.max(scale, 1.25) });
-                    
-                    const pageDiv = document.createElement("div");
-                    pageDiv.className = "pdf-page";
-                    pageDiv.style.width = viewport.width + "px";
-                    pageDiv.style.height = viewport.height + "px";
-
-                    const canvas = document.createElement("canvas");
-                    const context = canvas.getContext("2d");
-                    
-                    const dpr = window.devicePixelRatio || 1;
-                    canvas.width = viewport.width * dpr;
-                    canvas.height = viewport.height * dpr;
-                    canvas.style.width = viewport.width + "px";
-                    canvas.style.height = viewport.height + "px";
-
-                    context.scale(dpr, dpr);
-
-                    pageDiv.appendChild(canvas);
-                    container.appendChild(pageDiv);
-
-                    await page.render({
-                        canvasContext: context,
-                        viewport: viewport
-                    }).promise;
-                }
+                updateZoomLabel();
+                await renderAllPages();
             } catch (err) {
                 loading.style.display = "none";
                 errorBox.style.display = "block";
@@ -170,7 +339,77 @@
             }
         }
 
-        window.addEventListener("DOMContentLoaded", renderPdf);
+        // Toolbar Buttons
+        btnZoomIn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            setZoom(targetZoom + 0.15);
+        });
+
+        btnZoomOut.addEventListener("click", (e) => {
+            e.stopPropagation();
+            setZoom(targetZoom - 0.15);
+        });
+
+        zoomLabel.addEventListener("click", (e) => {
+            e.stopPropagation();
+            setZoom(1.0, true);
+        });
+
+        btnFitWidth.addEventListener("click", (e) => {
+            e.stopPropagation();
+            setZoom(1.0, true);
+        });
+
+        // 1. Mouse Wheel Zoom (Ctrl + Wheel hoặc Trackpad Pinch)
+        window.addEventListener("wheel", (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                const delta = e.deltaY < 0 ? 0.08 : -0.08;
+                setZoom(targetZoom + (delta / 2)); // Giảm delta xuống 2 lần để zoom chậm lại
+            }
+        }, { passive: false });
+
+        // 2. Mobile Multi-touch Pinch to Zoom (Phản hồi tức thì trong touchmove)
+        let touchStartDist = 0;
+        let pinchBaseZoom = 1.0;
+
+        window.addEventListener("touchstart", (e) => {
+            if (e.touches.length === 2) {
+                const t1 = e.touches[0];
+                const t2 = e.touches[1];
+                touchStartDist = Math.hypot(t1.pageX - t2.pageX, t1.pageY - t2.pageY);
+                pinchBaseZoom = targetZoom;
+            }
+        }, { passive: true });
+
+        window.addEventListener("touchmove", (e) => {
+            if (e.touches.length === 2 && touchStartDist > 0) {
+                e.preventDefault();
+                const t1 = e.touches[0];
+                const t2 = e.touches[1];
+                const currentDist = Math.hypot(t1.pageX - t2.pageX, t1.pageY - t2.pageY);
+                const scaleRatio = currentDist / touchStartDist;
+                setZoom(pinchBaseZoom * scaleRatio);
+            }
+        }, { passive: false });
+
+        window.addEventListener("touchend", (e) => {
+            if (e.touches.length < 2 && touchStartDist > 0) {
+                touchStartDist = 0;
+                renderAllPages();
+            }
+        }, { passive: true });
+
+        let resizeTimer = null;
+        window.addEventListener("resize", () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                renderAllPages();
+            }, 250);
+        });
+
+        window.addEventListener("DOMContentLoaded", initPdf);
     </script>
 </body>
+
 </html>

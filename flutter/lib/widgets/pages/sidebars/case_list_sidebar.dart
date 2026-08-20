@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../common/app_button.dart';
+import '../../common/app_card.dart';
+import '../../common/app_container.dart';
 
 class CaseListSidebar extends StatefulWidget {
   final List<Map<String, dynamic>> cases;
@@ -54,7 +57,7 @@ class _CaseListSidebarState extends State<CaseListSidebar> {
       return tenTomTat.contains(keyword) || tenDayDu.contains(keyword);
     }).toList();
 
-    return Container(
+    return AppContainer(
       color: widget.isMobile ? Colors.transparent : theme.colorScheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -80,16 +83,14 @@ class _CaseListSidebarState extends State<CaseListSidebar> {
                     ),
                   ],
                 ),
-                FilledButton.icon(
+                AppButton.primary(
                   onPressed: widget.onNewCasePressed,
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text('Thêm vụ', style: TextStyle(fontSize: 13)),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    visualDensity: VisualDensity.compact,
+                  icon: Icons.add,
+                  label: 'Thêm vụ',
+                  isCompact: true,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
                   ),
                 ),
               ],
@@ -121,8 +122,9 @@ class _CaseListSidebarState extends State<CaseListSidebar> {
                   color: primaryColor.withValues(alpha: 0.6),
                 ),
                 suffixIcon: _searchKeyword.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, size: 16),
+                    ? AppIconButton(
+                        icon: Icons.clear,
+                        size: 16,
                         onPressed: () {
                           _searchController.clear();
                           setState(() => _searchKeyword = '');
@@ -193,117 +195,93 @@ class _CaseListSidebarState extends State<CaseListSidebar> {
                       final soNguoi = item['so_luong_nguoi'] ?? 0;
                       final isSelected = widget.selectedCaseId == caseId;
 
-                      return Card(
-                        elevation: isSelected ? 2 : 0,
-                        margin: const EdgeInsets.only(bottom: 8.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                          side: BorderSide(
-                            color: isSelected
-                                ? primaryColor
-                                : theme.colorScheme.outline.withValues(
-                                    alpha: 0.15,
-                                  ),
-                            width: isSelected ? 1.5 : 1.0,
-                          ),
-                        ),
-                        color: isSelected
-                            ? theme.colorScheme.surfaceContainerHighest
-                                  .withValues(alpha: 0.6)
-                            : theme.colorScheme.surface,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(8.0),
-                          onTap: () => widget.onCaseSelected(caseId),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                      return AppCard(
+                        isSelected: isSelected,
+                        onTap: () => widget.onCaseSelected(caseId),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Row(
                                     children: [
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.file_copy,
-                                            color: primaryColor,
-                                            size: 21,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              tenTomTat,
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
-                                                color: primaryColor,
-                                              ),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
+                                      Icon(
+                                        Icons.file_copy,
+                                        color: primaryColor,
+                                        size: 21,
                                       ),
-                                      if (tenDayDu.isNotEmpty) ...[
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          tenDayDu,
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          tenTomTat,
                                           style: TextStyle(
-                                            fontSize: 12,
-                                            color: primaryColor.withValues(
-                                              alpha: 0.6,
-                                            ),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: primaryColor,
                                           ),
-                                          maxLines: 3,
+                                          maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
                                         ),
-                                      ],
-                                      const SizedBox(height: 6),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.people_alt_outlined,
-                                            size: 14,
-                                            color: primaryColor.withValues(
-                                              alpha: 0.7,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '$soNguoi đối tượng',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: primaryColor.withValues(
-                                                alpha: 0.7,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
                                       ),
                                     ],
                                   ),
-                                ),
-                                if (widget.onCaseEdited != null)
-                                  IconButton(
-                                    icon: Icon(
-                                      Icons.edit_outlined,
-                                      size: 18,
-                                      color: primaryColor.withValues(
-                                        alpha: 0.7,
-                                      ),
-                                    ),
-                                    tooltip: 'Chỉnh sửa tên/mô tả vụ việc',
-                                    onPressed: () => widget.onCaseEdited!(
-                                      caseId,
-                                      tenTomTat,
+                                  if (tenDayDu.isNotEmpty) ...[
+                                    const SizedBox(height: 6),
+                                    Text(
                                       tenDayDu,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: primaryColor.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                      ),
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
+                                  ],
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.people_alt_outlined,
+                                        size: 14,
+                                        color: primaryColor.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '$soNguoi đối tượng',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: primaryColor.withValues(
+                                            alpha: 0.7,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
+                            if (widget.onCaseEdited != null)
+                              AppIconButton(
+                                icon: Icons.edit_outlined,
+                                size: 18,
+                                color: primaryColor.withValues(
+                                  alpha: 0.7,
+                                ),
+                                tooltip: 'Chỉnh sửa tên/mô tả vụ việc',
+                                onPressed: () => widget.onCaseEdited!(
+                                  caseId,
+                                  tenTomTat,
+                                  tenDayDu,
+                                ),
+                              ),
+                          ],
                         ),
                       );
                     },

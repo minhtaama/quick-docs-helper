@@ -14,9 +14,11 @@ class MyApp extends StatelessWidget {
       title: 'Quick Docs Helper',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: const ColorScheme.light(
-          primary: Colors.black,
+        colorScheme: ColorScheme.light(
+          primary: Colors.black87,
           onPrimary: Colors.white,
+          secondaryContainer: Colors.grey[300],
+          onSecondaryContainer: Colors.black87,
         ),
         useMaterial3: true,
         tooltipTheme: TooltipThemeData(

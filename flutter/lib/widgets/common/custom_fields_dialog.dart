@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_button.dart';
 import 'text_input.dart';
 
 class CustomFieldsDialog extends StatefulWidget {
@@ -154,15 +155,15 @@ class _CustomFieldsDialogState extends State<CustomFieldsDialog> {
         ),
       ),
       actions: [
-        TextButton(
+        AppButton.text(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Hủy'),
+          label: 'Hủy',
         ),
         const SizedBox(width: 8),
-        FilledButton.icon(
+        AppButton.primary(
           onPressed: _onSave,
-          icon: const Icon(Icons.save_outlined, size: 18),
-          label: const Text('Lưu thông tin'),
+          icon: Icons.save_outlined,
+          label: 'Lưu thông tin',
         ),
       ],
     );
@@ -400,12 +401,12 @@ class _PersonsFieldState extends State<_PersonsField> {
                     ),
             ),
             actions: [
-              TextButton(
+              AppButton.text(
                 onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Hủy'),
+                label: 'Hủy',
               ),
               const SizedBox(width: 8),
-              FilledButton(
+              AppButton.primary(
                 onPressed: () {
                   setState(() {
                     _selectedIds = tempSelected.toList();
@@ -413,7 +414,7 @@ class _PersonsFieldState extends State<_PersonsField> {
                   widget.onChanged(_selectedIds);
                   Navigator.of(ctx).pop();
                 },
-                child: const Text('Xác nhận'),
+                label: 'Xác nhận',
               ),
             ],
           );
@@ -451,14 +452,11 @@ class _PersonsFieldState extends State<_PersonsField> {
                   color: primaryColor,
                 ),
               ),
-              OutlinedButton.icon(
+              AppButton.outlined(
                 onPressed: _showSelectDialog,
-                icon: const Icon(Icons.person_add_alt_1, size: 16),
-                label: const Text('Chọn người'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  visualDensity: VisualDensity.compact,
-                ),
+                icon: Icons.person_add_alt_1,
+                label: 'Chọn người',
+                isCompact: true,
               ),
             ],
           ),
@@ -611,14 +609,11 @@ class _TableFieldState extends State<_TableField> {
                   color: primaryColor,
                 ),
               ),
-              FilledButton.tonalIcon(
+              AppButton.tonal(
                 onPressed: _addRow,
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('Thêm dòng'),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  visualDensity: VisualDensity.compact,
-                ),
+                icon: Icons.add,
+                label: 'Thêm dòng',
+                isCompact: true,
               ),
             ],
           ),
@@ -662,12 +657,14 @@ class _TableFieldState extends State<_TableField> {
                             ),
                           ),
                           const Spacer(),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                          AppIconButton(
+                            icon: Icons.delete_outline,
+                            isDanger: true,
                             onPressed: () => _deleteRow(index),
                             tooltip: 'Xóa dòng này',
-                            constraints: const BoxConstraints(),
+                            size: 18,
                             padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
                           ),
                         ],
                       ),

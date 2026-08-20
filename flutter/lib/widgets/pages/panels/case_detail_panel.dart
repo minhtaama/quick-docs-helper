@@ -1,7 +1,12 @@
 import '../../../services/api_service.dart';
 import '../export_docs_page.dart';
 import '../custom_docs_page.dart';
+import '../../common/app_button.dart';
+import '../../common/app_card.dart';
+import '../../common/app_container.dart';
+import '../../common/app_dialog.dart';
 import '../../common/person_detail_dialog.dart';
+import '../../common/person_widgets.dart';
 import '../../common/quick_action_card.dart';
 import '../../common/panel.dart';
 import 'package:flutter/material.dart';
@@ -59,7 +64,7 @@ class CaseDetailPanel extends StatelessWidget {
   }
 }
 
-class _CaseDetailContent extends StatelessWidget {
+class _CaseDetailContent extends StatefulWidget {
   final Map<String, dynamic>? caseData;
   final VoidCallback? onRefresh;
   final VoidCallback onAddPersonPressed;
@@ -76,12 +81,55 @@ class _CaseDetailContent extends StatelessWidget {
     this.onDeletePerson,
   });
 
+  @override
+  State<_CaseDetailContent> createState() => _CaseDetailContentState();
+}
+
+class _CaseDetailContentState extends State<_CaseDetailContent> {
+  List<Map<String, dynamic>> _staticTemplates = [];
+  List<Map<String, dynamic>> _customTemplates = [];
+  bool _isLoadingTemplates = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTemplates();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CaseDetailContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.caseData?['id'] != oldWidget.caseData?['id']) {
+      _fetchTemplates();
+    }
+  }
+
+  Future<void> _fetchTemplates() async {
+    try {
+      final results = await Future.wait([
+        CaseApiService().getTemplates(),
+        CustomDocApiService.instance.getTemplates(level: 'case'),
+      ]);
+      if (mounted) {
+        setState(() {
+          _staticTemplates = results[0];
+          _customTemplates = results[1];
+          _isLoadingTemplates = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingTemplates = false);
+      }
+    }
+  }
+
   void _confirmDeletePerson(
     BuildContext context,
     String personId,
     String hoTen,
   ) {
-    showDialog(
+    showAppDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Xác nhận xóa'),
@@ -89,19 +137,16 @@ class _CaseDetailContent extends StatelessWidget {
           'ĐTV có chắc chắn muốn xóa đối tượng "$hoTen" khỏi vụ án này?',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
+          AppButton.text(onPressed: () => Navigator.pop(ctx), label: 'Hủy'),
+          AppButton.primary(
             onPressed: () async {
               Navigator.pop(ctx);
-              if (onDeletePerson != null) {
-                await onDeletePerson!(personId, hoTen);
+              if (widget.onDeletePerson != null) {
+                await widget.onDeletePerson!(personId, hoTen);
               }
             },
-            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: const Text('Xóa'),
+            isDanger: true,
+            label: 'Xóa',
           ),
         ],
       ),
@@ -112,7 +157,7 @@ class _CaseDetailContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
-
+    final caseData = widget.caseData;
     if (caseData == null) {
       return Center(
         child: Column(
@@ -136,240 +181,446 @@ class _CaseDetailContent extends StatelessWidget {
       );
     }
 
-    final tenDayDu = caseData!['ten_day_du'] ?? '';
-    final personList = caseData!['con_nguoi_list'] as List? ?? [];
-    final caseId = caseData!['id'] ?? '';
-    final updatedAt = caseData!['updated_at'] ?? '';
+    final onAddPersonPressed = widget.onAddPersonPressed;
+    final onEditCasePressed = widget.onEditCasePressed;
+    final onEditPersonPressed = widget.onEditPersonPressed;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header Vụ Án
-        LayoutBuilder(
-          builder: (context, headerConstraints) {
-            final isHeaderCompact = headerConstraints.maxWidth < 750;
+    final tenDayDu = caseData['ten_day_du'] ?? '';
+    final personList = caseData['con_nguoi_list'] as List? ?? [];
+    final caseId = caseData['id'] ?? '';
+    final updatedAt = caseData['updated_at'] ?? '';
 
-            final titleAndDescription = Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Vụ Án
+          LayoutBuilder(
+            builder: (context, headerConstraints) {
+              final isHeaderCompact = headerConstraints.maxWidth < 750;
+
+              final titleAndDescription = Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AppContainer.iconBox(
+                    borderRadius: 10,
                     color: primaryColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
+                    child: Icon(
+                      Icons.gavel_rounded,
+                      color: primaryColor,
+                      size: 20,
+                    ),
                   ),
-                  child: Icon(
-                    Icons.gavel_rounded,
-                    color: primaryColor,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'TÊN ĐẦY ĐỦ CỦA HỒ SƠ',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: primaryColor.withValues(alpha: 0.65),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        tenDayDu.isNotEmpty
-                            ? tenDayDu
-                            : 'Chưa cập nhật tên đầy đủ vụ án',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.85,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'TÊN HỒ SƠ',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: primaryColor.withValues(alpha: 0.65),
+                            letterSpacing: 0.5,
                           ),
-                          height: 1.35,
                         ),
-                        softWrap: true,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        Text(
+                          tenDayDu.isNotEmpty
+                              ? tenDayDu
+                              : 'Chưa cập nhật tên đầy đủ vụ án',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.85,
+                            ),
+                            height: 1.35,
+                          ),
+                          softWrap: true,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            );
+                ],
+              );
 
-            final editCaseButton = onEditCasePressed != null
-                ? OutlinedButton.icon(
-                    onPressed: onEditCasePressed,
-                    icon: const Icon(Icons.edit_outlined, size: 16),
-                    label: const Text('Chỉnh sửa hồ sơ'),
-                    style: OutlinedButton.styleFrom(
+              final editCaseButton = onEditCasePressed != null
+                  ? AppButton.outlined(
+                      onPressed: onEditCasePressed,
+                      icon: Icons.edit_outlined,
+                      iconSize: 16,
+                      label: 'Chỉnh sửa hồ sơ',
                       padding: const EdgeInsets.symmetric(
                         horizontal: 14,
                         vertical: 10,
                       ),
-                    ),
-                  )
-                : const SizedBox.shrink();
+                    )
+                  : const SizedBox.shrink();
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(18.0),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        primaryColor.withValues(alpha: 0.04),
-                        primaryColor.withValues(alpha: 0.0),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16.0),
-                    border: Border.all(
-                      color: primaryColor.withValues(alpha: 0.18),
-                      width: 1.0,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: primaryColor.withValues(alpha: 0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AppContainer.banner(
+                    padding: const EdgeInsets.all(18.0),
+                    child: isHeaderCompact
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              titleAndDescription,
+                              if (onEditCasePressed != null) ...[
+                                const SizedBox(height: 14),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: editCaseButton,
+                                ),
+                              ],
+                            ],
+                          )
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(child: titleAndDescription),
+                              if (onEditCasePressed != null) ...[
+                                const SizedBox(width: 16),
+                                editCaseButton,
+                              ],
+                            ],
+                          ),
                   ),
-                  child: isHeaderCompact
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            titleAndDescription,
-                            if (onEditCasePressed != null) ...[
-                              const SizedBox(height: 14),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: editCaseButton,
+                  const SizedBox(height: 16),
+
+                  // KHUNG CHỌN NHANH HÀNH ĐỘNG (QUICK SELECT BOX)
+                  LayoutBuilder(
+                    builder: (context, cardConstraints) {
+                      final customDocs =
+                          caseData['custom_documents'] as List? ?? [];
+                      final isCompactCards = cardConstraints.maxWidth < 720;
+
+                      final cards = [
+                        QuickActionCard(
+                          height: 270,
+                          icon: Icons.description_outlined,
+                          title: 'Văn bản tĩnh',
+                          subtitle:
+                              'Các biểu mẫu không cần chỉnh sửa, chỉ cần tải về và dùng',
+                          color: const Color(0xFF1976D2),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ExportDocsPage(
+                                  caseId: caseId,
+                                  caseData: caseData,
+                                  isCaseLevel: true,
+                                ),
                               ),
-                            ],
-                          ],
-                        )
-                      : Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(child: titleAndDescription),
-                            if (onEditCasePressed != null) ...[
-                              const SizedBox(width: 16),
-                              editCaseButton,
-                            ],
-                          ],
+                            );
+                          },
+                          bottomWidget: _staticTemplates.isEmpty
+                              ? (_isLoadingTemplates
+                                    ? const Center(
+                                        child: Padding(
+                                          padding: EdgeInsets.all(12),
+                                          child: Text(
+                                            'Đang tải danh sách mẫu...',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontStyle: FontStyle.italic,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    : const Center(
+                                        child: Text(
+                                          'Không có mẫu văn bản tĩnh',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ))
+                              : SingleChildScrollView(
+                                  scrollDirection: Axis.vertical,
+                                  child: Column(
+                                    children: _staticTemplates.map((tpl) {
+                                      final displayName =
+                                          tpl['display_name'] ??
+                                          tpl['file_name'] ??
+                                          'Mẫu';
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 6.0,
+                                        ),
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(
+                                            6.0,
+                                          ),
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => ExportDocsPage(
+                                                  caseId: caseId,
+                                                  caseData: caseData,
+                                                  isCaseLevel: true,
+                                                  initialTemplateFile:
+                                                      tpl['file_name'],
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10.0,
+                                              vertical: 7.0,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(
+                                                0xFF1976D2,
+                                              ).withValues(alpha: 0.06),
+                                              borderRadius:
+                                                  BorderRadius.circular(6.0),
+                                              border: Border.all(
+                                                color: const Color(
+                                                  0xFF1976D2,
+                                                ).withValues(alpha: 0.15),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.description_outlined,
+                                                  size: 15,
+                                                  color: Color(0xFF1976D2),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    displayName,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Color(0xFF1976D2),
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                Icon(
+                                                  Icons.arrow_forward_ios,
+                                                  size: 11,
+                                                  color: const Color(
+                                                    0xFF1976D2,
+                                                  ).withValues(alpha: 0.5),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
                         ),
-                ),
-                const SizedBox(height: 16),
-
-                // KHUNG CHỌN NHANH HÀNH ĐỘNG (QUICK SELECT BOX)
-                LayoutBuilder(
-                  builder: (context, cardConstraints) {
-                    final customDocs = caseData!['custom_documents'] as List? ?? [];
-                    final isCompactCards = cardConstraints.maxWidth < 720;
-
-                    final cards = [
-                      QuickActionCard(
-                        icon: Icons.description_outlined,
-                        title: 'Văn bản hệ thống',
-                        subtitle: 'Xuất các biểu mẫu tố tụng chuẩn',
-                        color: const Color(0xFF1976D2),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ExportDocsPage(
-                                caseId: caseId,
-                                caseData: caseData,
-                                isCaseLevel: true,
+                        QuickActionCard(
+                          height: 270,
+                          icon: Icons.note_alt_outlined,
+                          title: 'Soạn thảo văn bản',
+                          subtitle:
+                              'Soạn thảo các văn bản theo mẫu, điền thông tin và tải về',
+                          badge: '${customDocs.length} bản ghi',
+                          color: const Color(0xFFE65100),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => CustomDocsPage(
+                                  caseId: caseId,
+                                  caseData: caseData,
+                                  isCaseLevel: true,
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
-                      QuickActionCard(
-                        icon: Icons.note_alt_outlined,
-                        title: 'Văn bản tùy biến',
-                        subtitle: 'Quản lý các biên bản nghiệp vụ động',
-                        badge: '${customDocs.length} bản ghi',
-                        color: const Color(0xFFE65100),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => CustomDocsPage(
-                                caseId: caseId,
-                                caseData: caseData,
-                                isCaseLevel: true,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      QuickActionCard(
-                        icon: Icons.person_add_alt_1_outlined,
-                        title: 'Thêm đối tượng',
-                        subtitle: 'Thêm bị can hoặc người liên quan',
-                        color: const Color(0xFF2E7D32),
-                        onTap: onAddPersonPressed,
-                      ),
-                    ];
+                            );
+                          },
+                          bottomWidget: _customTemplates.isEmpty
+                              ? (_isLoadingTemplates
+                                    ? const Center(
+                                        child: Padding(
+                                          padding: EdgeInsets.all(12),
+                                          child: Text(
+                                            'Đang tải danh sách mẫu...',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontStyle: FontStyle.italic,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    : const Center(
+                                        child: Text(
+                                          'Không có mẫu văn bản tự tạo',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ))
+                              : SingleChildScrollView(
+                                  scrollDirection: Axis.vertical,
+                                  child: Column(
+                                    children: _customTemplates.map((tpl) {
+                                      final displayName =
+                                          tpl['display_name'] ??
+                                          tpl['file_name'] ??
+                                          'Mẫu';
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 6.0,
+                                        ),
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(
+                                            6.0,
+                                          ),
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => CustomDocsPage(
+                                                  caseId: caseId,
+                                                  caseData: caseData,
+                                                  isCaseLevel: true,
+                                                  initialTemplateFile:
+                                                      tpl['file_name'],
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10.0,
+                                              vertical: 7.0,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(
+                                                0xFFE65100,
+                                              ).withValues(alpha: 0.06),
+                                              borderRadius:
+                                                  BorderRadius.circular(6.0),
+                                              border: Border.all(
+                                                color: const Color(
+                                                  0xFFE65100,
+                                                ).withValues(alpha: 0.15),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.add_circle_outline,
+                                                  size: 15,
+                                                  color: Color(0xFFE65100),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    displayName,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Color(0xFFE65100),
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                Icon(
+                                                  Icons.edit,
+                                                  size: 12,
+                                                  color: const Color(
+                                                    0xFFE65100,
+                                                  ).withValues(alpha: 0.5),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                        ),
+                      ];
 
-                    if (isCompactCards) {
-                      return Column(
-                        children: cards
-                            .map((c) => Padding(
+                      if (isCompactCards) {
+                        return Column(
+                          children: cards
+                              .map(
+                                (c) => Padding(
                                   padding: const EdgeInsets.only(bottom: 8.0),
                                   child: c,
-                                ))
-                            .toList(),
-                      );
-                    }
+                                ),
+                              )
+                              .toList(),
+                        );
+                      }
 
-                    return Row(
-                      children: cards
-                          .map((c) => Expanded(
+                      return Row(
+                        children: cards
+                            .map(
+                              (c) => Expanded(
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4.0,
+                                  ),
                                   child: c,
                                 ),
-                              ))
-                          .toList(),
-                    );
-                  },
-                ),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 24),
-
-        // Header Danh sách con người
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            'DANH SÁCH ĐỐI TƯỢNG/BỊ CAN TRONG VỤ ÁN (${personList.length})',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: primaryColor.withValues(alpha: 0.8),
-              letterSpacing: 0.5,
-            ),
+                              ),
+                            )
+                            .toList(),
+                      );
+                    },
+                  ),
+                ],
+              );
+            },
           ),
-        ),
-        const SizedBox(height: 12),
-
-        // Danh sách đối tượng
-        Expanded(
-          child: personList.isEmpty
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'DANH SÁCH ĐỐI TƯỢNG/BỊ CAN TRONG VỤ ÁN (${personList.length})',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: primaryColor.withValues(alpha: 0.8),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              AppButton.tonal(
+                icon: Icons.person_add_alt_1_outlined,
+                label: 'Thêm mới đối tượng/bị can',
+                onPressed: onAddPersonPressed,
+                backgroundColor: const Color(0xFF2E7D32).withValues(alpha: 0.1),
+                foregroundColor: Colors.black87,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Danh sách đối tượng
+          personList.isEmpty
               ? _EmptyPersonView(
                   onAddPerson: onAddPersonPressed,
                   primaryColor: primaryColor,
@@ -381,38 +632,33 @@ class _CaseDetailContent extends StatelessWidget {
                         ? (constraints.maxWidth - 16) / 2
                         : constraints.maxWidth;
 
-                    return SingleChildScrollView(
-                      child: Wrap(
-                        spacing: 16,
-                        runSpacing: 12,
-                        children: personList.map((item) {
-                          if (item == null) return const SizedBox.shrink();
-                          final person = Map<String, dynamic>.from(item as Map);
+                    return Wrap(
+                      spacing: 16,
+                      runSpacing: 12,
+                      children: personList.map((item) {
+                        if (item == null) return const SizedBox.shrink();
+                        final person = Map<String, dynamic>.from(item as Map);
 
-                          return SizedBox(
-                            width: cardWidth,
-                            child: _PersonCard(
-                              caseId: caseId,
-                              person: person,
-                              updatedAt: updatedAt,
-                              primaryColor: primaryColor,
-                              theme: theme,
-                              onEditPerson: onEditPersonPressed,
-                              onDeletePerson: (personId, hoTen) =>
-                                  _confirmDeletePerson(
-                                    context,
-                                    personId,
-                                    hoTen,
-                                  ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
+                        return SizedBox(
+                          width: cardWidth,
+                          child: _PersonCard(
+                            caseId: caseId,
+                            person: person,
+                            updatedAt: updatedAt,
+                            primaryColor: primaryColor,
+                            theme: theme,
+                            onEditPerson: onEditPersonPressed,
+                            onDeletePerson: (personId, hoTen) =>
+                                _confirmDeletePerson(context, personId, hoTen),
+                          ),
+                        );
+                      }).toList(),
                     );
                   },
                 ),
-        ),
-      ],
+          const SizedBox(height: 32),
+        ],
+      ),
     );
   }
 }
@@ -451,10 +697,10 @@ class _EmptyPersonView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          OutlinedButton.icon(
+          AppButton.outlined(
             onPressed: onAddPerson,
-            icon: const Icon(Icons.add),
-            label: const Text('Thêm đối tượng/bị can đầu tiên'),
+            icon: Icons.add,
+            label: 'Thêm đối tượng/bị can đầu tiên',
           ),
         ],
       ),
@@ -484,134 +730,64 @@ class _PersonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final personId = person['id'] ?? '';
-    final hoTen = person['ho_ten'] ?? 'Chưa đặt tên';
-    final imagePath = person['image_path'] ?? '';
-    final bool hasImage =
-        imagePath.toString().isNotEmpty &&
-        caseId.isNotEmpty &&
-        personId.toString().isNotEmpty;
-    final String imageUrl = hasImage
-        ? PersonApiService.getPersonImageUrl(
-            caseId: caseId,
-            personId: personId,
-            updatedAt: updatedAt,
-          )
-        : '';
+    final personId = person['id']?.toString() ?? '';
+    final hoTen = person['ho_ten']?.toString().trim() ?? 'Chưa đặt tên';
 
-    final avatarWidget = _PersonAvatar(
-      imageUrl: imageUrl,
-      hasImage: hasImage,
+    final avatarWidget = PersonAvatar(
+      caseId: caseId,
+      personId: personId,
       hoTen: hoTen,
-      primaryColor: primaryColor,
-      borderColor: theme.colorScheme.outline.withValues(alpha: 0.3),
+      imagePath: person['image_path']?.toString() ?? '',
+      updatedAt: updatedAt,
+      width: 85,
+      height: 125,
+      borderRadius: 4.0,
+      fontSize: 16.0,
     );
 
     final infoColumn = _PersonInfo(person: person, primaryColor: primaryColor);
 
-    final actionButtons = _PersonActions(
+    final actionButtons = PersonActionButtons(
       caseId: caseId,
       person: person,
-      primaryColor: primaryColor,
-      onEditPerson: onEditPerson != null ? () => onEditPerson!(person) : null,
+      isCompact: true,
+      onEdit: onEditPerson != null ? () => onEditPerson!(person) : null,
     );
 
-    return Card(
+    return AppCard(
       elevation: 1,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10.0),
-        side: BorderSide(
-          color: theme.colorScheme.outline.withValues(alpha: 0.15),
-        ),
+      borderRadius: 10.0,
+      padding: const EdgeInsets.all(16.0),
+      onTap: () => PersonDetailDialog.show(
+        context,
+        caseId: caseId,
+        person: person,
+        updatedAt: updatedAt,
+        onEdit: onEditPerson != null ? () => onEditPerson!(person) : null,
+        onDelete: onDeletePerson != null
+            ? () => onDeletePerson!(personId, hoTen)
+            : null,
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10.0),
-        onTap: () => PersonDetailDialog.show(
-          context,
-          caseId: caseId,
-          person: person,
-          updatedAt: updatedAt,
-          onEdit: onEditPerson != null ? () => onEditPerson!(person) : null,
-          onDelete: onDeletePerson != null
-              ? () => onDeletePerson!(personId, hoTen)
-              : null,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  avatarWidget,
-                  const SizedBox(width: 14),
-                  Expanded(child: infoColumn),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Divider(
-                height: 1,
-                color: theme.colorScheme.outline.withValues(alpha: 0.12),
-              ),
-              const SizedBox(height: 6),
-              Align(alignment: Alignment.centerRight, child: actionButtons),
+              avatarWidget,
+              const SizedBox(width: 14),
+              Expanded(child: infoColumn),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Widget hiển thị ảnh đại diện hoặc chữ cái đầu
-class _PersonAvatar extends StatelessWidget {
-  final String imageUrl;
-  final bool hasImage;
-  final String hoTen;
-  final Color primaryColor;
-  final Color borderColor;
-
-  const _PersonAvatar({
-    required this.imageUrl,
-    required this.hasImage,
-    required this.hoTen,
-    required this.primaryColor,
-    required this.borderColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4.0),
-      child: Container(
-        width: 85,
-        height: 125,
-        decoration: BoxDecoration(
-          color: primaryColor.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(4.0),
-          border: Border.all(color: borderColor, width: 1),
-        ),
-        child: hasImage
-            ? Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Icon(
-                  Icons.person,
-                  color: primaryColor.withValues(alpha: 0.6),
-                ),
-              )
-            : Center(
-                child: Text(
-                  hoTen.isNotEmpty ? hoTen.substring(0, 1).toUpperCase() : '?',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: primaryColor,
-                  ),
-                ),
-              ),
+          const SizedBox(height: 10),
+          Divider(
+            height: 1,
+            color: theme.colorScheme.outline.withValues(alpha: 0.12),
+          ),
+          const SizedBox(height: 6),
+          Align(alignment: Alignment.centerRight, child: actionButtons),
+        ],
       ),
     );
   }
@@ -626,31 +802,15 @@ class _PersonInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hoTen = person['ho_ten'] ?? 'Chưa đặt tên';
-    final gioiTinh = person['gioi_tinh'] ?? '';
-    final ngaySinh = person['ngay_sinh']?.toString().trim() ?? '';
-    final thangSinh = person['thang_sinh']?.toString().trim() ?? '';
-    final namSinh = person['nam_sinh']?.toString().trim() ?? '';
-    final cccd = person['cccd'] ?? '';
+    final hoTen = person['ho_ten']?.toString().trim() ?? 'Chưa đặt tên';
+    final gioiTinh = person['gioi_tinh']?.toString().trim() ?? '';
+    final cccd = person['cccd']?.toString().trim() ?? '';
     final thuongTru =
-        person['noi_thuong_tru'] ?? person['noi_o_hien_tai'] ?? '';
+        person['noi_thuong_tru']?.toString().trim() ??
+        person['noi_o_hien_tai']?.toString().trim() ??
+        '';
 
-    String ngaySinhText = '';
-    if (ngaySinh.isNotEmpty && thangSinh.isNotEmpty && namSinh.isNotEmpty) {
-      ngaySinhText =
-          'Ngày sinh: ${ngaySinh.padLeft(2, '0')}/${thangSinh.padLeft(2, '0')}/$namSinh';
-    } else if (thangSinh.isNotEmpty && namSinh.isNotEmpty) {
-      ngaySinhText = 'Ngày sinh: ${thangSinh.padLeft(2, '0')}/$namSinh';
-    } else if (namSinh.isNotEmpty) {
-      ngaySinhText = 'Năm sinh: $namSinh';
-    } else if (ngaySinh.isNotEmpty || thangSinh.isNotEmpty) {
-      final parts = [
-        if (ngaySinh.isNotEmpty) ngaySinh.padLeft(2, '0'),
-        if (thangSinh.isNotEmpty) thangSinh.padLeft(2, '0'),
-        if (namSinh.isNotEmpty) namSinh,
-      ];
-      ngaySinhText = 'Ngày sinh: ${parts.join('/')}';
-    }
+    final String ngaySinhText = formatPersonBirthDate(person, includePrefix: true);
 
     final tienAn = person['tien_an_tien_su'] is List
         ? (person['tien_an_tien_su'] as List)
@@ -672,12 +832,9 @@ class _PersonInfo extends StatelessWidget {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             if (gioiTinh.isNotEmpty)
-              Container(
+              AppContainer.badge(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: primaryColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(4),
-                ),
+                color: primaryColor.withValues(alpha: 0.08),
                 child: Text(
                   gioiTinh,
                   style: TextStyle(fontSize: 11, color: primaryColor),
@@ -742,81 +899,6 @@ class _PersonInfo extends StatelessWidget {
             ),
           ),
         ],
-      ],
-    );
-  }
-}
-
-/// Widget chứa các nút thao tác đối tượng (Văn bản riêng, Sửa)
-class _PersonActions extends StatelessWidget {
-  final String caseId;
-  final Map<String, dynamic> person;
-  final Color primaryColor;
-  final VoidCallback? onEditPerson;
-
-  const _PersonActions({
-    required this.caseId,
-    required this.person,
-    required this.primaryColor,
-    this.onEditPerson,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final standardExportButton = FilledButton.tonalIcon(
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ExportDocsPage(caseId: caseId, person: person),
-          ),
-        );
-      },
-      icon: const Icon(Icons.description_outlined, size: 15),
-      label: const Text('Văn bản chuẩn'),
-      style: FilledButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        visualDensity: VisualDensity.compact,
-      ),
-    );
-
-    final customExportButton = OutlinedButton.icon(
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => CustomDocsPage(
-              caseId: caseId,
-              person: person,
-              isCaseLevel: false,
-            ),
-          ),
-        );
-      },
-      icon: const Icon(Icons.note_alt_outlined, size: 15),
-      label: const Text('Văn bản tùy biến'),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        visualDensity: VisualDensity.compact,
-      ),
-    );
-
-    final editButton = onEditPerson != null
-        ? IconButton(
-            icon: Icon(Icons.edit_outlined, size: 18, color: primaryColor),
-            tooltip: 'Sửa thông tin đối tượng',
-            onPressed: onEditPerson,
-          )
-        : const SizedBox.shrink();
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        standardExportButton,
-        const SizedBox(width: 6),
-        customExportButton,
-        const SizedBox(width: 4),
-        editButton,
       ],
     );
   }

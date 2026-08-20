@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../services/api_service.dart';
-import '../pages/export_docs_page.dart';
-import '../pages/custom_docs_page.dart';
+import 'app_button.dart';
+import 'app_container.dart';
+import 'app_dialog.dart';
+import 'person_widgets.dart';
 
 class PersonDetailDialog extends StatelessWidget {
   final String caseId;
@@ -27,7 +28,7 @@ class PersonDetailDialog extends StatelessWidget {
     VoidCallback? onEdit,
     VoidCallback? onDelete,
   }) {
-    return showDialog(
+    return showAppDialog(
       context: context,
       builder: (ctx) => PersonDetailDialog(
         caseId: caseId,
@@ -47,9 +48,6 @@ class PersonDetailDialog extends StatelessWidget {
     final personId = person['id'] ?? '';
     final hoTen = person['ho_ten']?.toString().trim() ?? 'Chưa đặt tên';
     final gioiTinh = person['gioi_tinh']?.toString().trim() ?? '';
-    final ngaySinh = person['ngay_sinh']?.toString().trim() ?? '';
-    final thangSinh = person['thang_sinh']?.toString().trim() ?? '';
-    final namSinh = person['nam_sinh']?.toString().trim() ?? '';
     final cccd = person['cccd']?.toString().trim() ?? '';
     final ngayCccd = person['ngay_cccd']?.toString().trim() ?? '';
     final thangCccd = person['thang_cccd']?.toString().trim() ?? '';
@@ -72,35 +70,7 @@ class PersonDetailDialog extends StatelessWidget {
     final chucVu = person['chuc_vu']?.toString().trim() ?? '';
     final doanThe = person['doan_the']?.toString().trim() ?? '';
 
-    final imagePath = person['image_path'] ?? '';
-    final bool hasImage =
-        imagePath.toString().isNotEmpty &&
-        caseId.isNotEmpty &&
-        personId.isNotEmpty;
-    final String imageUrl = hasImage
-        ? PersonApiService.getPersonImageUrl(
-            caseId: caseId,
-            personId: personId,
-            updatedAt: updatedAt,
-          )
-        : '';
-
-    String ngaySinhText = '---';
-    if (ngaySinh.isNotEmpty && thangSinh.isNotEmpty && namSinh.isNotEmpty) {
-      ngaySinhText =
-          '${ngaySinh.padLeft(2, '0')}/${thangSinh.padLeft(2, '0')}/$namSinh';
-    } else if (thangSinh.isNotEmpty && namSinh.isNotEmpty) {
-      ngaySinhText = '${thangSinh.padLeft(2, '0')}/$namSinh';
-    } else if (namSinh.isNotEmpty) {
-      ngaySinhText = namSinh;
-    } else if (ngaySinh.isNotEmpty || thangSinh.isNotEmpty) {
-      final parts = [
-        if (ngaySinh.isNotEmpty) ngaySinh.padLeft(2, '0'),
-        if (thangSinh.isNotEmpty) thangSinh.padLeft(2, '0'),
-        if (namSinh.isNotEmpty) namSinh,
-      ];
-      ngaySinhText = parts.join('/');
-    }
+    final String ngaySinhText = formatPersonBirthDate(person);
 
     String ngayCapCccdText = '---';
     if (ngayCccd.isNotEmpty && thangCccd.isNotEmpty && namCccd.isNotEmpty) {
@@ -164,8 +134,9 @@ class PersonDetailDialog extends StatelessWidget {
                         ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 20),
+                    AppIconButton(
+                      icon: Icons.close,
+                      size: 20,
                       tooltip: 'Đóng',
                       onPressed: () => Navigator.pop(context),
                     ),
@@ -181,61 +152,25 @@ class PersonDetailDialog extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Top Overview Card (Avatar + Tên + CCCD + Ngày sinh)
-                      Container(
+                      AppContainer(
                         padding: const EdgeInsets.all(16.0),
-                        decoration: BoxDecoration(
-                          color: primaryColor.withValues(alpha: 0.04),
-                          borderRadius: BorderRadius.circular(12.0),
-                          border: Border.all(
-                            color: primaryColor.withValues(alpha: 0.15),
-                          ),
-                        ),
+                        color: primaryColor.withValues(alpha: 0.04),
+                        borderRadius: 12.0,
+                        borderColor: primaryColor.withValues(alpha: 0.15),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Ảnh đại diện
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(6.0),
-                              child: Container(
-                                width: 90,
-                                height: 130,
-                                decoration: BoxDecoration(
-                                  color: primaryColor.withValues(alpha: 0.08),
-                                  borderRadius: BorderRadius.circular(6.0),
-                                  border: Border.all(
-                                    color: theme.colorScheme.outline.withValues(
-                                      alpha: 0.3,
-                                    ),
-                                  ),
-                                ),
-                                child: hasImage
-                                    ? Image.network(
-                                        imageUrl,
-                                        fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) =>
-                                                Icon(
-                                                  Icons.person,
-                                                  size: 40,
-                                                  color: primaryColor
-                                                      .withValues(alpha: 0.5),
-                                                ),
-                                      )
-                                    : Center(
-                                        child: Text(
-                                          hoTen.isNotEmpty
-                                              ? hoTen
-                                                    .substring(0, 1)
-                                                    .toUpperCase()
-                                              : '?',
-                                          style: TextStyle(
-                                            fontSize: 28,
-                                            fontWeight: FontWeight.bold,
-                                            color: primaryColor,
-                                          ),
-                                        ),
-                                      ),
-                              ),
+                            // Ảnh đại diện (DRY)
+                            PersonAvatar(
+                              caseId: caseId,
+                              personId: personId,
+                              hoTen: hoTen,
+                              imagePath: person['image_path']?.toString() ?? '',
+                              updatedAt: updatedAt,
+                              width: 90,
+                              height: 130,
+                              borderRadius: 6.0,
+                              fontSize: 28.0,
                             ),
                             const SizedBox(width: 18),
 
@@ -362,13 +297,11 @@ class PersonDetailDialog extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
                       if (tienAnList.isEmpty)
-                        Container(
+                        AppContainer.banner(
                           padding: const EdgeInsets.all(12.0),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerHighest
-                                .withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
+                          color: theme.colorScheme.surfaceContainerHighest
+                              .withValues(alpha: 0.2),
+                          borderColor: Colors.transparent,
                           child: const Text(
                             'Chưa có tiền án, tiền sự.',
                             style: TextStyle(
@@ -389,28 +322,22 @@ class PersonDetailDialog extends StatelessWidget {
                             final noiDung =
                                 item['noi_dung']?.toString().trim() ?? '';
 
-                            return Container(
+                            return AppContainer(
                               margin: const EdgeInsets.only(bottom: 8.0),
                               padding: const EdgeInsets.all(12.0),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withValues(alpha: 0.04),
-                                borderRadius: BorderRadius.circular(8.0),
-                                border: Border.all(
-                                  color: Colors.red.withValues(alpha: 0.2),
-                                ),
-                              ),
+                              color: Colors.red.withValues(alpha: 0.04),
+                              borderRadius: 8.0,
+                              borderColor: Colors.red.withValues(alpha: 0.2),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  Container(
+                                  AppContainer.badge(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 8,
                                       vertical: 3,
                                     ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.shade700,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
+                                    color: Colors.red.shade700,
+                                    borderRadius: 4,
                                     child: Text(
                                       '# ${idx + 1}',
                                       style: const TextStyle(
@@ -462,13 +389,11 @@ class PersonDetailDialog extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
                       if (giaDinhList.isEmpty)
-                        Container(
+                        AppContainer.banner(
                           padding: const EdgeInsets.all(12.0),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerHighest
-                                .withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
+                          color: theme.colorScheme.surfaceContainerHighest
+                              .withValues(alpha: 0.2),
+                          borderColor: Colors.transparent,
                           child: const Text(
                             'Chưa có thông tin quan hệ gia đình.',
                             style: TextStyle(
@@ -494,18 +419,14 @@ class PersonDetailDialog extends StatelessWidget {
                             final noiOThanNhan =
                                 item['noi_o']?.toString().trim() ?? '';
 
-                            return Container(
+                            return AppContainer(
                               margin: const EdgeInsets.only(bottom: 8.0),
                               padding: const EdgeInsets.all(12.0),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.25),
-                                borderRadius: BorderRadius.circular(8.0),
-                                border: Border.all(
-                                  color: theme.colorScheme.outline.withValues(
-                                    alpha: 0.15,
-                                  ),
-                                ),
+                              color: theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.25),
+                              borderRadius: 8.0,
+                              borderColor: theme.colorScheme.outline.withValues(
+                                alpha: 0.15,
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -513,19 +434,15 @@ class PersonDetailDialog extends StatelessWidget {
                                   Row(
                                     children: [
                                       if (quanHe.isNotEmpty)
-                                        Container(
+                                        AppContainer.badge(
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 6,
                                             vertical: 2,
                                           ),
-                                          decoration: BoxDecoration(
-                                            color: primaryColor.withValues(
-                                              alpha: 0.08,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
+                                          color: primaryColor.withValues(
+                                            alpha: 0.08,
                                           ),
+                                          borderRadius: 4,
                                           child: Text(
                                             quanHe,
                                             style: TextStyle(
@@ -578,15 +495,15 @@ class PersonDetailDialog extends StatelessWidget {
                 ),
               ),
 
-              // 3. DIALOG ACTIONS
+              // 3. DIALOG FOOTER ACTIONS (DRY & Responsive Wrap để không bị tràn 107px)
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 28,
-                  vertical: 14,
+                  horizontal: 20,
+                  vertical: 12,
                 ),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceContainerHighest.withValues(
-                    alpha: 0.2,
+                    alpha: 0.25,
                   ),
                   borderRadius: const BorderRadius.vertical(
                     bottom: Radius.circular(16.0),
@@ -597,73 +514,39 @@ class PersonDetailDialog extends StatelessWidget {
                     ),
                   ),
                 ),
-                child: Row(
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 12,
+                  runSpacing: 10,
                   children: [
-                    if (onDelete != null) ...[
-                      IconButton.outlined(
+                    if (onDelete != null)
+                      AppIconButton(
                         onPressed: () {
                           Navigator.pop(context);
                           onDelete!();
                         },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.redAccent,
-                          side: BorderSide(color: Colors.redAccent, width: 1),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 0,
-                            vertical: 8,
-                          ),
-                        ),
-                        icon: const Icon(Icons.delete_outline, size: 18),
-                      ),
-                    ],
-                    const Spacer(),
-                    FilledButton.tonalIcon(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                ExportDocsPage(caseId: caseId, person: person),
-                          ),
-                        );
-                      },
-                      style: FilledButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: primaryColor,
-                      ),
-                      icon: const Icon(Icons.description_outlined, size: 16),
-                      label: const Text('Văn bản chuẩn'),
+                        icon: Icons.delete_outline,
+                        color: Colors.redAccent,
+                        isOutlined: true,
+                        isDanger: true,
+                        tooltip: 'Xóa đối tượng',
+                      )
+                    else
+                      const SizedBox.shrink(),
+                    PersonActionButtons(
+                      caseId: caseId,
+                      person: person,
+                      isCompact: false,
+                      showEditLabel: true,
+                      closeDialogOnNavigate: true,
+                      onEdit: onEdit != null
+                          ? () {
+                              Navigator.pop(context);
+                              onEdit!();
+                            }
+                          : null,
                     ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => CustomDocsPage(
-                              caseId: caseId,
-                              person: person,
-                              isCaseLevel: false,
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.note_alt_outlined, size: 16),
-                      label: const Text('Văn bản tùy biến'),
-                    ),
-                    if (onEdit != null) ...[
-                      const SizedBox(width: 8),
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          onEdit!();
-                        },
-                        icon: const Icon(Icons.edit_outlined, size: 16),
-                        label: const Text('Sửa thông tin'),
-                      ),
-                    ],
                   ],
                 ),
               ),

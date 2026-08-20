@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_button.dart';
 import 'text_input.dart';
 import '../../services/api_service.dart';
 
@@ -80,18 +81,18 @@ class _CaseEditDialogState extends State<CaseEditDialog> {
           'Bạn có chắc chắn muốn xóa vụ việc "${tenTomTat.isNotEmpty ? tenTomTat : 'này'}"? Toàn bộ dữ liệu các cá nhân trong vụ việc này sẽ bị xóa.',
         ),
         actions: [
-          TextButton(
+          AppButton.text(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
+            label: 'Hủy',
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+          AppButton.primary(
             onPressed: () {
               Navigator.pop(ctx);
               Navigator.pop(context);
               widget.onDelete?.call();
             },
-            child: const Text('Xóa'),
+            isDanger: true,
+            label: 'Xóa',
           ),
         ],
       ),
@@ -150,38 +151,24 @@ class _CaseEditDialogState extends State<CaseEditDialog> {
           : MainAxisAlignment.end,
       actions: [
         if (isEdit && widget.onDelete != null)
-          TextButton.icon(
+          AppButton.text(
             onPressed: _isLoading ? null : _confirmDelete,
-            icon: const Icon(
-              Icons.delete_outline,
-              size: 18,
-              color: Colors.redAccent,
-            ),
-            label: const Text(
-              'Xóa vụ việc',
-              style: TextStyle(color: Colors.redAccent),
-            ),
+            icon: Icons.delete_outline,
+            label: 'Xóa vụ việc',
+            isDanger: true,
           ),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextButton(
+            AppButton.text(
               onPressed: _isLoading ? null : () => Navigator.pop(context),
-              child: const Text('Hủy'),
+              label: 'Hủy',
             ),
             const SizedBox(width: 8),
-            FilledButton(
+            AppButton.primary(
               onPressed: _isLoading ? null : _submit,
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Text(isEdit ? 'Cập nhật' : 'Tạo'),
+              isLoading: _isLoading,
+              label: isEdit ? 'Cập nhật' : 'Tạo',
             ),
           ],
         ),

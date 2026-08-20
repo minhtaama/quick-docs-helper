@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../common/app_card.dart';
+import '../../common/app_container.dart';
 
 /// Sidebar danh sách mẫu văn bản bên trái trong ExportDocsPage
 class DocTemplateSidebar extends StatelessWidget {
@@ -18,7 +20,7 @@ class DocTemplateSidebar extends StatelessWidget {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
 
-    return Container(
+    return AppContainer(
       color: theme.colorScheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,69 +54,43 @@ class DocTemplateSidebar extends StatelessWidget {
                     tpl['display_name'] ?? fileName.replaceAll('.docx', '');
                 final isSelected = fileName == selectedTemplateFile;
 
-                return Card(
-                  elevation: isSelected ? 2 : 0,
-                  margin: const EdgeInsets.only(bottom: 8.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                    side: BorderSide(
-                      color: isSelected
-                          ? primaryColor
-                          : theme.colorScheme.outline.withValues(
-                              alpha: 0.15,
-                            ),
-                      width: isSelected ? 1.5 : 1.0,
-                    ),
-                  ),
-                  color: isSelected
-                      ? theme.colorScheme.surfaceContainerHighest
-                            .withValues(alpha: 0.5)
-                      : theme.colorScheme.surface,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(8.0),
-                    onTap: () => onSelectTemplate(tpl),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8.0),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? primaryColor
-                                  : primaryColor.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(6.0),
-                            ),
-                            child: Icon(
-                              Icons.description,
-                              size: 20,
-                              color: isSelected ? Colors.white : primaryColor,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              displayName,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.w600,
-                                color: primaryColor,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (isSelected)
-                            Icon(
-                              Icons.check_circle,
-                              color: primaryColor,
-                              size: 18,
-                            ),
-                        ],
+                return AppCard(
+                  isSelected: isSelected,
+                  onTap: () => onSelectTemplate(tpl),
+                  child: Row(
+                    children: [
+                      AppContainer.iconBox(
+                        color: isSelected
+                            ? primaryColor
+                            : primaryColor.withValues(alpha: 0.08),
+                        child: Icon(
+                          Icons.description,
+                          size: 20,
+                          color: isSelected ? Colors.white : primaryColor,
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          displayName,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.w600,
+                            color: primaryColor,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isSelected)
+                        Icon(
+                          Icons.check_circle,
+                          color: primaryColor,
+                          size: 18,
+                        ),
+                    ],
                   ),
                 );
               },

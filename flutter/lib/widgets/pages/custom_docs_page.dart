@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:universal_html/html.dart' as html;
 import 'dart:ui_web' as ui_web;
 import '../../services/api_service.dart';
+import '../common/app_button.dart';
 import '../common/panel.dart';
 import '../common/sidebar_page.dart';
 import 'panels/custom_doc_editor_panel.dart';
+import '../common/app_dialog.dart';
+import 'sidebars/custom_doc_sidebar.dart';
 
 class CustomDocsPage extends StatefulWidget {
   final String caseId;
@@ -13,12 +16,17 @@ class CustomDocsPage extends StatefulWidget {
   final Map<String, dynamic>? caseData;
   final bool isCaseLevel;
 
+  final String? initialTemplateFile;
+  final String? initialDocId;
+
   const CustomDocsPage({
     super.key,
     required this.caseId,
     this.person,
-    this.caseData,
+    this.caseData,  
     this.isCaseLevel = false,
+    this.initialTemplateFile,
+    this.initialDocId,
   });
 
   @override
@@ -37,7 +45,8 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
   Map<String, dynamic>? _activeEditingDoc;
   int _previewReloadCounter = 0;
 
-  String? get _personId => widget.isCaseLevel ? null : widget.person?['id']?.toString();
+  String? get _personId =>
+      widget.isCaseLevel ? null : widget.person?['id']?.toString();
 
   List<Map<String, dynamic>> get _availablePersons {
     final conNguoiList = widget.caseData?['con_nguoi_list'];
@@ -76,30 +85,73 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
         _templates = templates;
         _customDocs = docs;
         _isLoading = false;
-        if (_customDocs.isNotEmpty) {
+        if (widget.initialDocId != null) {
+          final matchedDoc = _customDocs.firstWhere(
+            (d) => d['id']?.toString() == widget.initialDocId,
+            orElse: () => <String, dynamic>{},
+          );
+          if (matchedDoc.isNotEmpty) {
+            _selectedDoc = matchedDoc;
+            _registerCurrentIframe();
+          } else if (_customDocs.isNotEmpty) {
+            _selectedDoc = _customDocs.first;
+            _registerCurrentIframe();
+          }
+        } else if (_customDocs.isNotEmpty) {
           _selectedDoc = _customDocs.first;
           _registerCurrentIframe();
         } else {
           _selectedDoc = null;
         }
+
+        // Tự động mở trình soạn thảo nếu có yêu cầu tạo nhanh từ template
+        if (widget.initialTemplateFile != null && _templates.isNotEmpty) {
+          final matchedTpl = _templates.firstWhere(
+            (t) => t['file_name'] == widget.initialTemplateFile,
+            orElse: () => <String, dynamic>{},
+          );
+          if (matchedTpl.isNotEmpty) {
+            _activeTemplate = matchedTpl;
+            _activeEditingDoc = null;
+            _isEditingMode = true;
+            _selectedDoc = null;
+          }
+        }
       });
     }
   }
 
+  @override
+  void didUpdateWidget(covariant CustomDocsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialTemplateFile != oldWidget.initialTemplateFile &&
+        widget.initialTemplateFile != null &&
+        _templates.isNotEmpty) {
+      final matchedTpl = _templates.firstWhere(
+        (t) => t['file_name'] == widget.initialTemplateFile,
+        orElse: () => <String, dynamic>{},
+      );
+      if (matchedTpl.isNotEmpty) {
+        setState(() {
+          _activeTemplate = matchedTpl;
+          _activeEditingDoc = null;
+          _isEditingMode = true;
+          _selectedDoc = null;
+        });
+      }
+    }
+  }
+
   void _onSelectDoc(Map<String, dynamic> doc) {
-    if (_selectedDoc?['id'] != doc['id']) {
+    if (_selectedDoc?['id'] != doc['id'] || _isEditingMode) {
       setState(() {
         _selectedDoc = doc;
         _isEditingMode = false;
+        _activeTemplate = null;
+        _activeEditingDoc = null;
         _previewReloadCounter++;
         _registerCurrentIframe();
       });
-    } else {
-      if (_isEditingMode) {
-        setState(() {
-          _isEditingMode = false;
-        });
-      }
     }
   }
 
@@ -120,17 +172,14 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
 
       final viewType = _currentViewType;
       // ignore: undefined_prefixed_name
-      ui_web.platformViewRegistry.registerViewFactory(
-        viewType,
-        (int viewId) {
-          final iframe = html.IFrameElement()
-            ..src = previewUrl
-            ..style.border = 'none'
-            ..style.width = '100%'
-            ..style.height = '100%';
-          return iframe;
-        },
-      );
+      ui_web.platformViewRegistry.registerViewFactory(viewType, (int viewId) {
+        final iframe = html.IFrameElement()
+          ..src = previewUrl
+          ..style.border = 'none'
+          ..style.width = '100%'
+          ..style.height = '100%';
+        return iframe;
+      });
     }
   }
 
@@ -155,7 +204,7 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
     if (_templates.length == 1) {
       selectedTemplate = _templates.first;
     } else {
-      selectedTemplate = await showDialog<Map<String, dynamic>>(
+      selectedTemplate = await showAppDialog<Map<String, dynamic>>(
         context: context,
         builder: (ctx) => SimpleDialog(
           title: const Text('Chọn mẫu văn bản tùy biến'),
@@ -178,7 +227,10 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
                           ),
                           Text(
                             tpl['file_name'] ?? '',
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
                           ),
                         ],
                       ),
@@ -198,6 +250,7 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
       _activeTemplate = selectedTemplate;
       _activeEditingDoc = null;
       _isEditingMode = true;
+      _selectedDoc = null;
     });
   }
 
@@ -273,7 +326,10 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
       if (mounted) {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi lưu biên bản: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Lỗi lưu biên bản: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -283,20 +339,20 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
     final docId = doc['id']?.toString();
     if (docId == null) return;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Xác nhận xóa biên bản'),
         content: Text('Bạn có chắc chắn muốn xóa "${doc['title']}" không?'),
         actions: [
-          TextButton(
+          AppButton.text(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Hủy'),
+            label: 'Hủy',
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+          AppButton.primary(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Xóa'),
+            isDanger: true,
+            label: 'Xóa',
           ),
         ],
       ),
@@ -402,196 +458,16 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
         Tab(icon: Icon(Icons.list_alt), text: 'Danh Sách Biên Bản'),
         Tab(icon: Icon(Icons.remove_red_eye), text: 'Xem Trước & Tải Về'),
       ],
-      sideBar: _buildSidebarWidget(context),
-      child: _buildPanelWidget(context),
-    );
-  }
-
-  Widget _buildSidebarWidget(BuildContext context) {
-    final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
-
-    return Container(
-      color: theme.colorScheme.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: SizedBox(
-              width: double.infinity,
-              height: 40,
-              child: FilledButton.icon(
-                onPressed: _createNewDoc,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text(
-                  'Tạo biên bản mới',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'DANH SÁCH BIÊN BẢN (${_customDocs.length})',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: primaryColor.withValues(alpha: 0.8),
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: _customDocs.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.note_alt_outlined,
-                            size: 48,
-                            color: theme.iconTheme.color?.withValues(alpha: 0.3),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Chưa có biên bản tùy biến nào được tạo.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Bấm "Tạo biên bản mới" ở trên để bắt đầu.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: primaryColor,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
-                    itemCount: _customDocs.length,
-                    itemBuilder: (context, index) {
-                      final doc = _customDocs[index];
-                      final isSelected = _selectedDoc?['id'] == doc['id'];
-                      final title = doc['title'] as String? ?? 'Biên bản chưa đặt tên';
-                      final templateFile = doc['template_file'] as String? ?? '';
-                      final createdAt = doc['created_at'] as String? ?? '';
-
-                      return Card(
-                        elevation: isSelected ? 2 : 0,
-                        margin: const EdgeInsets.only(bottom: 8.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                          side: BorderSide(
-                            color: isSelected
-                                ? primaryColor
-                                : theme.colorScheme.outline.withValues(
-                                    alpha: 0.15,
-                                  ),
-                            width: isSelected ? 1.5 : 1.0,
-                          ),
-                        ),
-                        color: isSelected
-                            ? theme.colorScheme.surfaceContainerHighest
-                                .withValues(alpha: 0.5)
-                            : theme.colorScheme.surface,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(8.0),
-                          onTap: () => _onSelectDoc(doc),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8.0),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? primaryColor
-                                        : primaryColor.withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(6.0),
-                                  ),
-                                  child: Icon(
-                                    Icons.article_outlined,
-                                    size: 20,
-                                    color: isSelected ? Colors.white : primaryColor,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        title,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: isSelected
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                          color: isSelected
-                                              ? primaryColor
-                                              : theme.colorScheme.onSurface,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        templateFile,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: isSelected
-                                              ? primaryColor.withValues(alpha: 0.7)
-                                              : theme.colorScheme.onSurfaceVariant,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      if (createdAt.isNotEmpty)
-                                        Text(
-                                          createdAt,
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                                  color: Colors.redAccent,
-                                  tooltip: 'Xóa biên bản',
-                                  onPressed: () => _deleteDoc(doc),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
+      sideBar: CustomDocSidebar(
+        customDocs: _customDocs,
+        selectedDoc: _selectedDoc,
+        isCreatingNew: _isEditingMode && _activeEditingDoc == null,
+        activeTemplateTitle: _activeTemplate?['display_name'],
+        onSelectDoc: _onSelectDoc,
+        onCreateNewDoc: _createNewDoc,
+        onDeleteDoc: _deleteDoc,
       ),
+      child: _buildPanelWidget(context),
     );
   }
 
@@ -599,13 +475,16 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
     // 1. Chế độ Soạn thảo trên Tờ văn bản A4 tương tác
     if (_isEditingMode && _activeTemplate != null) {
       final templateFile = _activeTemplate!['file_name'] as String? ?? '';
-      final templateDisplayName = _activeTemplate!['display_name'] as String? ?? 'Biên bản';
-      final fields = (_activeTemplate!['fields'] as List?)
+      final templateDisplayName =
+          _activeTemplate!['display_name'] as String? ?? 'Biên bản';
+      final fields =
+          (_activeTemplate!['fields'] as List?)
               ?.map((e) => Map<String, dynamic>.from(e as Map))
               .toList() ??
           [];
 
-      final initialTitle = _activeEditingDoc?['title'] as String? ?? templateDisplayName;
+      final initialTitle =
+          _activeEditingDoc?['title'] as String? ?? templateDisplayName;
       final initialValues = Map<String, dynamic>.from(
         _activeEditingDoc?['custom_fields'] as Map? ?? {},
       );
@@ -627,6 +506,14 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
         onCancel: () {
           setState(() {
             _isEditingMode = false;
+            _activeTemplate = null;
+            _activeEditingDoc = null;
+            if (_customDocs.isNotEmpty) {
+              _selectedDoc = _customDocs.first;
+              _registerCurrentIframe();
+            } else {
+              _selectedDoc = null;
+            }
           });
         },
         onSave: _onSaveEditor,
@@ -645,19 +532,19 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
               const Icon(Icons.note_add_outlined, size: 64, color: Colors.grey),
               const SizedBox(height: 16),
               const Text(
-                'Chưa chọn biên bản nào để xem',
+                'Chưa chọn văn bản nào',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               const Text(
-                'Hãy tạo mới hoặc chọn một biên bản từ danh sách bên trái.',
+                'Hãy tạo mới hoặc chọn một văn bản từ danh sách bên trái.',
                 style: TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 20),
-              FilledButton.icon(
+              AppButton.primary(
                 onPressed: _createNewDoc,
-                icon: const Icon(Icons.add),
-                label: const Text('Tạo biên bản ngay'),
+                icon: Icons.add,
+                label: 'Tạo biên bản ngay',
               ),
             ],
           ),
@@ -671,33 +558,26 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
       appBarIcon: Icons.visibility_outlined,
       appBarTitle: 'Xem trước: ${_selectedDoc!['title'] ?? "Biên bản"}',
       appBarActions: [
-        FilledButton.tonalIcon(
-          onPressed: _editCurrentDoc,
-          icon: const Icon(Icons.edit_note_rounded, size: 18),
-          label: const Text('Sửa nội dung'),
-        ),
         const SizedBox(width: 8),
-        IconButton(
-          icon: const Icon(Icons.refresh),
+        AppIconButton(
+          icon: Icons.refresh,
           tooltip: 'Làm mới xem trước',
           onPressed: _onReloadPreview,
         ),
         const SizedBox(width: 8),
+        AppButton.tonal(
+          onPressed: _editCurrentDoc,
+          icon: Icons.edit_note_rounded,
+          label: 'Sửa nội dung',
+        ),
+        const SizedBox(width: 8),
         Padding(
           padding: const EdgeInsets.only(right: 12.0),
-          child: FilledButton.icon(
+          child: AppButton.primary(
             onPressed: _isDownloading ? null : _downloadCurrentDocx,
-            icon: _isDownloading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.download, size: 18),
-            label: const Text('Tải file Word'),
+            isLoading: _isDownloading,
+            icon: Icons.download,
+            label: 'Tải file Word',
           ),
         ),
       ],
@@ -710,17 +590,21 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.desktop_windows, size: 48, color: Colors.grey),
+                  const Icon(
+                    Icons.desktop_windows,
+                    size: 48,
+                    color: Colors.grey,
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     'Xem trước: ${_selectedDoc!['title'] ?? ""}',
                     style: const TextStyle(fontSize: 16),
                   ),
                   const SizedBox(height: 12),
-                  FilledButton.icon(
+                  AppButton.primary(
                     onPressed: _isDownloading ? null : _downloadCurrentDocx,
-                    icon: const Icon(Icons.download, size: 18),
-                    label: const Text('Tải file Word'),
+                    icon: Icons.download,
+                    label: 'Tải file Word',
                   ),
                 ],
               ),

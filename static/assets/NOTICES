@@ -2532,6 +2532,7 @@ SUCH DAMAGE.
 --------------------------------------------------------------------------------
 cross_file
 flutter_plugin_android_lifecycle
+pointer_interceptor_ios
 
 Copyright 2013 The Flutter Authors
 
@@ -5095,6 +5096,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------------
 flutter_lints
 plugin_platform_interface
+pointer_interceptor
+pointer_interceptor_platform_interface
+pointer_interceptor_web
 
 Copyright 2013 The Flutter Authors. All rights reserved.
 

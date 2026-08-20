@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../common/app_button.dart';
 import '../../common/panel.dart';
 
 /// Panel xem trước văn bản Word (.docx) bên phải trong ExportDocsPage
@@ -10,6 +11,8 @@ class DocPreviewPanel extends StatelessWidget {
   final VoidCallback? onReload;
   final bool isDownloading;
 
+  final bool isOverlayActive;
+
   const DocPreviewPanel({
     super.key,
     required this.selectedDisplayName,
@@ -17,6 +20,7 @@ class DocPreviewPanel extends StatelessWidget {
     required this.onDownload,
     this.onReload,
     this.isDownloading = false,
+    this.isOverlayActive = false,
   });
 
   @override
@@ -27,26 +31,18 @@ class DocPreviewPanel extends StatelessWidget {
       appBarTitle: 'Xem trước: ${selectedDisplayName ?? "Tài liệu"}',
       appBarActions: [
         if (onReload != null)
-          IconButton(
-            icon: const Icon(Icons.refresh),
+          AppIconButton(
+            icon: Icons.refresh,
             tooltip: 'Làm mới & Xóa cache xem trước',
             onPressed: onReload,
           ),
         Padding(
           padding: const EdgeInsets.only(right: 12.0),
-          child: FilledButton.icon(
+          child: AppButton.primary(
             onPressed: isDownloading ? null : onDownload,
-            icon: isDownloading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.download, size: 18),
-            label: const Text('Tải file Word'),
+            isLoading: isDownloading,
+            icon: Icons.download,
+            label: 'Tải file Word',
           ),
         ),
       ],
@@ -55,6 +51,7 @@ class DocPreviewPanel extends StatelessWidget {
         currentViewType: currentViewType,
         onDownload: onDownload,
         isDownloading: isDownloading,
+        isOverlayActive: isOverlayActive,
       ),
     );
   }
@@ -65,20 +62,33 @@ class _DocPreviewContent extends StatelessWidget {
   final String currentViewType;
   final VoidCallback onDownload;
   final bool isDownloading;
+  final bool isOverlayActive;
 
   const _DocPreviewContent({
     required this.selectedDisplayName,
     required this.currentViewType,
     required this.onDownload,
     required this.isDownloading,
+    this.isOverlayActive = false,
   });
 
   @override
   Widget build(BuildContext context) {
     if (kIsWeb) {
-      return HtmlElementView(
-        key: ValueKey(currentViewType),
-        viewType: currentViewType,
+      return Stack(
+        children: [
+          IgnorePointer(
+            ignoring: isOverlayActive,
+            child: HtmlElementView(
+              key: ValueKey(currentViewType),
+              viewType: currentViewType,
+            ),
+          ),
+          if (isOverlayActive)
+            const Positioned.fill(
+              child: ColoredBox(color: Colors.transparent),
+            ),
+        ],
       );
     }
 
@@ -93,19 +103,11 @@ class _DocPreviewContent extends StatelessWidget {
             style: const TextStyle(fontSize: 16),
           ),
           const SizedBox(height: 12),
-          FilledButton.icon(
+          AppButton.primary(
             onPressed: isDownloading ? null : onDownload,
-            icon: isDownloading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.download),
-            label: const Text('Tải xuống file Word'),
+            isLoading: isDownloading,
+            icon: Icons.download,
+            label: 'Tải xuống file Word',
           ),
         ],
       ),

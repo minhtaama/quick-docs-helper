@@ -5,8 +5,10 @@ WORKDIR /app
 # Cài đặt LibreOffice và font chữ Unicode tiếng Việt phục vụ xuất/xem trước PDF trên Linux
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libreoffice-writer \
+    libreoffice-calc \
     fonts-liberation \
     fonts-dejavu-core \
+    fonts-noto-core \
     fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
 
