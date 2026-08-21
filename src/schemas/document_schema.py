@@ -31,6 +31,7 @@ class PersonData(BaseModel):
     Schema chứa thông tin con người trong vụ án/vụ việc
     """
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    isdt: bool = True
     ho_ten: str = ""
     gioi_tinh: str = ""
     ngay_sinh: str = ""

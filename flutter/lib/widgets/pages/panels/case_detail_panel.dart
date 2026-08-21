@@ -1,5 +1,4 @@
 import '../../../services/api_service.dart';
-import '../export_docs_page.dart';
 import '../custom_docs_page.dart';
 import '../../common/app_button.dart';
 import '../../common/app_card.dart';
@@ -16,7 +15,7 @@ class CaseDetailPanel extends StatelessWidget {
   final Map<String, dynamic>? caseData;
   final bool isLoading;
   final VoidCallback? onRefresh;
-  final VoidCallback onAddPersonPressed;
+  final Function({bool isdt})? onAddPersonPressed;
   final VoidCallback? onEditCasePressed;
   final Function(Map<String, dynamic> person)? onEditPersonPressed;
   final Future<void> Function(String personId, String hoTen)? onDeletePerson;
@@ -26,7 +25,7 @@ class CaseDetailPanel extends StatelessWidget {
     required this.caseData,
     this.isLoading = false,
     this.onRefresh,
-    required this.onAddPersonPressed,
+    this.onAddPersonPressed,
     this.onEditCasePressed,
     this.onEditPersonPressed,
     this.onDeletePerson,
@@ -67,7 +66,7 @@ class CaseDetailPanel extends StatelessWidget {
 class _CaseDetailContent extends StatefulWidget {
   final Map<String, dynamic>? caseData;
   final VoidCallback? onRefresh;
-  final VoidCallback onAddPersonPressed;
+  final Function({bool isdt})? onAddPersonPressed;
   final VoidCallback? onEditCasePressed;
   final Function(Map<String, dynamic> person)? onEditPersonPressed;
   final Future<void> Function(String personId, String hoTen)? onDeletePerson;
@@ -75,7 +74,7 @@ class _CaseDetailContent extends StatefulWidget {
   const _CaseDetailContent({
     required this.caseData,
     this.onRefresh,
-    required this.onAddPersonPressed,
+    this.onAddPersonPressed,
     this.onEditCasePressed,
     this.onEditPersonPressed,
     this.onDeletePerson,
@@ -86,7 +85,6 @@ class _CaseDetailContent extends StatefulWidget {
 }
 
 class _CaseDetailContentState extends State<_CaseDetailContent> {
-  List<Map<String, dynamic>> _staticTemplates = [];
   List<Map<String, dynamic>> _customTemplates = [];
   bool _isLoadingTemplates = true;
 
@@ -106,14 +104,12 @@ class _CaseDetailContentState extends State<_CaseDetailContent> {
 
   Future<void> _fetchTemplates() async {
     try {
-      final results = await Future.wait([
-        CaseApiService().getTemplates(),
-        CustomDocApiService.instance.getTemplates(level: 'case'),
-      ]);
+      final templates = await CustomDocApiService.instance.getTemplates(
+        level: 'case',
+      );
       if (mounted) {
         setState(() {
-          _staticTemplates = results[0];
-          _customTemplates = results[1];
+          _customTemplates = templates;
           _isLoadingTemplates = false;
         });
       }
@@ -189,6 +185,19 @@ class _CaseDetailContentState extends State<_CaseDetailContent> {
     final personList = caseData['con_nguoi_list'] as List? ?? [];
     final caseId = caseData['id'] ?? '';
     final updatedAt = caseData['updated_at'] ?? '';
+
+    // Lọc danh sách: Đối tượng / Bị can (isdt == true) và Người liên quan (isdt == false)
+    final doiTuongList = personList.where((item) {
+      if (item is! Map) return false;
+      final isdt = item['isdt'];
+      return isdt == null || isdt == true || isdt == 'true' || isdt == '1' || isdt == 1;
+    }).toList();
+
+    final nguoiLienQuanList = personList.where((item) {
+      if (item is! Map) return false;
+      final isdt = item['isdt'];
+      return isdt == false || isdt == 'false' || isdt == '0' || isdt == 0;
+    }).toList();
 
     return SingleChildScrollView(
       child: Column(
@@ -299,294 +308,135 @@ class _CaseDetailContentState extends State<_CaseDetailContent> {
                     builder: (context, cardConstraints) {
                       final customDocs =
                           caseData['custom_documents'] as List? ?? [];
-                      final isCompactCards = cardConstraints.maxWidth < 720;
 
-                      final cards = [
-                        QuickActionCard(
-                          height: 270,
-                          icon: Icons.description_outlined,
-                          title: 'Văn bản tĩnh',
-                          subtitle:
-                              'Các biểu mẫu không cần chỉnh sửa, chỉ cần tải về và dùng',
-                          color: const Color(0xFF1976D2),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ExportDocsPage(
-                                  caseId: caseId,
-                                  caseData: caseData,
-                                  isCaseLevel: true,
-                                ),
+                      return QuickActionCard(
+                        height: 270,
+                        icon: Icons.note_alt_outlined,
+                        title: 'Soạn thảo văn bản',
+                        subtitle:
+                            'Soạn thảo các văn bản theo mẫu, điền thông tin và tải về',
+                        badge: '${customDocs.length} bản ghi',
+                        color: const Color(0xFFE65100),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CustomDocsPage(
+                                caseId: caseId,
+                                caseData: caseData,
+                                isCaseLevel: true,
                               ),
-                            );
-                          },
-                          bottomWidget: _staticTemplates.isEmpty
-                              ? (_isLoadingTemplates
-                                    ? const Center(
-                                        child: Padding(
-                                          padding: EdgeInsets.all(12),
-                                          child: Text(
-                                            'Đang tải danh sách mẫu...',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontStyle: FontStyle.italic,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                    : const Center(
+                            ),
+                          );
+                        },
+                        bottomWidget: _customTemplates.isEmpty
+                            ? (_isLoadingTemplates
+                                  ? const Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(12),
                                         child: Text(
-                                          'Không có mẫu văn bản tĩnh',
+                                          'Đang tải danh sách mẫu...',
                                           style: TextStyle(
                                             fontSize: 12,
+                                            fontStyle: FontStyle.italic,
                                             color: Colors.grey,
                                           ),
                                         ),
-                                      ))
-                              : SingleChildScrollView(
-                                  scrollDirection: Axis.vertical,
-                                  child: Column(
-                                    children: _staticTemplates.map((tpl) {
-                                      final displayName =
-                                          tpl['display_name'] ??
-                                          tpl['file_name'] ??
-                                          'Mẫu';
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 6.0,
+                                      ),
+                                    )
+                                  : const Center(
+                                      child: Text(
+                                        'Không có mẫu văn bản',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey,
                                         ),
-                                        child: InkWell(
-                                          borderRadius: BorderRadius.circular(
-                                            6.0,
-                                          ),
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => ExportDocsPage(
-                                                  caseId: caseId,
-                                                  caseData: caseData,
-                                                  isCaseLevel: true,
-                                                  initialTemplateFile:
-                                                      tpl['file_name'],
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10.0,
-                                              vertical: 7.0,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: const Color(
-                                                0xFF1976D2,
-                                              ).withValues(alpha: 0.06),
-                                              borderRadius:
-                                                  BorderRadius.circular(6.0),
-                                              border: Border.all(
-                                                color: const Color(
-                                                  0xFF1976D2,
-                                                ).withValues(alpha: 0.15),
+                                      ),
+                                    ))
+                            : SingleChildScrollView(
+                                scrollDirection: Axis.vertical,
+                                child: Column(
+                                  children: _customTemplates.map((tpl) {
+                                    final displayName =
+                                        tpl['display_name'] ??
+                                        tpl['file_name'] ??
+                                        'Mẫu';
+                                    return Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 6.0,
+                                      ),
+                                      child: InkWell(
+                                        borderRadius: BorderRadius.circular(
+                                          6.0,
+                                        ),
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => CustomDocsPage(
+                                                caseId: caseId,
+                                                caseData: caseData,
+                                                isCaseLevel: true,
+                                                initialTemplateFile:
+                                                    tpl['file_name'],
                                               ),
                                             ),
-                                            child: Row(
-                                              children: [
-                                                const Icon(
-                                                  Icons.description_outlined,
-                                                  size: 15,
-                                                  color: Color(0xFF1976D2),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    displayName,
-                                                    style: const TextStyle(
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      color: Color(0xFF1976D2),
-                                                    ),
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                                Icon(
-                                                  Icons.arrow_forward_ios,
-                                                  size: 11,
-                                                  color: const Color(
-                                                    0xFF1976D2,
-                                                  ).withValues(alpha: 0.5),
-                                                ),
-                                              ],
-                                            ),
+                                          );
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10.0,
+                                            vertical: 7.0,
                                           ),
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ),
-                                ),
-                        ),
-                        QuickActionCard(
-                          height: 270,
-                          icon: Icons.note_alt_outlined,
-                          title: 'Soạn thảo văn bản',
-                          subtitle:
-                              'Soạn thảo các văn bản theo mẫu, điền thông tin và tải về',
-                          badge: '${customDocs.length} bản ghi',
-                          color: const Color(0xFFE65100),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => CustomDocsPage(
-                                  caseId: caseId,
-                                  caseData: caseData,
-                                  isCaseLevel: true,
-                                ),
-                              ),
-                            );
-                          },
-                          bottomWidget: _customTemplates.isEmpty
-                              ? (_isLoadingTemplates
-                                    ? const Center(
-                                        child: Padding(
-                                          padding: EdgeInsets.all(12),
-                                          child: Text(
-                                            'Đang tải danh sách mẫu...',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontStyle: FontStyle.italic,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                    : const Center(
-                                        child: Text(
-                                          'Không có mẫu văn bản tự tạo',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                      ))
-                              : SingleChildScrollView(
-                                  scrollDirection: Axis.vertical,
-                                  child: Column(
-                                    children: _customTemplates.map((tpl) {
-                                      final displayName =
-                                          tpl['display_name'] ??
-                                          tpl['file_name'] ??
-                                          'Mẫu';
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 6.0,
-                                        ),
-                                        child: InkWell(
-                                          borderRadius: BorderRadius.circular(
-                                            6.0,
-                                          ),
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => CustomDocsPage(
-                                                  caseId: caseId,
-                                                  caseData: caseData,
-                                                  isCaseLevel: true,
-                                                  initialTemplateFile:
-                                                      tpl['file_name'],
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10.0,
-                                              vertical: 7.0,
-                                            ),
-                                            decoration: BoxDecoration(
+                                          decoration: BoxDecoration(
+                                            color: const Color(
+                                              0xFFE65100,
+                                            ).withValues(alpha: 0.06),
+                                            borderRadius:
+                                                BorderRadius.circular(6.0),
+                                            border: Border.all(
                                               color: const Color(
                                                 0xFFE65100,
-                                              ).withValues(alpha: 0.06),
-                                              borderRadius:
-                                                  BorderRadius.circular(6.0),
-                                              border: Border.all(
-                                                color: const Color(
-                                                  0xFFE65100,
-                                                ).withValues(alpha: 0.15),
-                                              ),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                const Icon(
-                                                  Icons.add_circle_outline,
-                                                  size: 15,
-                                                  color: Color(0xFFE65100),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    displayName,
-                                                    style: const TextStyle(
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      color: Color(0xFFE65100),
-                                                    ),
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                                Icon(
-                                                  Icons.edit,
-                                                  size: 12,
-                                                  color: const Color(
-                                                    0xFFE65100,
-                                                  ).withValues(alpha: 0.5),
-                                                ),
-                                              ],
+                                              ).withValues(alpha: 0.15),
                                             ),
                                           ),
+                                          child: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.add_circle_outline,
+                                                size: 15,
+                                                color: Color(0xFFE65100),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  displayName,
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight:
+                                                        FontWeight.w600,
+                                                    color: Color(0xFFE65100),
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              Icon(
+                                                Icons.edit,
+                                                size: 12,
+                                                color: const Color(
+                                                  0xFFE65100,
+                                                ).withValues(alpha: 0.5),
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      );
-                                    }).toList(),
-                                  ),
-                                ),
-                        ),
-                      ];
-
-                      if (isCompactCards) {
-                        return Column(
-                          children: cards
-                              .map(
-                                (c) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 8.0),
-                                  child: c,
-                                ),
-                              )
-                              .toList(),
-                        );
-                      }
-
-                      return Row(
-                        children: cards
-                            .map(
-                              (c) => Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4.0,
-                                  ),
-                                  child: c,
+                                      ),
+                                    );
+                                  }).toList(),
                                 ),
                               ),
-                            )
-                            .toList(),
                       );
                     },
                   ),
@@ -595,15 +445,21 @@ class _CaseDetailContentState extends State<_CaseDetailContent> {
             },
           ),
           const SizedBox(height: 24),
+
+          // ===================================================================
+          // SECTION 1: DANH SÁCH ĐỐI TƯỢNG / BỊ CAN
+          // ===================================================================
           Row(
             children: [
+              Icon(Icons.person_pin, color: primaryColor, size: 20),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'DANH SÁCH ĐỐI TƯỢNG/BỊ CAN TRONG VỤ ÁN (${personList.length})',
+                  'ĐỐI TƯỢNG / BỊ CAN TRONG VỤ ÁN (${doiTuongList.length})',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: primaryColor.withValues(alpha: 0.8),
+                    color: primaryColor.withValues(alpha: 0.9),
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -611,19 +467,20 @@ class _CaseDetailContentState extends State<_CaseDetailContent> {
               const SizedBox(width: 8),
               AppButton.tonal(
                 icon: Icons.person_add_alt_1_outlined,
-                label: 'Thêm mới đối tượng/bị can',
-                onPressed: onAddPersonPressed,
+                label: 'Thêm đối tượng / bị can',
+                onPressed: () => onAddPersonPressed?.call(isdt: true),
                 backgroundColor: const Color(0xFF2E7D32).withValues(alpha: 0.1),
                 foregroundColor: Colors.black87,
               ),
             ],
           ),
           const SizedBox(height: 12),
-          // Danh sách đối tượng
-          personList.isEmpty
+          doiTuongList.isEmpty
               ? _EmptyPersonView(
-                  onAddPerson: onAddPersonPressed,
+                  onAddPerson: () => onAddPersonPressed?.call(isdt: true),
                   primaryColor: primaryColor,
+                  title: 'Chưa có đối tượng/bị can nào trong vụ án này.',
+                  buttonLabel: 'Thêm đối tượng / bị can đầu tiên',
                 )
               : LayoutBuilder(
                   builder: (context, constraints) {
@@ -635,7 +492,7 @@ class _CaseDetailContentState extends State<_CaseDetailContent> {
                     return Wrap(
                       spacing: 16,
                       runSpacing: 12,
-                      children: personList.map((item) {
+                      children: doiTuongList.map((item) {
                         if (item == null) return const SizedBox.shrink();
                         final person = Map<String, dynamic>.from(item as Map);
 
@@ -656,6 +513,78 @@ class _CaseDetailContentState extends State<_CaseDetailContent> {
                     );
                   },
                 ),
+
+          const SizedBox(height: 32),
+
+          // ===================================================================
+          // SECTION 2: DANH SÁCH NGƯỜI LIÊN QUAN
+          // ===================================================================
+          Row(
+            children: [
+              Icon(Icons.group_outlined, color: const Color(0xFF00695C), size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'NGƯỜI LIÊN QUAN (${nguoiLienQuanList.length})',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF00695C),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              AppButton.tonal(
+                icon: Icons.group_add_outlined,
+                label: 'Thêm người liên quan',
+                onPressed: () => onAddPersonPressed?.call(isdt: false),
+                backgroundColor: const Color(0xFF00695C).withValues(alpha: 0.1),
+                foregroundColor: Colors.black87,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          nguoiLienQuanList.isEmpty
+              ? _EmptyPersonView(
+                  onAddPerson: () => onAddPersonPressed?.call(isdt: false),
+                  primaryColor: const Color(0xFF00695C),
+                  title: 'Chưa có người liên quan nào trong vụ án này.',
+                  buttonLabel: 'Thêm người liên quan',
+                  icon: Icons.group_outlined,
+                )
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isTwoColumns = constraints.maxWidth >= 850;
+                    final cardWidth = isTwoColumns
+                        ? (constraints.maxWidth - 16) / 2
+                        : constraints.maxWidth;
+
+                    return Wrap(
+                      spacing: 16,
+                      runSpacing: 12,
+                      children: nguoiLienQuanList.map((item) {
+                        if (item == null) return const SizedBox.shrink();
+                        final person = Map<String, dynamic>.from(item as Map);
+
+                        return SizedBox(
+                          width: cardWidth,
+                          child: _PersonCard(
+                            caseId: caseId,
+                            person: person,
+                            updatedAt: updatedAt,
+                            primaryColor: const Color(0xFF00695C),
+                            theme: theme,
+                            onEditPerson: onEditPersonPressed,
+                            onDeletePerson: (personId, hoTen) =>
+                                _confirmDeletePerson(context, personId, hoTen),
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  },
+                ),
+
           const SizedBox(height: 32),
         ],
       ),
@@ -667,14 +596,20 @@ class _CaseDetailContentState extends State<_CaseDetailContent> {
 // PRIVATE WIDGETS TÁCH RIÊNG ĐỂ CODE GỌN VÀ TÁI SỬ DỤNG
 // ==============================================================================
 
-/// Widget hiển thị trạng thái rỗng khi chưa có đối tượng nào
+/// Widget hiển thị trạng thái rỗng khi chưa có đối tượng / người liên quan nào
 class _EmptyPersonView extends StatelessWidget {
   final VoidCallback? onAddPerson;
   final Color primaryColor;
+  final String title;
+  final String buttonLabel;
+  final IconData icon;
 
   const _EmptyPersonView({
     required this.onAddPerson,
     required this.primaryColor,
+    this.title = 'Chưa có đối tượng/bị can nào trong vụ án này.',
+    this.buttonLabel = 'Thêm đối tượng/bị can đầu tiên',
+    this.icon = Icons.people_outline,
   });
 
   @override
@@ -684,23 +619,23 @@ class _EmptyPersonView extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.people_outline,
-            size: 48,
+            icon,
+            size: 44,
             color: primaryColor.withValues(alpha: 0.3),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
-            'Chưa có đối tượng/bị can nào trong vụ án này.',
+            title,
             style: TextStyle(
-              fontSize: 14,
-              color: primaryColor.withValues(alpha: 0.6),
+              fontSize: 13,
+              color: primaryColor.withValues(alpha: 0.7),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           AppButton.outlined(
             onPressed: onAddPerson,
             icon: Icons.add,
-            label: 'Thêm đối tượng/bị can đầu tiên',
+            label: buttonLabel,
           ),
         ],
       ),
@@ -812,6 +747,9 @@ class _PersonInfo extends StatelessWidget {
 
     final String ngaySinhText = formatPersonBirthDate(person, includePrefix: true);
 
+    final rawIsdt = person['isdt'];
+    final isdt = rawIsdt == null ? true : (rawIsdt == true || rawIsdt == 'true' || rawIsdt == '1' || rawIsdt == 1);
+
     final tienAn = person['tien_an_tien_su'] is List
         ? (person['tien_an_tien_su'] as List)
         : [];
@@ -840,6 +778,20 @@ class _PersonInfo extends StatelessWidget {
                   style: TextStyle(fontSize: 11, color: primaryColor),
                 ),
               ),
+            AppContainer.badge(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              color: isdt
+                  ? primaryColor.withValues(alpha: 0.1)
+                  : const Color(0xFF00695C).withValues(alpha: 0.1),
+              child: Text(
+                isdt ? 'Đối tượng' : 'Người liên quan',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: isdt ? primaryColor : const Color(0xFF00695C),
+                ),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 4),
@@ -877,7 +829,7 @@ class _PersonInfo extends StatelessWidget {
             softWrap: true,
           ),
         ],
-        if (tienAn.isNotEmpty) ...[
+        if (isdt && tienAn.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
             'Tiền án, tiền sự: ${tienAn.length} tiền án/tiền sự',
@@ -888,7 +840,7 @@ class _PersonInfo extends StatelessWidget {
             ),
           ),
         ],
-        if (quanHe.isNotEmpty) ...[
+        if (isdt && quanHe.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
             'Quan hệ gia đình: ${quanHe.length} người thân',

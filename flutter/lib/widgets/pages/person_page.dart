@@ -14,8 +14,14 @@ import '../../widgets/common/app_container.dart';
 class PersonPage extends StatefulWidget {
   final Map<String, dynamic>? initialPerson;
   final String? caseId;
+  final bool? initialIsdt;
 
-  const PersonPage({super.key, this.initialPerson, this.caseId});
+  const PersonPage({
+    super.key,
+    this.initialPerson,
+    this.caseId,
+    this.initialIsdt,
+  });
 
   @override
   State<PersonPage> createState() => _PersonPageState();
@@ -23,6 +29,9 @@ class PersonPage extends StatefulWidget {
 
 class _PersonPageState extends State<PersonPage> {
   final _formKey = GlobalKey<FormState>();
+
+  // Phân loại: Đối tượng / Bị can (true) hay Người liên quan (false)
+  bool _isdt = true;
 
   // Text Controllers
   late TextEditingController _hoTenController;
@@ -63,6 +72,13 @@ class _PersonPageState extends State<PersonPage> {
   void initState() {
     super.initState();
     final p = widget.initialPerson;
+
+    if (p != null) {
+      final rawIsdt = p['isdt'];
+      _isdt = rawIsdt == null ? true : (rawIsdt == true || rawIsdt == 'true' || rawIsdt == '1' || rawIsdt == 1);
+    } else if (widget.initialIsdt != null) {
+      _isdt = widget.initialIsdt!;
+    }
 
     _hoTenController = TextEditingController(text: p?['ho_ten'] ?? '');
     _gioiTinhController = TextEditingController(text: p?['gioi_tinh'] ?? 'Nam');
@@ -218,6 +234,7 @@ class _PersonPageState extends State<PersonPage> {
 
       final personData = {
         'person_id': personId,
+        'isdt': _isdt.toString(),
         'ho_ten': _hoTenController.text.trim(),
         'gioi_tinh': _gioiTinhController.text.trim(),
         'ngay_sinh': _ngaySinhController.text.trim(),
@@ -241,12 +258,12 @@ class _PersonPageState extends State<PersonPage> {
         'noi_o_hien_tai': _noiOHienTaiController.text.trim(),
         'chuc_vu': _chucVuController.text.trim(),
         'doan_the': _doanTheController.text.trim(),
-        'tien_an_tien_su': jsonEncode(
-          _tienAnControllers.map((c) => c.toMap()).toList(),
-        ),
-        'quan_he_gia_dinh': jsonEncode(
-          _giaDinhControllers.map((c) => c.toMap()).toList(),
-        ),
+        'tien_an_tien_su': _isdt
+            ? jsonEncode(_tienAnControllers.map((c) => c.toMap()).toList())
+            : '[]',
+        'quan_he_gia_dinh': _isdt
+            ? jsonEncode(_giaDinhControllers.map((c) => c.toMap()).toList())
+            : '[]',
         'image_path': widget.initialPerson?['image_path'] ?? '',
       };
 
@@ -267,8 +284,10 @@ class _PersonPageState extends State<PersonPage> {
           SnackBar(
             content: Text(
               isEdit
-                  ? 'Cập nhật đối tượng thành công!'
-                  : 'Đã lưu đối tượng vào vụ án!',
+                  ? 'Cập nhật thông tin thành công!'
+                  : (_isdt
+                      ? 'Đã lưu đối tượng vào vụ án!'
+                      : 'Đã lưu người liên quan vào vụ án!'),
             ),
             backgroundColor: Colors.green,
           ),
@@ -289,6 +308,188 @@ class _PersonPageState extends State<PersonPage> {
     }
   }
 
+  Widget _buildRoleSelector(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(12.0),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.15),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.category_outlined, size: 18, color: primaryColor),
+              const SizedBox(width: 8),
+              Text(
+                'PHÂN LOẠI VAI TRÒ TRONG VỤ ÁN (*)',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: primaryColor,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              // Nút 1: Đối tượng / Bị can
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => setState(() => _isdt = true),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12.0,
+                      horizontal: 14.0,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _isdt
+                          ? primaryColor.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10.0),
+                      border: Border.all(
+                        color: _isdt
+                            ? primaryColor
+                            : theme.colorScheme.outline.withValues(alpha: 0.2),
+                        width: _isdt ? 2.0 : 1.0,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _isdt
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_off,
+                          size: 18,
+                          color: _isdt
+                              ? primaryColor
+                              : theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.person_pin,
+                          size: 20,
+                          color: _isdt
+                              ? primaryColor
+                              : theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Đối tượng / Bị can',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: _isdt
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
+                              color: _isdt
+                                  ? primaryColor
+                                  : theme.colorScheme.onSurfaceVariant,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Nút 2: Người liên quan
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => setState(() => _isdt = false),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12.0,
+                      horizontal: 14.0,
+                    ),
+                    decoration: BoxDecoration(
+                      color: !_isdt
+                          ? const Color(0xFF00695C).withValues(alpha: 0.12)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10.0),
+                      border: Border.all(
+                        color: !_isdt
+                            ? const Color(0xFF00695C)
+                            : theme.colorScheme.outline.withValues(alpha: 0.2),
+                        width: !_isdt ? 2.0 : 1.0,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          !_isdt
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_off,
+                          size: 18,
+                          color: !_isdt
+                              ? const Color(0xFF00695C)
+                              : theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.group_outlined,
+                          size: 20,
+                          color: !_isdt
+                              ? const Color(0xFF00695C)
+                              : theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Người liên quan',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: !_isdt
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
+                              color: !_isdt
+                                  ? const Color(0xFF00695C)
+                                  : theme.colorScheme.onSurfaceVariant,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (!_isdt) ...[
+            const SizedBox(height: 8),
+            Text(
+              '• Lưu ý: Người liên quan không cần nhập thông tin tiền án tiền sự và quan hệ gia đình.',
+              style: TextStyle(
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                color: const Color(0xFF00695C).withValues(alpha: 0.9),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -298,7 +499,9 @@ class _PersonPageState extends State<PersonPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          isEdit ? 'THÔNG TIN ĐỐI TƯỢNG/BỊ CAN' : 'THÊM ĐỐI TƯỢNG/BỊ CAN',
+          isEdit
+              ? (_isdt ? 'THÔNG TIN ĐỐI TƯỢNG/BỊ CAN' : 'THÔNG TIN NGƯỜI LIÊN QUAN')
+              : (_isdt ? 'THÊM ĐỐI TƯỢNG/BỊ CAN' : 'THÊM NGƯỜI LIÊN QUAN'),
         ),
         centerTitle: true,
       ),
@@ -324,6 +527,9 @@ class _PersonPageState extends State<PersonPage> {
                         color: primaryColor.withValues(alpha: 0.6),
                       ),
                     ),
+
+                    // 0. BỘ CHỌN PHÂN LOẠI (ĐỐI TƯỢNG vs NGƯỜI LIÊN QUAN)
+                    _buildRoleSelector(context),
 
                     // 1. THÔNG TIN CƠ BẢN
                     _Section1BasicInfo(
@@ -373,37 +579,39 @@ class _PersonPageState extends State<PersonPage> {
                       noiOHienTaiController: _noiOHienTaiController,
                     ),
 
-                    // 5. TIỀN ÁN, TIỀN SỰ (DANH SÁCH ĐỘNG)
-                    _Section5CriminalRecord(
-                      controllers: _tienAnControllers,
-                      onAdd: () {
-                        setState(() {
-                          _tienAnControllers.add(_RecordController());
-                        });
-                      },
-                      onRemove: (index) {
-                        setState(() {
-                          final removed = _tienAnControllers.removeAt(index);
-                          removed.dispose();
-                        });
-                      },
-                    ),
+                    // 5. TIỀN ÁN, TIỀN SỰ (CHỈ HIỂN THỊ KHI LÀ ĐỐI TƯỢNG / BỊ CAN)
+                    if (_isdt) ...[
+                      _Section5CriminalRecord(
+                        controllers: _tienAnControllers,
+                        onAdd: () {
+                          setState(() {
+                            _tienAnControllers.add(_RecordController());
+                          });
+                        },
+                        onRemove: (index) {
+                          setState(() {
+                            final removed = _tienAnControllers.removeAt(index);
+                            removed.dispose();
+                          });
+                        },
+                      ),
 
-                    // 6. QUAN HỆ GIA ĐÌNH (DANH SÁCH ĐỘNG)
-                    _Section6FamilyRelations(
-                      controllers: _giaDinhControllers,
-                      onAdd: () {
-                        setState(() {
-                          _giaDinhControllers.add(_FamilyMemberController());
-                        });
-                      },
-                      onRemove: (index) {
-                        setState(() {
-                          final removed = _giaDinhControllers.removeAt(index);
-                          removed.dispose();
-                        });
-                      },
-                    ),
+                      // 6. QUAN HỆ GIA ĐÌNH (CHỈ HIỂN THỊ KHI LÀ ĐỐI TƯỢNG / BỊ CAN)
+                      _Section6FamilyRelations(
+                        controllers: _giaDinhControllers,
+                        onAdd: () {
+                          setState(() {
+                            _giaDinhControllers.add(_FamilyMemberController());
+                          });
+                        },
+                        onRemove: (index) {
+                          setState(() {
+                            final removed = _giaDinhControllers.removeAt(index);
+                            removed.dispose();
+                          });
+                        },
+                      ),
+                    ],
 
                     const SizedBox(height: 24),
 
@@ -415,7 +623,9 @@ class _PersonPageState extends State<PersonPage> {
                         icon: isEdit ? Icons.check : Icons.save,
                         label: isEdit
                             ? 'CẬP NHẬT HỒ SƠ'
-                            : 'LƯU HỒ SƠ VÀO VỤ ÁN',
+                            : (_isdt
+                                ? 'LƯU ĐỐI TƯỢNG VÀO VỤ ÁN'
+                                : 'LƯU NGƯỜI LIÊN QUAN VÀO VỤ ÁN'),
                         isFullWidth: true,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

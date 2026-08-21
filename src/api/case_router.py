@@ -4,13 +4,13 @@ from typing import Optional
 from fastapi import APIRouter, Form, File, UploadFile, HTTPException, Response
 from src.schemas.document_schema import CaseData, CaseCreate, PersonData, FamilyData, RecordData, CustomDocumentData
 from src.services.storage_service import CaseStorageService, PersonStorageService, CustomDocStorageService
-from src.services.docx_service import PersonDocxService, CaseDocxService, CustomDocxService
+from src.services.docx_service import CustomDocxService
 
 router = APIRouter(prefix="/api/v1/cases", tags=["Cases & Persons"])
 case_storage = CaseStorageService()
 person_storage = PersonStorageService()
-person_docx_service = PersonDocxService()
-case_docx_service = CaseDocxService()
+custom_docx_service = CustomDocxService()
+custom_doc_storage = CustomDocStorageService()
 
 @router.get("", summary="Lấy danh sách tất cả vụ việc")
 @router.get("/", include_in_schema=False)
@@ -83,6 +83,7 @@ async def add_or_update_person(
     doan_the: str = Form(""),
     tien_an_tien_su: str = Form("[]"),
     quan_he_gia_dinh: str = Form("[]"),
+    isdt: str = Form("true"),
     image: Optional[UploadFile] = File(None)
 ):
     """Thêm một con người mới hoặc cập nhật thông tin con người kèm ảnh đại diện vào vụ việc"""
@@ -90,8 +91,10 @@ async def add_or_update_person(
     if not case:
         raise HTTPException(status_code=404, detail="Không tìm thấy vụ việc")
 
+    isdt_bool = isdt.lower() in ("true", "1", "yes") if isinstance(isdt, str) else bool(isdt)
+
     parsed_gia_dinh = []
-    if quan_he_gia_dinh:
+    if isdt_bool and quan_he_gia_dinh:
         try:
             raw_list = json.loads(quan_he_gia_dinh)
             if isinstance(raw_list, list):
@@ -108,7 +111,7 @@ async def add_or_update_person(
             print(f"Error parsing quan_he_gia_dinh: {e}")
 
     parsed_tien_an = []
-    if tien_an_tien_su:
+    if isdt_bool and tien_an_tien_su:
         try:
             raw_list = json.loads(tien_an_tien_su)
             if isinstance(raw_list, list):
@@ -120,6 +123,7 @@ async def add_or_update_person(
 
     # Khởi tạo đối tượng PersonData
     person_data = PersonData(
+        isdt=isdt_bool,
         ho_ten=ho_ten,
         gioi_tinh=gioi_tinh,
         ngay_sinh=ngay_sinh,
@@ -167,8 +171,8 @@ async def add_or_update_person(
 
     # Dọn dẹp cache PDF cũ để khi xuất lại sẽ tự động làm mới
     if saved_person and saved_person.id:
-        person_docx_service.clear_cache(saved_person.id)
-    case_docx_service.clear_cache(case_id)
+        custom_docx_service.clear_cache(saved_person.id)
+    custom_docx_service.clear_cache(case_id)
 
     return saved_person
 
@@ -178,8 +182,8 @@ async def delete_person(case_id: str, person_id: str):
     success = person_storage.delete_person(case_id, person_id)
     if not success:
         raise HTTPException(status_code=404, detail="Không tìm thấy cá nhân hoặc vụ việc")
-    person_docx_service.clear_cache(person_id)
-    case_docx_service.clear_cache(case_id)
+    custom_docx_service.clear_cache(person_id)
+    custom_docx_service.clear_cache(case_id)
     return {"message": "Đã xóa cá nhân khỏi vụ việc", "person_id": person_id}
 
 @router.get("/{case_id}/persons/{person_id}/image", summary="Lấy ảnh đại diện của cá nhân")
@@ -192,8 +196,6 @@ async def get_person_image(case_id: str, person_id: str):
 # ==============================================================================
 # QUẢN LÝ VĂN BẢN TÙY BIẾN (CUSTOM DOCUMENTS)
 # ==============================================================================
-custom_doc_storage = CustomDocStorageService()
-custom_docx_service = CustomDocxService()
 
 @router.get("/{case_id}/custom-docs", summary="Lấy danh sách biên bản tùy biến của vụ án hoặc đối tượng")
 async def list_custom_docs(

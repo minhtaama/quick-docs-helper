@@ -71,5 +71,20 @@
         "placeholder": "Ghi nhận ý kiến giải trình, cam đoan..."
       }
     ]
+  },
+  {
+    "file_name": "bao_cao_tong_hop_vu_an.docx",
+    "display_name": "Báo cáo tổng hợp vụ án",
+    "fields": []
+  },
+  {
+    "file_name": "cv_mang_may_tinh_trai_2.docx",
+    "display_name": "Công văn mang máy tính (Trại 2)",
+    "fields": []
+  },
+  {
+    "file_name": "cv_mang_may_tinh_trai_ha_dong.docx",
+    "display_name": "Công văn mang máy tính (Phân trại Hà Đông)",
+    "fields": []
   }
 ]

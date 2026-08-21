@@ -173,12 +173,17 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  /// Mở form thêm cá nhân vào vụ án
-  void _openAddPerson() {
+  /// Mở form thêm cá nhân (đối tượng / người liên quan) vào vụ án
+  void _openAddPerson({bool isdt = true}) {
     if (_selectedCaseId == null) return;
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => PersonPage(caseId: _selectedCaseId)),
+      MaterialPageRoute(
+        builder: (_) => PersonPage(
+          caseId: _selectedCaseId,
+          initialIsdt: isdt,
+        ),
+      ),
     ).then((saved) {
       if (saved == true && _selectedCaseId != null) {
         _loadCaseDetails(_selectedCaseId!);

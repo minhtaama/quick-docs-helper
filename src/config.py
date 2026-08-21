@@ -2,7 +2,7 @@ import os
 
 # Đường dẫn tuyệt đối tới thư mục gốc dự án (quick-docs-helper)
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+TEMPLATES_DIR = os.path.join(BASE_DIR, "custom_templates")
 DATA_DIR = os.path.join(BASE_DIR, "data")
 CASES_DIR = os.path.join(DATA_DIR, "cases")
 CACHE_DIR = os.path.join(DATA_DIR, "cache")

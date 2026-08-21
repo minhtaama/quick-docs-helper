@@ -26,26 +26,6 @@ abstract class BaseApiService {
   /// Xóa một thực thể theo ID
   Future<bool> delete(String id, {String? caseId});
 
-  /// Lấy danh sách mẫu văn bản từ Backend
-  Future<List<Map<String, dynamic>>> getTemplates();
-
-  /// Lấy đường dẫn URL trang xem trước tài liệu qua Canvas/PDF.js
-  String getPreviewUrl({
-    required String caseId,
-    String? targetId,
-    required String templateFilename,
-    bool force = false,
-    int? timestamp,
-  });
-
-  /// Tải file Word theo mẫu chỉ định
-  Future<bool> downloadDocx({
-    required String caseId,
-    String? targetId,
-    required String templateFilename,
-    String? title,
-  });
-
   /// Hàm tiện ích kích hoạt tải file nhị phân trên trình duyệt Web
   @protected
   void triggerBrowserDownload(Uint8List bytes, String filename) {
@@ -204,76 +184,6 @@ class CaseApiService extends BaseApiService {
       return false;
     }
   }
-
-  @override
-  Future<List<Map<String, dynamic>>> getTemplates() async {
-    try {
-      final response = await http.get(
-        Uri.parse('${BaseApiService.baseUrl}/api/v1/generate/templates/case'),
-      );
-      if (response.statusCode == 200) {
-        final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
-        if (decoded is List) {
-          return decoded
-              .where((e) => e != null)
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList();
-        }
-      }
-      return [];
-    } catch (e) {
-      debugPrint('CaseApiService.getTemplates error: $e');
-      return [];
-    }
-  }
-
-  @override
-  String getPreviewUrl({
-    required String caseId,
-    String? targetId,
-    required String templateFilename,
-    bool force = false,
-    int? timestamp,
-  }) {
-    final encoded = Uri.encodeComponent(templateFilename);
-    final t = timestamp ?? DateTime.now().millisecondsSinceEpoch;
-    final forceParam = force ? '&force=true&t=$t' : '&t=$t';
-    return '${BaseApiService.baseUrl}/api/v1/generate/case/$caseId/preview-viewer?template_file=$encoded$forceParam';
-  }
-
-  @override
-  Future<bool> downloadDocx({
-    required String caseId,
-    String? targetId,
-    required String templateFilename,
-    String? title,
-  }) async {
-    try {
-      final encoded = Uri.encodeComponent(templateFilename);
-      final response = await http.post(
-        Uri.parse(
-          '${BaseApiService.baseUrl}/api/v1/generate/case/$caseId/download?template_file=$encoded',
-        ),
-      );
-
-      if (response.statusCode == 200) {
-        final Uint8List bytes = response.bodyBytes;
-        final defaultName =
-            '${templateFilename.replaceAll('.docx', '')}_${title?.trim().isNotEmpty == true ? title!.trim() : "VuViec"}.docx';
-        final filename = extractFilenameFromHeader(
-          response.headers,
-          defaultName,
-        );
-        triggerBrowserDownload(bytes, filename);
-        return true;
-      } else {
-        throw Exception('Lỗi tải văn bản vụ việc (${response.statusCode})');
-      }
-    } catch (e) {
-      debugPrint('CaseApiService.downloadDocx error: $e');
-      rethrow;
-    }
-  }
 }
 
 /// Service quản lý giao tiếp API cấp Đối Tượng / Cá Nhân (Person Level) theo mô hình Singleton
@@ -372,78 +282,6 @@ class PersonApiService extends BaseApiService {
     } catch (e) {
       debugPrint('PersonApiService.delete error: $e');
       return false;
-    }
-  }
-
-  @override
-  Future<List<Map<String, dynamic>>> getTemplates() async {
-    try {
-      final response = await http.get(
-        Uri.parse('${BaseApiService.baseUrl}/api/v1/generate/templates/person'),
-      );
-      if (response.statusCode == 200) {
-        final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
-        if (decoded is List) {
-          return decoded
-              .where((e) => e != null)
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList();
-        }
-      }
-      return [];
-    } catch (e) {
-      debugPrint('PersonApiService.getTemplates error: $e');
-      return [];
-    }
-  }
-
-  @override
-  String getPreviewUrl({
-    required String caseId,
-    String? targetId,
-    required String templateFilename,
-    bool force = false,
-    int? timestamp,
-  }) {
-    final personId = targetId ?? '';
-    final encoded = Uri.encodeComponent(templateFilename);
-    final t = timestamp ?? DateTime.now().millisecondsSinceEpoch;
-    final forceParam = force ? '&force=true&t=$t' : '&t=$t';
-    return '${BaseApiService.baseUrl}/api/v1/generate/person/$caseId/$personId/preview-viewer?template_file=$encoded$forceParam';
-  }
-
-  @override
-  Future<bool> downloadDocx({
-    required String caseId,
-    String? targetId,
-    required String templateFilename,
-    String? title,
-  }) async {
-    try {
-      final personId = targetId ?? '';
-      final encoded = Uri.encodeComponent(templateFilename);
-      final response = await http.post(
-        Uri.parse(
-          '${BaseApiService.baseUrl}/api/v1/generate/person/$caseId/$personId/download?template_file=$encoded',
-        ),
-      );
-
-      if (response.statusCode == 200) {
-        final Uint8List bytes = response.bodyBytes;
-        final defaultName =
-            '${templateFilename.replaceAll('.docx', '')}_${title?.trim().isNotEmpty == true ? title!.trim() : "CaNhan"}.docx';
-        final filename = extractFilenameFromHeader(
-          response.headers,
-          defaultName,
-        );
-        triggerBrowserDownload(bytes, filename);
-        return true;
-      } else {
-        throw Exception('Lỗi tải văn bản (${response.statusCode})');
-      }
-    } catch (e) {
-      debugPrint('PersonApiService.downloadDocx error: $e');
-      rethrow;
     }
   }
 }
@@ -557,7 +395,7 @@ class CustomDocApiService extends BaseApiService {
     }
   }
 
-  @override
+  /// Lấy danh sách mẫu văn bản từ thư mục custom_templates/{level}
   Future<List<Map<String, dynamic>>> getTemplates({
     String level = 'case',
   }) async {
@@ -608,8 +446,7 @@ class CustomDocApiService extends BaseApiService {
     }
   }
 
-
-  @override
+  /// Lấy URL xem trước tài liệu qua Canvas/PDF.js
   String getPreviewUrl({
     required String caseId,
     String? targetId,
@@ -625,7 +462,7 @@ class CustomDocApiService extends BaseApiService {
     return '${BaseApiService.baseUrl}/api/v1/generate/custom/$caseId/$docId/preview-viewer?$personParam$forceParam';
   }
 
-  @override
+  /// Tải file Word của văn bản
   Future<bool> downloadDocx({
     required String caseId,
     String? targetId,
@@ -644,7 +481,7 @@ class CustomDocApiService extends BaseApiService {
 
       if (response.statusCode == 200) {
         final Uint8List bytes = response.bodyBytes;
-        final defaultName = '${title ?? "VanBanCustom"}.docx';
+        final defaultName = '${title ?? "VanBan"}.docx';
         final filename = extractFilenameFromHeader(
           response.headers,
           defaultName,
@@ -652,7 +489,7 @@ class CustomDocApiService extends BaseApiService {
         triggerBrowserDownload(bytes, filename);
         return true;
       } else {
-        throw Exception('Lỗi tải văn bản tùy biến (${response.statusCode})');
+        throw Exception('Lỗi tải văn bản (${response.statusCode})');
       }
     } catch (e) {
       debugPrint('CustomDocApiService.downloadDocx error: $e');

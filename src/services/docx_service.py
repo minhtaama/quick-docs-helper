@@ -15,11 +15,9 @@ import docx.text.paragraph
 from src.schemas.document_schema import PersonData, CaseData, CustomDocumentData
 from src.config import BASE_DIR, TEMPLATES_DIR, CACHE_DIR
 
-
 class BaseDocxService(ABC):
     """
     Layer base abstract service quản lý thư mục mẫu, thư mục cache và logic chuyển đổi PDF.
-    Mọi service cần kế thừa và hiện thực các abstract method tương ứng.
     """
 
     def __init__(self, template_dir: Optional[str] = None):
@@ -34,23 +32,13 @@ class BaseDocxService(ABC):
         os.makedirs(self.cache_dir, exist_ok=True)
 
     @abstractmethod
-    def _resolve_template_path(self, template_filename: str) -> str:
+    def _resolve_template_path(self, template_filename: str, level: str = "case") -> str:
         """Trả về đường dẫn tuyệt đối đến tệp mẫu Word docx"""
         pass
 
     @abstractmethod
-    def get_templates(self) -> list[dict[str, Any]]:
+    def get_templates(self, level: str = "case") -> list[dict[str, Any]]:
         """Lấy danh sách các mẫu văn bản từ file metadata.json tương ứng"""
-        pass
-
-    @abstractmethod
-    def _render_doc(self, template_filename: str, *args, **kwargs) -> DocxTemplate:
-        """Nạp dữ liệu vào template và trả về DocxTemplate đã render"""
-        pass
-
-    @abstractmethod
-    def _get_cache_hash(self, template_path: str, *args, **kwargs) -> str:
-        """Tạo mã băm MD5 duy nhất cho dữ liệu và mẫu để quản lý bộ đệm PDF"""
         pass
 
     @abstractmethod
@@ -106,231 +94,14 @@ class BaseDocxService(ABC):
                 raise RuntimeError(f"Lỗi chuyển đổi Word sang PDF trên Linux: {e}")
 
 
-class PersonDocxService(BaseDocxService):
-    """
-    Dịch vụ xử lý xuất văn bản và tạo bản xem trước cấp Cá Nhân / Đối Tượng (Person Level).
-    """
-
-    def _resolve_template_path(self, template_filename: str) -> str:
-        return os.path.join(self.template_dir, "person", template_filename)
-
-    def _get_cache_hash(self, template_path: str, person_data: PersonData) -> str:
-        person_data_str = json.dumps(person_data.model_dump(), sort_keys=True)
-        tpl_mtime = str(os.path.getmtime(template_path)) if os.path.exists(template_path) else ""
-        raw_key = f"{person_data_str}_{tpl_mtime}"
-        return hashlib.md5(raw_key.encode('utf-8')).hexdigest()[:12]
-
-    def get_templates(self) -> list[dict[str, Any]]:
-        metadata_path = os.path.join(self.template_dir, "person", "metadata.json")
-        if not os.path.exists(metadata_path):
-            return []
-        try:
-            with open(metadata_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, list):
-                    return data
-                raise ValueError(f"metadata.json không đúng định dạng list: {type(data)}")
-        except Exception as e:
-            raise e
-
-    def _render_doc(self, template_filename: str, person_data: PersonData) -> DocxTemplate:
-        template_path = self._resolve_template_path(template_filename)
-        if not os.path.exists(template_path):
-            raise FileNotFoundError(f"Không tìm thấy file docx mẫu cá nhân: {template_path}")
-
-        template_doc = DocxTemplate(template_path)
-
-        # Nạp ảnh đại diện nếu có
-        if person_data.image_path and os.path.exists(person_data.image_path):
-            try:
-                img_obj = InlineImage(template_doc, image_descriptor=person_data.image_path, width=Mm(30))
-            except Exception as e:
-                print(f"Error loading image into docx: {e}")
-                img_obj = ""
-        else:
-            img_obj = ""
-
-        context = person_data.model_dump()
-        context["image"] = img_obj
-
-        template_doc.render(context)
-        return template_doc
-
-    def generate_docx_bytes(self, template_filename: str, person_data: PersonData) -> io.BytesIO:
-        """Render tài liệu Word cá nhân trực tiếp vào bộ nhớ RAM"""
-        template_doc = self._render_doc(template_filename, person_data)
-        buffer = io.BytesIO()
-        template_doc.save(buffer)
-        buffer.seek(0)
-        return buffer
-
-    def generate_pdf(self, template_filename: str, person_data: PersonData, force: bool = False) -> str:
-        """Render và chuyển đổi sang PDF cho cá nhân (kèm Cache)"""
-        template_path = self._resolve_template_path(template_filename)
-        cache_hash = self._get_cache_hash(template_path, person_data)
-        clean_tpl = template_filename.replace(".docx", "")
-        cached_pdf_name = f"person_{clean_tpl}_{person_data.id}_{cache_hash}.pdf"
-        cached_pdf_path = os.path.join(self.cache_dir, cached_pdf_name)
-
-        if not force and os.path.exists(cached_pdf_path) and os.path.getsize(cached_pdf_path) > 0:
-            return cached_pdf_path
-
-        temp_docx_name = f"temp_person_{person_data.id}_{cache_hash}.docx"
-        temp_docx_path = os.path.join(self.cache_dir, temp_docx_name)
-
-        template_doc = self._render_doc(template_filename, person_data)
-        template_doc.save(temp_docx_path)
-
-        try:
-            self._convert_docx_to_pdf(temp_docx_path, cached_pdf_path)
-        finally:
-            if os.path.exists(temp_docx_path):
-                try:
-                    os.remove(temp_docx_path)
-                except Exception:
-                    pass
-
-        if not os.path.exists(cached_pdf_path):
-            raise FileNotFoundError(f"Không thể tạo file PDF cá nhân: {cached_pdf_path}")
-
-        return cached_pdf_path
-
-    def clear_cache(self, target_id: str):
-        """Xóa cache PDF cũ của cá nhân"""
-        try:
-            if os.path.exists(self.cache_dir):
-                for filename in os.listdir(self.cache_dir):
-                    if target_id in filename:
-                        file_path = os.path.join(self.cache_dir, filename)
-                        try:
-                            os.remove(file_path)
-                        except Exception:
-                            pass
-        except Exception as e:
-            print(f"Error clearing cache for person {target_id}: {e}")
-
-
-class CaseDocxService(BaseDocxService):
-    """
-    Dịch vụ xử lý xuất văn bản và tạo bản xem trước cấp Toàn Bộ Vụ Án (Case Level).
-    """
-
-    def _resolve_template_path(self, template_filename: str) -> str:
-        return os.path.join(self.template_dir, "case", template_filename)
-
-    def _get_cache_hash(self, template_path: str, case_data: CaseData) -> str:
-        case_dict = {
-            "id": case_data.id,
-            "ten_tom_tat": case_data.ten_tom_tat,
-            "ten_day_du": case_data.ten_day_du,
-            "updated_at": case_data.updated_at,
-            "persons": [p.model_dump() for p in case_data.con_nguoi_list]
-        }
-        case_data_str = json.dumps(case_dict, sort_keys=True)
-        tpl_mtime = str(os.path.getmtime(template_path)) if os.path.exists(template_path) else ""
-        raw_key = f"{case_data_str}_{tpl_mtime}"
-        return hashlib.md5(raw_key.encode('utf-8')).hexdigest()[:12]
-
-    def get_templates(self) -> list[dict[str, Any]]:
-        metadata_path = os.path.join(self.template_dir, "case", "metadata.json")
-        if not os.path.exists(metadata_path):
-            return []
-        try:
-            with open(metadata_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, list):
-                    return data
-                raise ValueError(f"metadata.json không đúng định dạng list: {type(data)}")
-        except Exception as e:
-            raise e
-
-    def _render_doc(self, template_filename: str, case_data: CaseData) -> DocxTemplate:
-        template_path = self._resolve_template_path(template_filename)
-        if not os.path.exists(template_path):
-            raise FileNotFoundError(f"Không tìm thấy file docx mẫu vụ việc: {template_path}")
-
-        template_doc = DocxTemplate(template_path)
-
-        persons_list = [p.model_dump() for p in case_data.con_nguoi_list]
-        context = {
-            "case": {
-                "id": case_data.id,
-                "ten_tom_tat": case_data.ten_tom_tat,
-                "ten_day_du": case_data.ten_day_du,
-                "created_at": case_data.created_at,
-                "updated_at": case_data.updated_at,
-            },
-            "con_nguoi_list": persons_list,
-        }
-
-        template_doc.render(context)
-        return template_doc
-
-    def generate_docx_bytes(self, template_filename: str, case_data: CaseData) -> io.BytesIO:
-        """Render tài liệu Word vụ việc trực tiếp vào bộ nhớ RAM"""
-        template_doc = self._render_doc(template_filename, case_data)
-        buffer = io.BytesIO()
-        template_doc.save(buffer)
-        buffer.seek(0)
-        return buffer
-
-    def generate_pdf(self, template_filename: str, case_data: CaseData, force: bool = False) -> str:
-        """Render và chuyển đổi sang PDF cho vụ án (kèm Cache)"""
-        template_path = self._resolve_template_path(template_filename)
-        cache_hash = self._get_cache_hash(template_path, case_data)
-        clean_tpl = template_filename.replace(".docx", "")
-        cached_pdf_name = f"case_{clean_tpl}_{case_data.id}_{cache_hash}.pdf"
-        cached_pdf_path = os.path.join(self.cache_dir, cached_pdf_name)
-
-        if not force and os.path.exists(cached_pdf_path) and os.path.getsize(cached_pdf_path) > 0:
-            return cached_pdf_path
-
-        temp_docx_name = f"temp_case_{case_data.id}_{cache_hash}.docx"
-        temp_docx_path = os.path.join(self.cache_dir, temp_docx_name)
-
-        template_doc = self._render_doc(template_filename, case_data)
-        template_doc.save(temp_docx_path)
-
-        try:
-            self._convert_docx_to_pdf(temp_docx_path, cached_pdf_path)
-        finally:
-            if os.path.exists(temp_docx_path):
-                try:
-                    os.remove(temp_docx_path)
-                except Exception:
-                    pass
-
-        if not os.path.exists(cached_pdf_path):
-            raise FileNotFoundError(f"Không thể tạo file PDF vụ việc: {cached_pdf_path}")
-
-        return cached_pdf_path
-
-    def clear_cache(self, target_id: str):
-        """Xóa cache PDF cũ của vụ án"""
-        try:
-            if os.path.exists(self.cache_dir):
-                for filename in os.listdir(self.cache_dir):
-                    if target_id in filename:
-                        file_path = os.path.join(self.cache_dir, filename)
-                        try:
-                            os.remove(file_path)
-                        except Exception:
-                            pass
-        except Exception as e:
-            print(f"Error clearing cache for case {target_id}: {e}")
-
-
 class CustomDocxService(BaseDocxService):
     """
-    Dịch vụ xử lý xuất văn bản và tạo bản xem trước cho các Mẫu Biên Bản Tùy Biến (Custom Documents).
-    Hỗ trợ truyền động các custom fields cho cả cấp Vụ án (case) và cấp Đối tượng (person).
+    Dịch vụ xử lý xuất văn bản và tạo bản xem trước cho các Mẫu Văn Bản Tùy Biến (Custom Documents).
+    Hỗ trợ cả cấp Vụ án (case) và cấp Đối tượng (person).
     """
 
     def _resolve_template_path(self, template_filename: str, level: str = "case") -> str:
-        level_path = os.path.join(self.template_dir, "custom", level, template_filename)
-        if os.path.exists(level_path):
-            return level_path
-        return os.path.join(self.template_dir, "custom", template_filename)
+        return os.path.join(self.template_dir, level, template_filename)
 
     def _get_cache_hash(
         self,
@@ -354,14 +125,11 @@ class CustomDocxService(BaseDocxService):
 
     def get_templates(self, level: str = "case") -> list[dict[str, Any]]:
         """
-        Lấy danh sách các mẫu văn bản tùy biến từ templates/custom/{level}/metadata.json
+        Lấy danh sách các mẫu văn bản tùy biến từ custom_templates/{level}/metadata.json
         """
-        metadata_path = os.path.join(self.template_dir, "custom", level, "metadata.json")
+        metadata_path = os.path.join(self.template_dir, level, "metadata.json")
         if not os.path.exists(metadata_path):
-            legacy_path = os.path.join(self.template_dir, "custom", "metadata.json")
-            if not os.path.exists(legacy_path):
-                return []
-            metadata_path = legacy_path
+            return []
 
         try:
             with open(metadata_path, "r", encoding="utf-8") as f:
@@ -383,7 +151,7 @@ class CustomDocxService(BaseDocxService):
     ) -> DocxTemplate:
         template_path = self._resolve_template_path(template_filename, level)
         if not os.path.exists(template_path):
-            raise FileNotFoundError(f"Không tìm thấy file docx mẫu tùy biến: {template_path}")
+            raise FileNotFoundError(f"Không tìm thấy file docx mẫu: {template_path}")
 
         template_doc = DocxTemplate(template_path)
 
@@ -497,6 +265,135 @@ class CustomDocxService(BaseDocxService):
 
         return cached_pdf_path
 
+    def _parse_paragraph(self, p, fields_map: dict[str, Any]) -> Optional[dict[str, Any]]:
+        """Bóc tách một đoạn văn bản DOCX thành cấu trúc dữ liệu paragraph / spacer"""
+        import re
+        import docx.enum.text
+
+        raw_text = p.text.strip()
+        if not raw_text:
+            line_sz = float(p.style.font.size.pt) if (p.style and p.style.font and p.style.font.size) else 14.0
+            sb = float(p.paragraph_format.space_before.pt) if (p.paragraph_format and p.paragraph_format.space_before) else (float(p.style.paragraph_format.space_before.pt) if (p.style and p.style.paragraph_format and p.style.paragraph_format.space_before) else 0.0)
+            sa = float(p.paragraph_format.space_after.pt) if (p.paragraph_format and p.paragraph_format.space_after) else (float(p.style.paragraph_format.space_after.pt) if (p.style and p.style.paragraph_format and p.style.paragraph_format.space_after) else 0.0)
+            return {
+                "type": "spacer",
+                "height": max(line_sz * 1.2, 14.0) + sb + sa
+            }
+
+        # Căn lề
+        align = "left"
+        if p.alignment == docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER:
+            align = "center"
+        elif p.alignment == docx.enum.text.WD_ALIGN_PARAGRAPH.RIGHT:
+            align = "right"
+        elif p.alignment == docx.enum.text.WD_ALIGN_PARAGRAPH.JUSTIFY:
+            align = "justify"
+
+        # Spacing trước và sau đoạn văn (pt)
+        sb = float(p.paragraph_format.space_before.pt) if (p.paragraph_format and p.paragraph_format.space_before is not None) else 0.0
+        sa = float(p.paragraph_format.space_after.pt) if (p.paragraph_format and p.paragraph_format.space_after is not None) else 0.0
+        fli = float(p.paragraph_format.first_line_indent.pt) if (p.paragraph_format and p.paragraph_format.first_line_indent is not None) else 0.0
+        li = float(p.paragraph_format.left_indent.pt) if (p.paragraph_format and p.paragraph_format.left_indent is not None) else 0.0
+
+        # Bóc tách character-level formatting
+        char_styles = []
+        for r in p.runs:
+            b = bool(r.bold)
+            it = bool(r.italic)
+            sz = r.font.size.pt if (r.font and r.font.size) else (p.style.font.size.pt if (p.style and p.style.font and p.style.font.size) else 14.0)
+            fn = (r.font.name if (r.font and r.font.name) else (p.style.font.name if (p.style and p.style.font and p.style.font.name) else 'Times New Roman'))
+            sub = bool(r.font.subscript) if (r.font and r.font.subscript) else False
+            sup = bool(r.font.superscript) if (r.font and r.font.superscript) else False
+            for _ in r.text:
+                char_styles.append((b, it, sz, fn, sub, sup))
+
+        # Tách text và biến {{ var }}
+        parts = re.split(r'(\{\{[^{}]+\}\})', p.text)
+        pos = 0
+        runs_out: list[dict[str, Any]] = []
+
+        for part in parts:
+            if not part:
+                continue
+            part_len = len(part)
+            part_styles = char_styles[pos:pos + part_len]
+            pos += part_len
+
+            tag_match = re.match(r'\{\{\s*([a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)*)\s*\}\}', part)
+            if tag_match:
+                var_name = tag_match.group(1).strip()
+                field_info = fields_map.get(var_name, {})
+                is_bold = any(s[0] for s in part_styles) if part_styles else False
+                is_italic = any(s[1] for s in part_styles) if part_styles else False
+                sz = part_styles[0][2] if part_styles else 14.0
+                fn = part_styles[0][3] if part_styles else 'Times New Roman'
+                sub = any(s[4] for s in part_styles) if part_styles else False
+                sup = any(s[5] for s in part_styles) if part_styles else False
+                runs_out.append({
+                    "type": "field",
+                    "name": var_name,
+                    "tag": part,
+                    "bold": is_bold,
+                    "italic": is_italic,
+                    "size": sz,
+                    "font": fn,
+                    "subscript": sub,
+                    "superscript": sup,
+                    "field_info": field_info
+                })
+            else:
+                curr_text = ""
+                curr_b = None
+                curr_it = None
+                curr_sz = None
+                curr_fn = None
+                curr_sub = None
+                curr_sup = None
+                for idx, ch in enumerate(part):
+                    s = part_styles[idx] if idx < len(part_styles) else (False, False, 14.0, 'Times New Roman', False, False)
+                    if curr_b is None:
+                        curr_b, curr_it, curr_sz, curr_fn, curr_sub, curr_sup = s
+                        curr_text = ch
+                    elif (curr_b, curr_it, curr_sz, curr_fn, curr_sub, curr_sup) == s:
+                        curr_text += ch
+                    else:
+                        runs_out.append({
+                            "type": "text",
+                            "text": curr_text,
+                            "bold": curr_b,
+                            "italic": curr_it,
+                            "size": curr_sz,
+                            "font": curr_fn,
+                            "subscript": curr_sub,
+                            "superscript": curr_sup
+                        })
+                        curr_b, curr_it, curr_sz, curr_fn, curr_sub, curr_sup = s
+                        curr_text = ch
+                if curr_text:
+                    runs_out.append({
+                        "type": "text",
+                        "text": curr_text,
+                        "bold": curr_b,
+                        "italic": curr_it,
+                        "size": curr_sz,
+                        "font": curr_fn,
+                        "subscript": curr_sub,
+                        "superscript": curr_sup
+                    })
+
+        is_para_bold = any(s[0] for s in char_styles) if char_styles else False
+
+        return {
+            "type": "paragraph",
+            "align": align,
+            "bold": is_para_bold,
+            "runs": runs_out,
+            "space_before": sb,
+            "space_after": sa,
+            "first_line_indent": fli,
+            "left_indent": li
+        }
+
     def get_template_layout(self, template_filename: str, level: str = "case") -> dict[str, Any]:
         """
         Bóc tách cấu trúc tài liệu DOCX (đoạn văn, bảng biểu, căn lề, biến Jinja2) 
@@ -526,16 +423,6 @@ class CustomDocxService(BaseDocxService):
             if child.tag.endswith('p'):
                 p = docx.text.paragraph.Paragraph(child, doc)
                 raw_text = p.text.strip()
-                if not raw_text:
-                    if not active_loop_var:
-                        line_sz = float(p.style.font.size.pt) if (p.style and p.style.font and p.style.font.size) else 14.0
-                        elements.append({
-                            "type": "spacer",
-                            "height": max(line_sz, 14.0)
-                        })
-                    continue
-
-
 
                 # Kiểm tra thẻ mở vòng lặp for: {% for item in loop_var %}
                 for_match = re.search(r'\{%\s*for\s+(\w+)\s+in\s+([a-zA-Z0-9_]+)\s*%\}', raw_text)
@@ -557,8 +444,8 @@ class CustomDocxService(BaseDocxService):
 
                         field_meta = fields_map.get(active_loop_var, {})
 
-                        if subfields:
-                            # Tự động sinh schema nếu metadata chưa có
+                        # CHỈ coi là list/table/persons_section khi loop_var có trong fields_map hoặc khai báo rõ ràng
+                        if subfields and (active_loop_var in fields_map or field_meta.get("type") in ["list", "table"]):
                             schema = field_meta.get("item_schema")
                             if not schema:
                                 schema = [
@@ -582,8 +469,8 @@ class CustomDocxService(BaseDocxService):
                                 "headers": [col.get("label", col.get("name", "")) for col in schema]
                             })
 
-                        else:
-                            # Không có item.* -> coi là danh sách đối tượng (persons)
+                        elif active_loop_var in fields_map or field_meta.get("type") == "persons":
+                            # Danh sách đối tượng (persons) khi có trong metadata
                             elements.append({
                                 "type": "persons_section",
                                 "name": active_loop_var,
@@ -603,162 +490,51 @@ class CustomDocxService(BaseDocxService):
                     active_loop_lines.append(raw_text)
                     continue
 
-                # Nếu là dòng trống (Enter không có chữ)
-                if not raw_text.strip():
-                    line_sz = float(p.style.font.size.pt) if (p.style and p.style.font and p.style.font.size) else 14.0
-                    sb = float(p.paragraph_format.space_before.pt) if (p.paragraph_format and p.paragraph_format.space_before) else (float(p.style.paragraph_format.space_before.pt) if (p.style and p.style.paragraph_format and p.style.paragraph_format.space_before) else 0.0)
-                    sa = float(p.paragraph_format.space_after.pt) if (p.paragraph_format and p.paragraph_format.space_after) else (float(p.style.paragraph_format.space_after.pt) if (p.style and p.style.paragraph_format and p.style.paragraph_format.space_after) else 0.0)
-                    elements.append({
-                        "type": "spacer",
-                        "height": max(line_sz * 1.2, 14.0) + sb + sa
-                    })
-                    continue
-
-                # Căn lề
-                align = "left"
-                if p.alignment == docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER:
-                    align = "center"
-                elif p.alignment == docx.enum.text.WD_ALIGN_PARAGRAPH.RIGHT:
-                    align = "right"
-                elif p.alignment == docx.enum.text.WD_ALIGN_PARAGRAPH.JUSTIFY:
-                    align = "justify"
-
-                # Spacing trước và sau đoạn văn (pt) - Chỉ lấy khi người dùng tự thiết lập trực tiếp trên đoạn
-                sb = float(p.paragraph_format.space_before.pt) if (p.paragraph_format and p.paragraph_format.space_before is not None) else 0.0
-                sa = float(p.paragraph_format.space_after.pt) if (p.paragraph_format and p.paragraph_format.space_after is not None) else 0.0
-                fli = float(p.paragraph_format.first_line_indent.pt) if (p.paragraph_format and p.paragraph_format.first_line_indent is not None) else 0.0
-                li = float(p.paragraph_format.left_indent.pt) if (p.paragraph_format and p.paragraph_format.left_indent is not None) else 0.0
-
-
-                # Bóc tách character-level formatting để bảo toàn chính xác bold/italic/size/font/sub/sup
-                char_styles = []
-                for r in p.runs:
-                    b = bool(r.bold)
-                    it = bool(r.italic)
-                    sz = r.font.size.pt if (r.font and r.font.size) else (p.style.font.size.pt if (p.style and p.style.font and p.style.font.size) else 14.0)
-                    fn = (r.font.name if (r.font and r.font.name) else (p.style.font.name if (p.style and p.style.font and p.style.font.name) else 'Times New Roman'))
-                    sub = bool(r.font.subscript) if (r.font and r.font.subscript) else False
-                    sup = bool(r.font.superscript) if (r.font and r.font.superscript) else False
-                    for _ in r.text:
-                        char_styles.append((b, it, sz, fn, sub, sup))
-
-                # Tách text và biến {{ var }}
-                parts = re.split(r'(\{\{[^{}]+\}\})', p.text)
-                pos = 0
-                runs_out: list[dict[str, Any]] = []
-
-                for part in parts:
-                    if not part:
-                        continue
-                    part_len = len(part)
-                    part_styles = char_styles[pos:pos + part_len]
-                    pos += part_len
-
-                    tag_match = re.match(r'\{\{\s*([a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)*)\s*\}\}', part)
-                    if tag_match:
-                        var_name = tag_match.group(1).strip()
-                        field_info = fields_map.get(var_name, {})
-                        is_bold = any(s[0] for s in part_styles) if part_styles else False
-                        is_italic = any(s[1] for s in part_styles) if part_styles else False
-                        sz = part_styles[0][2] if part_styles else 14.0
-                        fn = part_styles[0][3] if part_styles else 'Times New Roman'
-                        sub = any(s[4] for s in part_styles) if part_styles else False
-                        sup = any(s[5] for s in part_styles) if part_styles else False
-                        runs_out.append({
-                            "type": "field",
-                            "name": var_name,
-                            "tag": part,
-                            "bold": is_bold,
-                            "italic": is_italic,
-                            "size": sz,
-                            "font": fn,
-                            "subscript": sub,
-                            "superscript": sup,
-                            "field_info": field_info
-                        })
-                    else:
-                        curr_text = ""
-                        curr_b = None
-                        curr_it = None
-                        curr_sz = None
-                        curr_fn = None
-                        curr_sub = None
-                        curr_sup = None
-                        for idx, ch in enumerate(part):
-                            s = part_styles[idx] if idx < len(part_styles) else (False, False, 14.0, 'Times New Roman', False, False)
-                            if curr_b is None:
-                                curr_b, curr_it, curr_sz, curr_fn, curr_sub, curr_sup = s
-                                curr_text = ch
-                            elif (curr_b, curr_it, curr_sz, curr_fn, curr_sub, curr_sup) == s:
-                                curr_text += ch
-                            else:
-                                runs_out.append({
-                                    "type": "text",
-                                    "text": curr_text,
-                                    "bold": curr_b,
-                                    "italic": curr_it,
-                                    "size": curr_sz,
-                                    "font": curr_fn,
-                                    "subscript": curr_sub,
-                                    "superscript": curr_sup
-                                })
-                                curr_b, curr_it, curr_sz, curr_fn, curr_sub, curr_sup = s
-                                curr_text = ch
-                        if curr_text:
-                            runs_out.append({
-                                "type": "text",
-                                "text": curr_text,
-                                "bold": curr_b,
-                                "italic": curr_it,
-                                "size": curr_sz,
-                                "font": curr_fn,
-                                "subscript": curr_sub,
-                                "superscript": curr_sup
-                            })
-
-
-                is_para_bold = any(s[0] for s in char_styles) if char_styles else False
-
-                elements.append({
-                    "type": "paragraph",
-                    "align": align,
-                    "bold": is_para_bold,
-                    "runs": runs_out,
-                    "space_before": sb,
-                    "space_after": sa,
-                    "first_line_indent": fli,
-                    "left_indent": li
-                })
-
-
-
-
+                # Bóc tách đoạn văn bình thường
+                p_el = self._parse_paragraph(p, fields_map)
+                if p_el:
+                    elements.append(p_el)
 
             elif child.tag.endswith('tbl'):
                 tbl = docx.table.Table(child, doc)
-                table_rows: list[list[str]] = []
                 table_var_name = ""
 
+                # Tìm thẻ lặp Jinja2 trong bảng
                 for row in tbl.rows:
                     row_cells = [cell.text.strip() for cell in row.cells]
                     row_text = " ".join(row_cells)
-                    loop_match = re.search(r'\{%tr\s+for\s+\w+\s+in\s+([a-zA-Z0-9_]+)\s*%\}', row_text)
+                    loop_match = re.search(r'\{%tr\s+for\s+\w+\s+in\s+([a-zA-Z0-9_]+)\s*%\}', row_text) or re.search(r'\{%\s*for\s+\w+\s+in\s+([a-zA-Z0-9_]+)\s*%\}', row_text)
                     if loop_match:
                         table_var_name = loop_match.group(1)
-                        continue
-                    if '{%tr endfor %}' in row_text:
-                        continue
-                    table_rows.append(row_cells)
+                        break
 
-                if table_var_name or table_rows:
-                    field_info = fields_map.get(table_var_name, {})
+                field_meta = fields_map.get(table_var_name, {}) if table_var_name else {}
+
+                # CHỈ hiển thị giao diện nhập dữ liệu bảng khi CÓ jinja2 syntax VÀ CÓ field trong metadata
+                if table_var_name and (table_var_name in fields_map or field_meta.get("type") == "table"):
+                    table_rows = []
+                    for row in tbl.rows:
+                        row_cells = [cell.text.strip() for cell in row.cells]
+                        row_text = " ".join(row_cells)
+                        if '{%tr for' in row_text or '{% for' in row_text or '{%tr endfor' in row_text or '{% endfor' in row_text:
+                            continue
+                        table_rows.append(row_cells)
+
                     elements.append({
                         "type": "table",
                         "name": table_var_name,
-                        "field_info": field_info,
+                        "field_info": field_meta,
                         "headers": table_rows[0] if table_rows else [],
                         "rows": table_rows
                     })
+                else:
+                    # Bảng tĩnh / Bảng bố cục (layout table): Bóc tách các đoạn văn trong các ô của bảng
+                    for row in tbl.rows:
+                        for cell in row.cells:
+                            for cell_p in cell.paragraphs:
+                                p_el = self._parse_paragraph(cell_p, fields_map)
+                                if p_el:
+                                    elements.append(p_el)
 
         return {
             "template_file": template_filename,
@@ -768,7 +544,7 @@ class CustomDocxService(BaseDocxService):
         }
 
     def clear_cache(self, target_id: str):
-        """Xóa cache PDF cũ của biên bản tùy biến"""
+        """Xóa cache PDF cũ của văn bản tùy biến hoặc đối tượng"""
         try:
             if os.path.exists(self.cache_dir):
                 for filename in os.listdir(self.cache_dir):
@@ -779,5 +555,4 @@ class CustomDocxService(BaseDocxService):
                         except Exception:
                             pass
         except Exception as e:
-            print(f"Error clearing cache for custom doc {target_id}: {e}")
-
+            print(f"Error clearing cache for target {target_id}: {e}")

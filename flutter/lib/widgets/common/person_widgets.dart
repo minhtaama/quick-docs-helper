@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../pages/custom_docs_page.dart';
-import '../pages/export_docs_page.dart';
 import 'app_button.dart';
 import 'app_container.dart';
 
@@ -136,18 +135,6 @@ class PersonActionButtons extends StatelessWidget {
     this.closeDialogOnNavigate = false,
   });
 
-  void _navigateToStaticDocs(BuildContext context) {
-    if (closeDialogOnNavigate) {
-      Navigator.pop(context);
-    }
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ExportDocsPage(caseId: caseId, person: person),
-      ),
-    );
-  }
-
   void _navigateToCustomDocs(BuildContext context) {
     if (closeDialogOnNavigate) {
       Navigator.pop(context);
@@ -168,19 +155,6 @@ class PersonActionButtons extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
-
-    final staticDocButton = AppButton.tonal(
-      onPressed: () => _navigateToStaticDocs(context),
-      icon: Icons.description_outlined,
-      iconSize: isCompact ? 15 : 17,
-      label: 'Văn bản tĩnh',
-      isCompact: isCompact,
-      backgroundColor: const Color(0xFF1976D2).withValues(alpha: 0.25),
-      foregroundColor: const Color(0xFF1565C0),
-      padding: isCompact
-          ? const EdgeInsets.symmetric(horizontal: 10, vertical: 6)
-          : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-    );
 
     final customDocButton = AppButton.tonal(
       onPressed: () => _navigateToCustomDocs(context),
@@ -239,7 +213,6 @@ class PersonActionButtons extends StatelessWidget {
       alignment: WrapAlignment.end,
       children: [
         if (deleteButton != null) deleteButton,
-        staticDocButton,
         customDocButton,
         if (editButton != null) editButton,
       ],

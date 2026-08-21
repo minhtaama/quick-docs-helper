@@ -45,6 +45,9 @@ class PersonDetailDialog extends StatelessWidget {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
 
+    final rawIsdt = person['isdt'];
+    final isdt = rawIsdt == null ? true : (rawIsdt == true || rawIsdt == 'true' || rawIsdt == '1' || rawIsdt == 1);
+
     final personId = person['id'] ?? '';
     final hoTen = person['ho_ten']?.toString().trim() ?? 'Chưa đặt tên';
     final gioiTinh = person['gioi_tinh']?.toString().trim() ?? '';
@@ -121,17 +124,57 @@ class PersonDetailDialog extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.badge_outlined, color: primaryColor, size: 22),
+                    Icon(
+                      isdt ? Icons.badge_outlined : Icons.group_outlined,
+                      color: isdt ? primaryColor : const Color(0xFF00695C),
+                      size: 22,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        'THÔNG TIN CON NGƯỜI',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: primaryColor,
-                          letterSpacing: 0.5,
-                        ),
+                      child: Row(
+                        children: [
+                          Text(
+                            isdt
+                                ? 'THÔNG TIN ĐỐI TƯỢNG / BỊ CAN'
+                                : 'THÔNG TIN NGƯỜI LIÊN QUAN',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isdt
+                                  ? primaryColor
+                                  : const Color(0xFF00695C),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isdt
+                                  ? primaryColor.withValues(alpha: 0.12)
+                                  : const Color(0xFF00695C).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: isdt
+                                    ? primaryColor.withValues(alpha: 0.4)
+                                    : const Color(0xFF00695C).withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: Text(
+                              isdt ? 'Đối tượng' : 'Người liên quan',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isdt
+                                    ? primaryColor
+                                    : const Color(0xFF00695C),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     AppIconButton(
@@ -288,208 +331,210 @@ class PersonDetailDialog extends StatelessWidget {
                         _buildGridItem('Chức vụ:', chucVu),
                         _buildGridItem('Đoàn thể / Đảng:', doanThe),
                       ]),
-                      const SizedBox(height: 20),
-
-                      // III. TIỀN ÁN, TIỀN SỰ
-                      _buildSectionTitle(
-                        context,
-                        'III. TIỀN ÁN, TIỀN SỰ (${tienAnList.length})',
-                      ),
-                      const SizedBox(height: 10),
-                      if (tienAnList.isEmpty)
-                        AppContainer.banner(
-                          padding: const EdgeInsets.all(12.0),
-                          color: theme.colorScheme.surfaceContainerHighest
-                              .withValues(alpha: 0.2),
-                          borderColor: Colors.transparent,
-                          child: const Text(
-                            'Chưa có tiền án, tiền sự.',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontStyle: FontStyle.italic,
+                      // III. TIỀN ÁN, TIỀN SỰ & IV. QUAN HỆ GIA ĐÌNH (CHỈ DÀNH CHO ĐỐI TƯỢNG)
+                      if (isdt) ...[
+                        const SizedBox(height: 20),
+                        // III. TIỀN ÁN, TIỀN SỰ
+                        _buildSectionTitle(
+                          context,
+                          'III. TIỀN ÁN, TIỀN SỰ (${tienAnList.length})',
+                        ),
+                        const SizedBox(height: 10),
+                        if (tienAnList.isEmpty)
+                          AppContainer.banner(
+                            padding: const EdgeInsets.all(12.0),
+                            color: theme.colorScheme.surfaceContainerHighest
+                                .withValues(alpha: 0.2),
+                            borderColor: Colors.transparent,
+                            child: const Text(
+                              'Chưa có tiền án, tiền sự.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
-                          ),
-                        )
-                      else
-                        Column(
-                          children: tienAnList.asMap().entries.map((entry) {
-                            final idx = entry.key;
-                            final item = Map<String, dynamic>.from(
-                              entry.value as Map,
-                            );
-                            final thoiGian =
-                                item['thoi_gian']?.toString().trim() ?? '';
-                            final noiDung =
-                                item['noi_dung']?.toString().trim() ?? '';
+                          )
+                        else
+                          Column(
+                            children: tienAnList.asMap().entries.map((entry) {
+                              final idx = entry.key;
+                              final item = Map<String, dynamic>.from(
+                                entry.value as Map,
+                              );
+                              final thoiGian =
+                                  item['thoi_gian']?.toString().trim() ?? '';
+                              final noiDung =
+                                  item['noi_dung']?.toString().trim() ?? '';
 
-                            return AppContainer(
-                              margin: const EdgeInsets.only(bottom: 8.0),
-                              padding: const EdgeInsets.all(12.0),
-                              color: Colors.red.withValues(alpha: 0.04),
-                              borderRadius: 8.0,
-                              borderColor: Colors.red.withValues(alpha: 0.2),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  AppContainer.badge(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    color: Colors.red.shade700,
-                                    borderRadius: 4,
-                                    child: Text(
-                                      '# ${idx + 1}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 11,
+                              return AppContainer(
+                                margin: const EdgeInsets.only(bottom: 8.0),
+                                padding: const EdgeInsets.all(12.0),
+                                color: Colors.red.withValues(alpha: 0.04),
+                                borderRadius: 8.0,
+                                borderColor: Colors.red.withValues(alpha: 0.2),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    AppContainer.badge(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      color: Colors.red.shade700,
+                                      borderRadius: 4,
+                                      child: Text(
+                                        '# ${idx + 1}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 11,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          if (thoiGian.isNotEmpty)
+                                            Text(
+                                              thoiGian,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          if (noiDung.isNotEmpty) ...[
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              noiDung,
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: theme.colorScheme.onSurface
+                                                    .withValues(alpha: 0.85),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        const SizedBox(height: 20),
+
+                        // IV. QUAN HỆ GIA ĐÌNH
+                        _buildSectionTitle(
+                          context,
+                          'IV. QUAN HỆ GIA ĐÌNH (${giaDinhList.length})',
+                        ),
+                        const SizedBox(height: 10),
+                        if (giaDinhList.isEmpty)
+                          AppContainer.banner(
+                            padding: const EdgeInsets.all(12.0),
+                            color: theme.colorScheme.surfaceContainerHighest
+                                .withValues(alpha: 0.2),
+                            borderColor: Colors.transparent,
+                            child: const Text(
+                              'Chưa có thông tin quan hệ gia đình.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          )
+                        else
+                          Column(
+                            children: giaDinhList.asMap().entries.map((entry) {
+                              final item = Map<String, dynamic>.from(
+                                entry.value as Map,
+                              );
+                              final quanHe =
+                                  item['quan_he']?.toString().trim() ?? '';
+                              final tenThanNhan =
+                                  item['ho_ten']?.toString().trim() ?? '';
+                              final namSinhThanNhan =
+                                  item['nam_sinh']?.toString().trim() ?? '';
+                              final ngheThanNhan =
+                                  item['nghe_nghiep']?.toString().trim() ?? '';
+                              final noiOThanNhan =
+                                  item['noi_o']?.toString().trim() ?? '';
+
+                              return AppContainer(
+                                margin: const EdgeInsets.only(bottom: 8.0),
+                                padding: const EdgeInsets.all(12.0),
+                                color: theme.colorScheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.25),
+                                borderRadius: 8.0,
+                                borderColor: theme.colorScheme.outline.withValues(
+                                  alpha: 0.15,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
                                       children: [
-                                        if (thoiGian.isNotEmpty)
-                                          Text(
-                                            thoiGian,
+                                        if (quanHe.isNotEmpty)
+                                          AppContainer.badge(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            color: primaryColor.withValues(
+                                              alpha: 0.08,
+                                            ),
+                                            borderRadius: 4,
+                                            child: Text(
+                                              quanHe,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                color: primaryColor,
+                                              ),
+                                            ),
+                                          ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            tenThanNhan.isNotEmpty
+                                                ? tenThanNhan
+                                                : '---',
                                             style: const TextStyle(
-                                              fontSize: 13,
+                                              fontSize: 14,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                        if (noiDung.isNotEmpty) ...[
-                                          const SizedBox(height: 4),
+                                        ),
+                                        if (namSinhThanNhan.isNotEmpty)
                                           Text(
-                                            noiDung,
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              color: theme.colorScheme.onSurface
-                                                  .withValues(alpha: 0.85),
-                                            ),
+                                            'Sinh năm: $namSinhThanNhan',
+                                            style: TextStyle(fontSize: 12),
                                           ),
-                                        ],
                                       ],
                                     ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      const SizedBox(height: 20),
-
-                      // IV. QUAN HỆ GIA ĐÌNH
-                      _buildSectionTitle(
-                        context,
-                        'IV. QUAN HỆ GIA ĐÌNH (${giaDinhList.length})',
-                      ),
-                      const SizedBox(height: 10),
-                      if (giaDinhList.isEmpty)
-                        AppContainer.banner(
-                          padding: const EdgeInsets.all(12.0),
-                          color: theme.colorScheme.surfaceContainerHighest
-                              .withValues(alpha: 0.2),
-                          borderColor: Colors.transparent,
-                          child: const Text(
-                            'Chưa có thông tin quan hệ gia đình.',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        )
-                      else
-                        Column(
-                          children: giaDinhList.asMap().entries.map((entry) {
-                            final item = Map<String, dynamic>.from(
-                              entry.value as Map,
-                            );
-                            final quanHe =
-                                item['quan_he']?.toString().trim() ?? '';
-                            final tenThanNhan =
-                                item['ho_ten']?.toString().trim() ?? '';
-                            final namSinhThanNhan =
-                                item['nam_sinh']?.toString().trim() ?? '';
-                            final ngheThanNhan =
-                                item['nghe_nghiep']?.toString().trim() ?? '';
-                            final noiOThanNhan =
-                                item['noi_o']?.toString().trim() ?? '';
-
-                            return AppContainer(
-                              margin: const EdgeInsets.only(bottom: 8.0),
-                              padding: const EdgeInsets.all(12.0),
-                              color: theme.colorScheme.surfaceContainerHighest
-                                  .withValues(alpha: 0.25),
-                              borderRadius: 8.0,
-                              borderColor: theme.colorScheme.outline.withValues(
-                                alpha: 0.15,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      if (quanHe.isNotEmpty)
-                                        AppContainer.badge(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
-                                          ),
-                                          color: primaryColor.withValues(
-                                            alpha: 0.08,
-                                          ),
-                                          borderRadius: 4,
-                                          child: Text(
-                                            quanHe,
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                              color: primaryColor,
-                                            ),
-                                          ),
-                                        ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          tenThanNhan.isNotEmpty
-                                              ? tenThanNhan
-                                              : '---',
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
+                                    if (ngheThanNhan.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Nghề nghiệp: $ngheThanNhan',
+                                        style: const TextStyle(fontSize: 12),
                                       ),
-                                      if (namSinhThanNhan.isNotEmpty)
-                                        Text(
-                                          'Sinh năm: $namSinhThanNhan',
-                                          style: TextStyle(fontSize: 12),
-                                        ),
                                     ],
-                                  ),
-                                  if (ngheThanNhan.isNotEmpty) ...[
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      'Nghề nghiệp: $ngheThanNhan',
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
+                                    if (noiOThanNhan.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Nơi ở: $noiOThanNhan',
+                                        style: TextStyle(fontSize: 12),
+                                      ),
+                                    ],
                                   ],
-                                  if (noiOThanNhan.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Nơi ở: $noiOThanNhan',
-                                      style: TextStyle(fontSize: 12),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                      ],
                     ],
                   ),
                 ),

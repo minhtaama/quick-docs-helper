@@ -113,5 +113,55 @@
         "placeholder": "19/08/2026"
       }
     ]
+  },
+  {
+    "file_name": "209_ly_lich_ca_nhan.docx",
+    "display_name": "Lý lịch cá nhân (Mẫu 209 TT128)",
+    "fields": []
+  },
+  {
+    "file_name": "210_ly_lich_bi_can.docx",
+    "display_name": "Lý lịch bị can (Mẫu 210 TT128)",
+    "fields": []
+  },
+  {
+    "file_name": "239_giao_nhan_lenh_tam_giam.docx",
+    "display_name": "BB giao nhận Lệnh tạm giam (Mẫu 239 TT128)",
+    "fields": []
+  },
+  {
+    "file_name": "239_giao_nhan_phe_chuan_lenh_tam_giam.docx",
+    "display_name": "BB giao nhận QĐ Phê chuẩn Lệnh tạm giam (Mẫu 239 TT128)",
+    "fields": []
+  },
+  {
+    "file_name": "239_giao_nhan_qdktbc.docx",
+    "display_name": "BB giao nhận QĐ Khởi tố bị can (Mẫu 239 TT128)",
+    "fields": []
+  },
+  {
+    "file_name": "239_giao_nhan_phe_chuan_qdktbc.docx",
+    "display_name": "BB giao nhận QĐ Phê chuẩn QĐ Khởi tố bị can (Mẫu 239 TT128)",
+    "fields": []
+  },
+  {
+    "file_name": "bao_cao_bat_giu.docx",
+    "display_name": "Báo cáo bắt giữ",
+    "fields": []
+  },
+  {
+    "file_name": "bien_ban_tu_choi_bao_chua.docx",
+    "display_name": "Biên bản từ chối bào chữa",
+    "fields": []
+  },
+  {
+    "file_name": "giai_thich_tro_giup_phap_ly.docx",
+    "display_name": "Giải thích trợ giúp pháp lý",
+    "fields": []
+  },
+  {
+    "file_name": "thong_tin_tro_giup_phap_ly.docx",
+    "display_name": "Thông tin trợ giúp pháp lý",
+    "fields": []
   }
 ]
