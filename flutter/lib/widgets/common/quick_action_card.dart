@@ -182,12 +182,18 @@ class _QuickActionCardState extends State<QuickActionCard> {
                       thickness: 1,
                       color: theme.dividerColor.withValues(alpha: 0.12),
                     ),
-                    Expanded(
-                      child: Padding(
+                    if (widget.height != null)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                          child: widget.bottomWidget!,
+                        ),
+                      )
+                    else
+                      Padding(
                         padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
                         child: widget.bottomWidget!,
                       ),
-                    ),
                   ],
                 ),
         ),

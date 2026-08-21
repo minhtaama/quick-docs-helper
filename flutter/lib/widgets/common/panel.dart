@@ -4,9 +4,9 @@ import 'app_container.dart';
 
 /// Chế độ hiển thị của Panel dựa theo bối cảnh trong SideBarPage
 enum PanelMode {
-  desktop, // Hiển thị trong cột phải Desktop -> Vẽ AppBar như Header của Panel bên trong Column
-  mobileDetail, // Hiển thị toàn màn hình chi tiết Mobile -> Tự sinh Scaffold với AppBar riêng
-  mobileTabs, // Hiển thị bên trong TabBarView Mobile -> Ẩn AppBar của Panel để tránh trùng lặp
+  desktop, // Hiển thị trong cột phải Desktop -> Header co giãn linh hoạt
+  mobileDetail, // Hiển thị toàn màn hình chi tiết Mobile -> Tự sinh Scaffold kèm nút Back
+  mobileTabs, // Hiển thị bên trong TabBarView Mobile -> Ẩn Header của Panel
 }
 
 /// Scope truyền bối cảnh từ SideBarPage xuống cho Panel
@@ -28,6 +28,116 @@ class PanelScope extends InheritedWidget {
   @override
   bool updateShouldNotify(PanelScope oldWidget) =>
       mode != oldWidget.mode || onMobileBack != oldWidget.onMobileBack;
+}
+
+/// Header tùy biến co giãn thông minh cho Panel (tự động xuống dòng khi ở màn hình hẹp/mobile)
+class _PanelHeader extends StatelessWidget {
+  final Widget? leading;
+  final Widget? title;
+  final List<Widget>? actions;
+  final Widget? customAppBar;
+
+  const _PanelHeader({
+    this.leading,
+    this.title,
+    this.actions,
+    this.customAppBar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (customAppBar != null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          border: Border(
+            bottom: BorderSide(
+              color: theme.dividerColor.withValues(alpha: 0.12),
+              width: 1,
+            ),
+          ),
+        ),
+        child: customAppBar!,
+      );
+    }
+
+    if (title == null && leading == null && (actions == null || actions!.isEmpty)) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: theme.dividerColor.withValues(alpha: 0.12),
+            width: 1,
+          ),
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact = constraints.maxWidth < 680;
+
+          final titleRow = Row(
+            mainAxisSize: isCompact ? MainAxisSize.max : MainAxisSize.min,
+            children: [
+              if (leading != null) ...[
+                leading!,
+                const SizedBox(width: 8),
+              ],
+              if (title != null)
+                isCompact
+                    ? Expanded(child: title!)
+                    : Flexible(child: title!),
+            ],
+          );
+
+          final actionsWidget = (actions != null && actions!.isNotEmpty)
+              ? Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  alignment: isCompact ? WrapAlignment.end : WrapAlignment.start,
+                  children: actions!,
+                )
+              : null;
+
+          if (isCompact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                titleRow,
+                if (actionsWidget != null) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: actionsWidget,
+                  ),
+                ],
+              ],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(child: titleRow),
+              if (actionsWidget != null) ...[
+                const SizedBox(width: 12),
+                actionsWidget,
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
 }
 
 /// Widget Wrapper chuẩn hóa cho toàn bộ các Panel nội dung bên phải trong SideBarPage.
@@ -68,7 +178,7 @@ class Panel extends StatelessWidget {
     this.isLoading = false,
   });
 
-  PreferredSizeWidget? _buildAppBar(
+  Widget _buildHeader(
     BuildContext context,
     PanelMode mode,
     VoidCallback? onMobileBack,
@@ -77,7 +187,7 @@ class Panel extends StatelessWidget {
         appBarTitle == null &&
         appBarIcon == null &&
         appBarActions == null) {
-      return null;
+      return const SizedBox.shrink();
     }
 
     final theme = Theme.of(context);
@@ -117,15 +227,11 @@ class Panel extends StatelessWidget {
                 )
               : null);
 
-    return AppBar(
-      automaticallyImplyLeading: false,
+    return _PanelHeader(
       leading: leadingWidget,
       title: titleWidget,
       actions: appBarActions,
-      backgroundColor: theme.colorScheme.surface,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      titleSpacing: leadingWidget == null ? 16.0 : 0.0,
+      customAppBar: customAppBar != null && mode == PanelMode.desktop ? customAppBar : null,
     );
   }
 
@@ -140,34 +246,42 @@ class Panel extends StatelessWidget {
         ? const Center(child: CircularProgressIndicator())
         : (padding != null ? Padding(padding: padding!, child: child) : child);
 
-    // Trường hợp 1: Màn hình chi tiết Mobile -> Tạo Scaffold với AppBar riêng của Panel
+    // Trường hợp 1: Màn hình chi tiết Mobile -> Scaffold với Header co giãn
     if (mode == PanelMode.mobileDetail) {
-      final panelAppBar = _buildAppBar(context, mode, scope?.onMobileBack);
+      final header = _buildHeader(context, mode, scope?.onMobileBack);
 
       return Scaffold(
         backgroundColor: bgColor,
-        appBar: panelAppBar,
-        body: bodyContent,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              header,
+              Expanded(child: bodyContent),
+            ],
+          ),
+        ),
       );
     }
 
-    // Trường hợp 2: Mobile Tabs -> Ẩn AppBar của Panel (do SideBarPage + TabBar đã đảm nhiệm)
+    // Trường hợp 2: Mobile Tabs -> Ẩn Header của Panel (do SideBarPage + TabBar đã đảm nhiệm)
     if (mode == PanelMode.mobileTabs) {
       return AppContainer(color: bgColor, child: bodyContent);
     }
 
-    // Trường hợp 3: Desktop -> Hiển thị AppBar/Header bên trong cột phải (tắt automaticallyImplyLeading)
-    final panelAppBar = _buildAppBar(context, mode, null);
+    // Trường hợp 3: Desktop -> Header co giãn linh hoạt bên trong cột phải
+    final header = _buildHeader(context, mode, null);
 
     return AppContainer(
       color: bgColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (panelAppBar != null) panelAppBar,
+          header,
           Expanded(child: bodyContent),
         ],
       ),
     );
   }
 }
+

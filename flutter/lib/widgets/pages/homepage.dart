@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import 'panels/welcome_panel.dart';
 import 'sidebars/case_list_sidebar.dart';
-import 'panels/case_detail_panel.dart';
+import 'panels/case_detail/case_detail_panel.dart';
 import '../common/case_edit_dialog.dart';
 import '../common/sidebar_page.dart';
 import 'person_page.dart';

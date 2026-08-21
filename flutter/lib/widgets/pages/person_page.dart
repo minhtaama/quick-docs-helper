@@ -75,7 +75,12 @@ class _PersonPageState extends State<PersonPage> {
 
     if (p != null) {
       final rawIsdt = p['isdt'];
-      _isdt = rawIsdt == null ? true : (rawIsdt == true || rawIsdt == 'true' || rawIsdt == '1' || rawIsdt == 1);
+      _isdt = rawIsdt == null
+          ? true
+          : (rawIsdt == true ||
+                rawIsdt == 'true' ||
+                rawIsdt == '1' ||
+                rawIsdt == 1);
     } else if (widget.initialIsdt != null) {
       _isdt = widget.initialIsdt!;
     }
@@ -286,8 +291,8 @@ class _PersonPageState extends State<PersonPage> {
               isEdit
                   ? 'Cập nhật thông tin thành công!'
                   : (_isdt
-                      ? 'Đã lưu đối tượng vào vụ án!'
-                      : 'Đã lưu người liên quan vào vụ án!'),
+                        ? 'Đã lưu đối tượng vào vụ án!'
+                        : 'Đã lưu người liên quan vào vụ án!'),
             ),
             backgroundColor: Colors.green,
           ),
@@ -316,7 +321,9 @@ class _PersonPageState extends State<PersonPage> {
       margin: const EdgeInsets.only(top: 16.0, bottom: 8.0),
       padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.35,
+        ),
         borderRadius: BorderRadius.circular(12.0),
         border: Border.all(
           color: theme.colorScheme.outline.withValues(alpha: 0.15),
@@ -330,7 +337,7 @@ class _PersonPageState extends State<PersonPage> {
               Icon(Icons.category_outlined, size: 18, color: primaryColor),
               const SizedBox(width: 8),
               Text(
-                'PHÂN LOẠI VAI TRÒ TRONG VỤ ÁN (*)',
+                'PHÂN LOẠI VAI TRÒ (*)',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -500,7 +507,9 @@ class _PersonPageState extends State<PersonPage> {
       appBar: AppBar(
         title: Text(
           isEdit
-              ? (_isdt ? 'THÔNG TIN ĐỐI TƯỢNG/BỊ CAN' : 'THÔNG TIN NGƯỜI LIÊN QUAN')
+              ? (_isdt
+                    ? 'THÔNG TIN ĐỐI TƯỢNG/BỊ CAN'
+                    : 'THÔNG TIN NGƯỜI LIÊN QUAN')
               : (_isdt ? 'THÊM ĐỐI TƯỢNG/BỊ CAN' : 'THÊM NGƯỜI LIÊN QUAN'),
         ),
         centerTitle: true,
@@ -624,8 +633,8 @@ class _PersonPageState extends State<PersonPage> {
                         label: isEdit
                             ? 'CẬP NHẬT HỒ SƠ'
                             : (_isdt
-                                ? 'LƯU ĐỐI TƯỢNG VÀO VỤ ÁN'
-                                : 'LƯU NGƯỜI LIÊN QUAN VÀO VỤ ÁN'),
+                                  ? 'LƯU ĐỐI TƯỢNG VÀO VỤ ÁN'
+                                  : 'LƯU NGƯỜI LIÊN QUAN VÀO VỤ ÁN'),
                         isFullWidth: true,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

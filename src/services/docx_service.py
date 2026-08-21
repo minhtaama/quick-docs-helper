@@ -195,17 +195,82 @@ class CustomDocxService(BaseDocxService):
                     # Chuyển mảng các person_id thành mảng các person dict
                     context[key] = [persons_map[pid] for pid in val if pid in persons_map]
                 elif isinstance(val, str) and "/" in val:
-                    parts = val.strip().split("/")
-                    if len(parts) == 3:
-                        d, m, y = parts[0], parts[1], parts[2]
-                        # Tự động sinh các biến tiền tố ngay_, thang_, nam_
-                        context[key] = val
-                        context[f"ngay_{key}"] = d
-                        context[f"thang_{key}"] = m
-                        context[f"nam_{key}"] = y
+                    # Kiểm tra xem có chứa giờ phút dạng "HH:mm dd/MM/yyyy" hoặc "dd/MM/yyyy HH:mm"
+                    clean_val = val.strip()
+                    time_part = None
+                    date_part = clean_val
+
+                    if " " in clean_val:
+                        parts_space = clean_val.split(" ")
+                        for sp in parts_space:
+                            if "/" in sp:
+                                date_part = sp
+                            elif ":" in sp:
+                                time_part = sp
+
+                    date_parts = date_part.split("/")
+                    if len(date_parts) == 3:
+                        d, m, y = date_parts[0].strip(), date_parts[1].strip(), date_parts[2].strip()
+
+                        # 1. Trường hợp biến bắt đầu bằng "ngay_" (ví dụ: ngay_lap_bb -> suffix = "lap_bb")
+                        if key.startswith("ngay_"):
+                            suffix = key[5:]
+                            context[key] = d
+                            context[f"thang_{suffix}"] = m
+                            context[f"nam_{suffix}"] = y
+                            context[f"ngay_{suffix}"] = d
+                            context[f"{suffix}_ngay"] = d
+                            context[f"{suffix}_thang"] = m
+                            context[f"{suffix}_nam"] = y
+                            context[f"{key}_full"] = val
+                            if time_part and ":" in time_part:
+                                tp = time_part.split(":")
+                                context[f"gio_{suffix}"] = tp[0].strip()
+                                context[f"phut_{suffix}"] = tp[1].strip()
+
+                        # 2. Trường hợp biến là "ngay"
+                        elif key == "ngay":
+                            context["ngay"] = d
+                            context["thang"] = m
+                            context["nam"] = y
+                            context["ngay_full"] = val
+                            if time_part and ":" in time_part:
+                                tp = time_part.split(":")
+                                context["gio"] = tp[0].strip()
+                                context["phut"] = tp[1].strip()
+
+                        # 3. Trường hợp biến kết thúc bằng "_ngay" (ví dụ: thoi_diem_ngay -> prefix = "thoi_diem")
+                        elif key.endswith("_ngay"):
+                            prefix = key[:-5]
+                            context[key] = d
+                            context[f"{prefix}_thang"] = m
+                            context[f"{prefix}_nam"] = y
+                            context[f"{key}_full"] = val
+                            if time_part and ":" in time_part:
+                                tp = time_part.split(":")
+                                context[f"{prefix}_gio"] = tp[0].strip()
+                                context[f"{prefix}_phut"] = tp[1].strip()
+
+                        # 4. Trường hợp biến ngày tự do khác (ví dụ: thoi_gian_lap)
+                        else:
+                            context[key] = val
+                            context[f"ngay_{key}"] = d
+                            context[f"thang_{key}"] = m
+                            context[f"nam_{key}"] = y
+                            context[f"{key}_ngay"] = d
+                            context[f"{key}_thang"] = m
+                            context[f"{key}_nam"] = y
+                            context[f"{key}_full"] = val
+                            if time_part and ":" in time_part:
+                                tp = time_part.split(":")
+                                context[f"gio_{key}"] = tp[0].strip()
+                                context[f"phut_{key}"] = tp[1].strip()
                     else:
                         context[key] = val
                 else:
+                    # Nếu key đã được tạo tự động từ bước tách ngày trước đó và val hiện tại là rỗng thì không ghi đè
+                    if key in context and (val is None or val == ""):
+                        continue
                     context[key] = val
 
         template_doc.render(context)
@@ -445,7 +510,7 @@ class CustomDocxService(BaseDocxService):
                         field_meta = fields_map.get(active_loop_var, {})
 
                         # CHỈ coi là list/table/persons_section khi loop_var có trong fields_map hoặc khai báo rõ ràng
-                        if subfields and (active_loop_var in fields_map or field_meta.get("type") in ["list", "table"]):
+                        if subfields and (active_loop_var in fields_map or field_meta.get("type") in ["list", "table", "input_list", "input_table"]):
                             schema = field_meta.get("item_schema")
                             if not schema:
                                 schema = [
@@ -456,7 +521,8 @@ class CustomDocxService(BaseDocxService):
                                     }
                                     for sub in subfields
                                 ]
-                            list_type = field_meta.get("type", "list")
+                            meta_type = field_meta.get("type", "input_list")
+                            list_type = "input_table" if meta_type in ["table", "input_table"] else "input_list"
                             elements.append({
                                 "type": list_type,
                                 "name": active_loop_var,
@@ -469,15 +535,15 @@ class CustomDocxService(BaseDocxService):
                                 "headers": [col.get("label", col.get("name", "")) for col in schema]
                             })
 
-                        elif active_loop_var in fields_map or field_meta.get("type") == "persons":
+                        elif active_loop_var in fields_map or field_meta.get("type") in ["persons", "input_persons", "persons_section"]:
                             # Danh sách đối tượng (persons) khi có trong metadata
                             elements.append({
-                                "type": "persons_section",
+                                "type": "input_persons",
                                 "name": active_loop_var,
                                 "field_info": field_meta or {
                                     "name": active_loop_var,
                                     "label": active_loop_var.replace("_", " ").title(),
-                                    "type": "persons"
+                                    "type": "input_persons"
                                 }
                             })
                     active_loop_var = None
@@ -511,7 +577,7 @@ class CustomDocxService(BaseDocxService):
                 field_meta = fields_map.get(table_var_name, {}) if table_var_name else {}
 
                 # CHỈ hiển thị giao diện nhập dữ liệu bảng khi CÓ jinja2 syntax VÀ CÓ field trong metadata
-                if table_var_name and (table_var_name in fields_map or field_meta.get("type") == "table"):
+                if table_var_name and (table_var_name in fields_map or field_meta.get("type") in ["table", "input_table"]):
                     table_rows = []
                     for row in tbl.rows:
                         row_cells = [cell.text.strip() for cell in row.cells]
@@ -521,20 +587,65 @@ class CustomDocxService(BaseDocxService):
                         table_rows.append(row_cells)
 
                     elements.append({
-                        "type": "table",
+                        "type": "input_table",
                         "name": table_var_name,
                         "field_info": field_meta,
                         "headers": table_rows[0] if table_rows else [],
                         "rows": table_rows
                     })
                 else:
-                    # Bảng tĩnh / Bảng bố cục (layout table): Bóc tách các đoạn văn trong các ô của bảng
+                    # Bảng tĩnh / Bảng bố cục (layout table): Giữ nguyên cấu trúc hàng và ô
+                    tbl_style_name = str(tbl.style.name).lower() if tbl.style else ""
+                    has_border = "grid" in tbl_style_name
+
+                    # Kiểm tra border trong XML nếu có
+                    tbl_pr = tbl._tbl.tblPr
+                    if tbl_pr is not None:
+                        tbl_borders = tbl_pr.find(docx.oxml.ns.qn('w:tblBorders'))
+                        if tbl_borders is not None:
+                            for b in tbl_borders:
+                                val = b.get(docx.oxml.ns.qn('w:val'))
+                                if val and val not in ['none', 'nil']:
+                                    has_border = True
+                                    break
+
+                    static_rows = []
                     for row in tbl.rows:
+                        num_cells = len(row.cells)
+                        if num_cells == 0:
+                            continue
+                        
+                        # Tính tổng chiều rộng của hàng để chia tỷ lệ
+                        total_width = sum((cell.width.pt if (cell.width and cell.width.pt) else 100.0) for cell in row.cells)
+                        if total_width <= 0:
+                            total_width = num_cells * 100.0
+
+                        cells_data = []
                         for cell in row.cells:
+                            c_width = cell.width.pt if (cell.width and cell.width.pt) else (total_width / num_cells)
+                            width_ratio = c_width / total_width if total_width > 0 else (1.0 / num_cells)
+
+                            cell_paras = []
                             for cell_p in cell.paragraphs:
                                 p_el = self._parse_paragraph(cell_p, fields_map)
                                 if p_el:
-                                    elements.append(p_el)
+                                    cell_paras.append(p_el)
+
+                            cells_data.append({
+                                "width_ratio": width_ratio,
+                                "paragraphs": cell_paras
+                            })
+
+                        static_rows.append({
+                            "cells": cells_data
+                        })
+
+                    if static_rows:
+                        elements.append({
+                            "type": "static_table",
+                            "has_border": has_border,
+                            "rows": static_rows
+                        })
 
         return {
             "template_file": template_filename,

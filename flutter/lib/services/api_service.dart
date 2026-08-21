@@ -297,6 +297,7 @@ class CustomDocApiService extends BaseApiService {
   /// Getter instance truy cập tĩnh
   static CustomDocApiService get instance => _instance;
 
+  /// Trả về các Custom Docs đã tạo
   @override
   Future<List<Map<String, dynamic>>> getAll({
     String? caseId,
@@ -375,11 +376,7 @@ class CustomDocApiService extends BaseApiService {
   }
 
   @override
-  Future<bool> delete(
-    String id, {
-    String? caseId,
-    String? personId,
-  }) async {
+  Future<bool> delete(String id, {String? caseId, String? personId}) async {
     if (caseId == null || caseId.isEmpty) return false;
     try {
       final personQuery = personId != null ? '?person_id=$personId' : '';

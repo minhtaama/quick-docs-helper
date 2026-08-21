@@ -6,7 +6,7 @@ import '../../services/api_service.dart';
 import '../common/app_button.dart';
 import '../common/panel.dart';
 import '../common/sidebar_page.dart';
-import 'panels/custom_doc_editor_panel.dart';
+import 'panels/custom_doc_editor/custom_doc_editor_panel.dart';
 import '../common/app_dialog.dart';
 import 'sidebars/custom_doc_sidebar.dart';
 
@@ -23,7 +23,7 @@ class CustomDocsPage extends StatefulWidget {
     super.key,
     required this.caseId,
     this.person,
-    this.caseData,  
+    this.caseData,
     this.isCaseLevel = false,
     this.initialTemplateFile,
     this.initialDocId,
@@ -35,8 +35,8 @@ class CustomDocsPage extends StatefulWidget {
 
 class _CustomDocsPageState extends State<CustomDocsPage> {
   List<Map<String, dynamic>> _templates = [];
-  List<Map<String, dynamic>> _customDocs = [];
-  Map<String, dynamic>? _selectedDoc;
+  List<Map<String, dynamic>> _createdCustomDocs = [];
+  Map<String, dynamic>? _selectedCreatedCustomDoc;
   bool _isLoading = true;
   bool _isDownloading = false;
   bool _isEditingMode = false;
@@ -83,25 +83,25 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
     if (mounted) {
       setState(() {
         _templates = templates;
-        _customDocs = docs;
+        _createdCustomDocs = docs;
         _isLoading = false;
         if (widget.initialDocId != null) {
-          final matchedDoc = _customDocs.firstWhere(
+          final matchedDoc = _createdCustomDocs.firstWhere(
             (d) => d['id']?.toString() == widget.initialDocId,
             orElse: () => <String, dynamic>{},
           );
           if (matchedDoc.isNotEmpty) {
-            _selectedDoc = matchedDoc;
+            _selectedCreatedCustomDoc = matchedDoc;
             _registerCurrentIframe();
-          } else if (_customDocs.isNotEmpty) {
-            _selectedDoc = _customDocs.first;
-            _registerCurrentIframe();
+            _activeTemplate = _templates.firstWhere(
+              (tpl) => tpl['file_name'] == matchedDoc['template_file'],
+              orElse: () => <String, dynamic>{},
+            );
+            _activeEditingDoc = _selectedCreatedCustomDoc;
+            _isEditingMode = true;
           }
-        } else if (_customDocs.isNotEmpty) {
-          _selectedDoc = _customDocs.first;
-          _registerCurrentIframe();
         } else {
-          _selectedDoc = null;
+          _selectedCreatedCustomDoc = null;
         }
 
         // Tự động mở trình soạn thảo nếu có yêu cầu tạo nhanh từ template
@@ -114,7 +114,7 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
             _activeTemplate = matchedTpl;
             _activeEditingDoc = null;
             _isEditingMode = true;
-            _selectedDoc = null;
+            _selectedCreatedCustomDoc = null;
           }
         }
       });
@@ -136,19 +136,21 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
           _activeTemplate = matchedTpl;
           _activeEditingDoc = null;
           _isEditingMode = true;
-          _selectedDoc = null;
+          _selectedCreatedCustomDoc = null;
         });
       }
     }
   }
 
-  void _onSelectDoc(Map<String, dynamic> doc) {
-    if (_selectedDoc?['id'] != doc['id'] || _isEditingMode) {
+  void _onSelectCreatedCustomDoc(Map<String, dynamic> doc) {
+    if (_selectedCreatedCustomDoc?['id'] != doc['id'] || _isEditingMode) {
       setState(() {
-        _selectedDoc = doc;
-        _isEditingMode = false;
-        _activeTemplate = null;
-        _activeEditingDoc = null;
+        _selectedCreatedCustomDoc = doc;
+        _activeTemplate = _templates.firstWhere(
+          (tpl) => tpl['file_name'] == doc['template_file'],
+        );
+        _activeEditingDoc = _selectedCreatedCustomDoc;
+        _isEditingMode = true;
         _previewReloadCounter++;
         _registerCurrentIframe();
       });
@@ -156,16 +158,17 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
   }
 
   String get _currentViewType {
-    final docId = _selectedDoc?['id'] ?? 'none';
+    final docId = _selectedCreatedCustomDoc?['id'] ?? 'none';
     return 'custom-doc-preview-${widget.caseId}-$docId-$_previewReloadCounter';
   }
 
   void _registerCurrentIframe({bool force = false}) {
-    if (kIsWeb && _selectedDoc != null) {
+    if (kIsWeb && _selectedCreatedCustomDoc != null) {
       final previewUrl = CustomDocApiService.instance.getPreviewUrl(
         caseId: widget.caseId,
-        targetId: _selectedDoc!['id']?.toString(),
-        templateFilename: _selectedDoc!['template_file']?.toString() ?? '',
+        targetId: _selectedCreatedCustomDoc!['id']?.toString(),
+        templateFilename:
+            _selectedCreatedCustomDoc!['template_file']?.toString() ?? '',
         personId: _personId,
         force: force,
       );
@@ -194,7 +197,7 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
     if (_templates.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Không có mẫu văn bản tùy biến nào trong hệ thống!'),
+          content: Text('Không có mẫu văn bản nào trong hệ thống!'),
         ),
       );
       return;
@@ -207,7 +210,7 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
       selectedTemplate = await showAppDialog<Map<String, dynamic>>(
         context: context,
         builder: (ctx) => SimpleDialog(
-          title: const Text('Chọn mẫu văn bản tùy biến'),
+          title: const Text('Chọn mẫu văn bản'),
           children: _templates.map((tpl) {
             return SimpleDialogOption(
               onPressed: () => Navigator.of(ctx).pop(tpl),
@@ -218,21 +221,10 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
                     const Icon(Icons.description_outlined, color: Colors.blue),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            tpl['display_name'] ?? '',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            tpl['file_name'] ?? '',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        tpl['display_name'] ?? '',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        maxLines: 3,
                       ),
                     ),
                   ],
@@ -250,18 +242,19 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
       _activeTemplate = selectedTemplate;
       _activeEditingDoc = null;
       _isEditingMode = true;
-      _selectedDoc = null;
+      _selectedCreatedCustomDoc = null;
     });
   }
 
   void _editCurrentDoc() {
-    if (_selectedDoc == null) return;
+    if (_selectedCreatedCustomDoc == null) return;
 
-    final templateFile = _selectedDoc!['template_file'] as String? ?? '';
+    final templateFile =
+        _selectedCreatedCustomDoc!['template_file'] as String? ?? '';
     final matchedTemplate = _templates.firstWhere(
       (tpl) => tpl['file_name'] == templateFile,
       orElse: () => {
-        'display_name': _selectedDoc!['title'] ?? 'Biên bản',
+        'display_name': _selectedCreatedCustomDoc!['title'] ?? 'Văn bản',
         'file_name': templateFile,
         'fields': <Map<String, dynamic>>[],
       },
@@ -269,15 +262,20 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
 
     setState(() {
       _activeTemplate = matchedTemplate;
-      _activeEditingDoc = _selectedDoc;
+      _activeEditingDoc = _selectedCreatedCustomDoc;
       _isEditingMode = true;
     });
   }
 
-  Future<void> _onSaveEditor(Map<String, dynamic> formData) async {
+  Future<void> _onSaveEditor(
+    Map<String, dynamic> formData, {
+    bool isAutoSave = false,
+  }) async {
     if (_activeTemplate == null) return;
 
-    setState(() => _isSaving = true);
+    if (!isAutoSave) {
+      setState(() => _isSaving = true);
+    }
 
     try {
       final isUpdating = _activeEditingDoc != null;
@@ -297,40 +295,37 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
 
       setState(() {
         if (isUpdating) {
-          final idx = _customDocs.indexWhere((d) => d['id'] == savedDoc['id']);
+          final idx = _createdCustomDocs.indexWhere(
+            (d) => d['id'] == savedDoc['id'],
+          );
           if (idx != -1) {
-            _customDocs[idx] = savedDoc;
+            _createdCustomDocs[idx] = savedDoc;
           }
         } else {
-          _customDocs.insert(0, savedDoc);
+          _createdCustomDocs.insert(0, savedDoc);
         }
-        _selectedDoc = savedDoc;
-        _isEditingMode = false;
-        _isSaving = false;
-        _previewReloadCounter++;
-        _registerCurrentIframe(force: true);
-      });
+        _activeEditingDoc = savedDoc;
+        _selectedCreatedCustomDoc = savedDoc;
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isUpdating
-                  ? 'Đã cập nhật biên bản thành công!'
-                  : 'Đã tạo và lưu biên bản thành công!',
-            ),
-          ),
-        );
-      }
+        if (!isAutoSave) {
+          _isEditingMode = false;
+          _isSaving = false;
+          _previewReloadCounter++;
+          _registerCurrentIframe(force: true);
+        }
+      });
     } catch (e) {
       if (mounted) {
-        setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi lưu biên bản: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (!isAutoSave) {
+          setState(() => _isSaving = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Lỗi lưu văn bản: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        rethrow;
       }
     }
   }
@@ -342,7 +337,7 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Xác nhận xóa biên bản'),
+        title: const Text('Xác nhận xóa văn bản'),
         content: Text('Bạn có chắc chắn muốn xóa "${doc['title']}" không?'),
         actions: [
           AppButton.text(
@@ -367,12 +362,13 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
 
       if (success && mounted) {
         setState(() {
-          _customDocs.removeWhere((d) => d['id'] == docId);
-          if (_selectedDoc?['id'] == docId) {
-            _selectedDoc = _customDocs.isNotEmpty ? _customDocs.first : null;
+          _createdCustomDocs.removeWhere((d) => d['id'] == docId);
+          if (_selectedCreatedCustomDoc?['id'] == docId ||
+              _activeEditingDoc?['id'] == docId) {
+            _selectedCreatedCustomDoc = null;
+            _activeEditingDoc = null;
+            _activeTemplate = null;
             _isEditingMode = false;
-            _previewReloadCounter++;
-            _registerCurrentIframe(force: true);
           }
         });
         ScaffoldMessenger.of(context).showSnackBar(
@@ -383,15 +379,16 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
   }
 
   Future<void> _downloadCurrentDocx() async {
-    if (_selectedDoc == null) return;
+    if (_selectedCreatedCustomDoc == null) return;
     setState(() => _isDownloading = true);
     try {
       await CustomDocApiService.instance.downloadDocx(
         caseId: widget.caseId,
-        targetId: _selectedDoc!['id']?.toString(),
-        templateFilename: _selectedDoc!['template_file']?.toString() ?? '',
+        targetId: _selectedCreatedCustomDoc!['id']?.toString(),
+        templateFilename:
+            _selectedCreatedCustomDoc!['template_file']?.toString() ?? '',
         personId: _personId,
-        title: _selectedDoc!['title']?.toString(),
+        title: _selectedCreatedCustomDoc!['title']?.toString(),
       );
     } catch (e) {
       if (mounted) {
@@ -413,23 +410,28 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final targetName = widget.isCaseLevel
-        ? (widget.caseData?['ten_tom_tat'] ?? 'Vụ án')
-        : (widget.person?['ho_ten'] ?? 'Đối tượng');
+        ? ('Thuộc hồ sơ: ${widget.caseData?['ten_tom_tat'] ?? 'Vụ án'}')
+        : ('Đối với ${widget.person?['isdt'] ? 'đối tượng' : 'người liên quan'}: ${widget.person?['ho_ten'] ?? 'Đối tượng'}');
 
     final appBarWidget = AppBar(
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'VĂN BẢN TÙY BIẾN',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
           Text(
-            targetName,
+            'Soạn thảo văn bản',
             style: TextStyle(
-              fontSize: 12,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-              fontWeight: FontWeight.normal,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            targetName.toUpperCase(),
+            style: TextStyle(
+              fontSize: 17,
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -454,16 +456,24 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
 
     return SideBarPage(
       appBar: appBarWidget,
-      tabs: const [
-        Tab(icon: Icon(Icons.list_alt), text: 'Danh Sách Biên Bản'),
-        Tab(icon: Icon(Icons.remove_red_eye), text: 'Xem Trước & Tải Về'),
-      ],
+      shouldShowDetailPanelOnMobile:
+          _selectedCreatedCustomDoc != null || _isEditingMode,
+      onMobileBack: () {
+        setState(() {
+          if (_isEditingMode) {
+            _isEditingMode = false;
+            _activeTemplate = null;
+            _activeEditingDoc = null;
+          }
+          _selectedCreatedCustomDoc = null;
+        });
+      },
       sideBar: CustomDocSidebar(
-        customDocs: _customDocs,
-        selectedDoc: _selectedDoc,
+        customDocs: _createdCustomDocs,
+        selectedDoc: _selectedCreatedCustomDoc,
         isCreatingNew: _isEditingMode && _activeEditingDoc == null,
         activeTemplateTitle: _activeTemplate?['display_name'],
-        onSelectDoc: _onSelectDoc,
+        onSelectDoc: _onSelectCreatedCustomDoc,
         onCreateNewDoc: _createNewDoc,
         onDeleteDoc: _deleteDoc,
       ),
@@ -502,17 +512,18 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
         availablePersons: _availablePersons,
         caseData: widget.caseData,
         person: widget.person,
+        isCreatingNew: _activeEditingDoc == null,
         isSaving: _isSaving,
         onCancel: () {
           setState(() {
             _isEditingMode = false;
             _activeTemplate = null;
             _activeEditingDoc = null;
-            if (_customDocs.isNotEmpty) {
-              _selectedDoc = _customDocs.first;
+            if (_createdCustomDocs.isNotEmpty) {
+              _selectedCreatedCustomDoc = _createdCustomDocs.first;
               _registerCurrentIframe();
             } else {
-              _selectedDoc = null;
+              _selectedCreatedCustomDoc = null;
             }
           });
         },
@@ -521,7 +532,7 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
     }
 
     // 2. Chưa chọn biên bản nào
-    if (_selectedDoc == null) {
+    if (_selectedCreatedCustomDoc == null) {
       return Panel(
         appBarIcon: Icons.article_outlined,
         appBarTitle: 'Văn bản tùy biến',
@@ -556,7 +567,8 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
     return Panel(
       backgroundColor: const Color(0xFFF1F3F4),
       appBarIcon: Icons.visibility_outlined,
-      appBarTitle: 'Xem trước: ${_selectedDoc!['title'] ?? "Biên bản"}',
+      appBarTitle:
+          'Xem trước: ${_selectedCreatedCustomDoc!['title'] ?? "Biên bản"}',
       appBarActions: [
         const SizedBox(width: 8),
         AppIconButton(
@@ -597,7 +609,7 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Xem trước: ${_selectedDoc!['title'] ?? ""}',
+                    'Xem trước: ${_selectedCreatedCustomDoc!['title'] ?? ""}',
                     style: const TextStyle(fontSize: 16),
                   ),
                   const SizedBox(height: 12),

@@ -46,7 +46,12 @@ class PersonDetailDialog extends StatelessWidget {
     final primaryColor = theme.colorScheme.primary;
 
     final rawIsdt = person['isdt'];
-    final isdt = rawIsdt == null ? true : (rawIsdt == true || rawIsdt == 'true' || rawIsdt == '1' || rawIsdt == 1);
+    final isdt = rawIsdt == null
+        ? true
+        : (rawIsdt == true ||
+              rawIsdt == 'true' ||
+              rawIsdt == '1' ||
+              rawIsdt == 1);
 
     final personId = person['id'] ?? '';
     final hoTen = person['ho_ten']?.toString().trim() ?? 'Chưa đặt tên';
@@ -90,13 +95,11 @@ class PersonDetailDialog extends StatelessWidget {
         ? (person['quan_he_gia_dinh'] as List)
         : [];
 
-    return SelectionArea(
-      child: Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.0),
-        ),
-        elevation: 4,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+      elevation: 4,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: SelectionArea(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 760, maxHeight: 850),
           child: Column(
@@ -155,12 +158,16 @@ class PersonDetailDialog extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: isdt
                                   ? primaryColor.withValues(alpha: 0.12)
-                                  : const Color(0xFF00695C).withValues(alpha: 0.12),
+                                  : const Color(
+                                      0xFF00695C,
+                                    ).withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(
                                 color: isdt
                                     ? primaryColor.withValues(alpha: 0.4)
-                                    : const Color(0xFF00695C).withValues(alpha: 0.4),
+                                    : const Color(
+                                        0xFF00695C,
+                                      ).withValues(alpha: 0.4),
                               ),
                             ),
                             child: Text(
@@ -411,7 +418,9 @@ class PersonDetailDialog extends StatelessWidget {
                                               noiDung,
                                               style: TextStyle(
                                                 fontSize: 13,
-                                                color: theme.colorScheme.onSurface
+                                                color: theme
+                                                    .colorScheme
+                                                    .onSurface
                                                     .withValues(alpha: 0.85),
                                               ),
                                             ),
@@ -469,9 +478,8 @@ class PersonDetailDialog extends StatelessWidget {
                                 color: theme.colorScheme.surfaceContainerHighest
                                     .withValues(alpha: 0.25),
                                 borderRadius: 8.0,
-                                borderColor: theme.colorScheme.outline.withValues(
-                                  alpha: 0.15,
-                                ),
+                                borderColor: theme.colorScheme.outline
+                                    .withValues(alpha: 0.15),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [

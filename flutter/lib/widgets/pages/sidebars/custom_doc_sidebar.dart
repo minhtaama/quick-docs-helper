@@ -3,7 +3,7 @@ import '../../common/app_button.dart';
 import '../../common/app_card.dart';
 import '../../common/app_container.dart';
 
-/// Sidebar danh sách các biên bản tùy biến bên trái trong CustomDocsPage
+/// Sidebar danh sách các văn bản bên trái trong CustomDocsPage
 class CustomDocSidebar extends StatelessWidget {
   final List<Map<String, dynamic>> customDocs;
   final Map<String, dynamic>? selectedDoc;
@@ -39,7 +39,7 @@ class CustomDocSidebar extends StatelessWidget {
             child: AppButton.primary(
               onPressed: onCreateNewDoc,
               icon: Icons.add,
-              label: 'Tạo biên bản mới',
+              label: 'Tạo văn bản mới',
               isFullWidth: true,
               height: 40,
               fontWeight: FontWeight.bold,
@@ -57,11 +57,7 @@ class CustomDocSidebar extends StatelessWidget {
                 borderRadius: 8,
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.edit_document,
-                      size: 20,
-                      color: primaryColor,
-                    ),
+                    Icon(Icons.edit_document, size: 20, color: primaryColor),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Column(
@@ -78,7 +74,7 @@ class CustomDocSidebar extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            activeTemplateTitle ?? 'Biên bản mới',
+                            activeTemplateTitle ?? 'Văn bản mới',
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.bold,
@@ -100,7 +96,7 @@ class CustomDocSidebar extends StatelessWidget {
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'DANH SÁCH BIÊN BẢN ĐÃ TẠO (${customDocs.length})',
+                'DANH SÁCH VĂN BẢN ĐÃ TẠO (${customDocs.length})',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -127,7 +123,7 @@ class CustomDocSidebar extends StatelessWidget {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Chưa có biên bản tùy biến nào được tạo.',
+                            'Chưa có văn bản nào được tạo.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 13,
@@ -137,7 +133,7 @@ class CustomDocSidebar extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Bấm "Tạo biên bản mới" ở trên để bắt đầu.',
+                            'Bấm "Tạo văn bản mới" ở trên để bắt đầu.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 12,
@@ -157,9 +153,10 @@ class CustomDocSidebar extends StatelessWidget {
                     itemCount: customDocs.length,
                     itemBuilder: (context, index) {
                       final doc = customDocs[index];
-                      final isSelected = !isCreatingNew && selectedDoc?['id'] == doc['id'];
+                      final isSelected =
+                          !isCreatingNew && selectedDoc?['id'] == doc['id'];
                       final title =
-                          doc['title'] as String? ?? 'Biên bản chưa đặt tên';
+                          doc['title'] as String? ?? 'Văn bản chưa đặt tên';
                       final createdAt = doc['created_at'] as String? ?? '';
 
                       return AppCard(
@@ -199,8 +196,8 @@ class CustomDocSidebar extends StatelessWidget {
                                   const SizedBox(height: 4),
                                   Text(
                                     createdAt.isNotEmpty
-                                        ? 'Cập nhật: $createdAt'
-                                        : 'Văn bản tùy biến',
+                                        ? createdAt
+                                        : 'Soạn thảo văn bản',
                                     style: TextStyle(
                                       fontSize: 11.5,
                                       color: theme.textTheme.bodySmall?.color
@@ -220,7 +217,7 @@ class CustomDocSidebar extends StatelessWidget {
                               ),
                               hoverColor: Colors.red.withValues(alpha: 0.1),
                               splashRadius: 16,
-                              tooltip: 'Xóa biên bản',
+                              tooltip: 'Xóa văn bản',
                               onPressed: () => onDeleteDoc(doc),
                             ),
                           ],

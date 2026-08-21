@@ -50,7 +50,7 @@ Future<T?> showAppDialog<T>({
       routeSettings: routeSettings,
       anchorPoint: anchorPoint,
       builder: (BuildContext ctx) {
-        return PointerInterceptor(child: builder(ctx));
+        return builder(ctx);
       },
     );
   } finally {

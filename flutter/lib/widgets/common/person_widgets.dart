@@ -142,11 +142,8 @@ class PersonActionButtons extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CustomDocsPage(
-          caseId: caseId,
-          person: person,
-          isCaseLevel: false,
-        ),
+        builder: (_) =>
+            CustomDocsPage(caseId: caseId, person: person, isCaseLevel: false),
       ),
     );
   }
@@ -155,6 +152,7 @@ class PersonActionButtons extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
+    const customDocColor = Color.fromARGB(255, 34, 114, 206);
 
     final customDocButton = AppButton.tonal(
       onPressed: () => _navigateToCustomDocs(context),
@@ -162,8 +160,9 @@ class PersonActionButtons extends StatelessWidget {
       iconSize: isCompact ? 15 : 17,
       label: 'Soạn thảo văn bản',
       isCompact: isCompact,
-      backgroundColor: const Color(0xFFE65100).withValues(alpha: 0.25),
-      foregroundColor: const Color(0xFFD84315),
+      borderColor: customDocColor.withValues(alpha: 0.5),
+      backgroundColor: customDocColor.withValues(alpha: 0.05),
+      foregroundColor: customDocColor,
       padding: isCompact
           ? const EdgeInsets.symmetric(horizontal: 10, vertical: 6)
           : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
