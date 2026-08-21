@@ -1,47 +1,5 @@
 [
   {
-    "file_name": "bien_ban_nhan_dang.docx",
-    "display_name": "Biên bản nhận dạng",
-    "fields": [
-      {
-        "name": "custom_field_1",
-        "label": "Người chứng kiến",
-        "type": "text",
-        "placeholder": "Họ tên người chứng kiến..."
-      },
-      {
-        "name": "custom_field_2",
-        "label": "Đặc điểm nhận dạng",
-        "type": "textarea",
-        "placeholder": "Mô tả đặc điểm nhận dạng..."
-      },
-      {
-        "name": "custom_field_3",
-        "label": "Địa điểm thực hiện",
-        "type": "text",
-        "placeholder": "Địa điểm tiến hành nhận dạng..."
-      },
-      {
-        "name": "custom_field_4",
-        "label": "Phương thức nhận dạng",
-        "type": "text",
-        "placeholder": "Qua ảnh / Trực tiếp..."
-      },
-      {
-        "name": "custom_field_5",
-        "label": "Kết quả nhận dạng",
-        "type": "textarea",
-        "placeholder": "Ghi nhận kết quả nhận dạng..."
-      },
-      {
-        "name": "custom_field_6",
-        "label": "Ý kiến của đối tượng",
-        "type": "textarea",
-        "placeholder": "Ghi nhận ý kiến, giải trình..."
-      }
-    ]
-  },
-  {
     "file_name": "bien_ban_ghi_loi_khai.docx",
     "display_name": "Biên bản ghi lời khai",
     "fields": [
@@ -125,33 +83,44 @@
     "fields": []
   },
   {
-    "file_name": "239_giao_nhan_lenh_tam_giam.docx",
-    "display_name": "BB giao nhận Lệnh tạm giam (Mẫu 239 TT128)",
-    "fields": []
-  },
-  {
-    "file_name": "239_giao_nhan_phe_chuan_lenh_tam_giam.docx",
-    "display_name": "BB giao nhận QĐ Phê chuẩn Lệnh tạm giam (Mẫu 239 TT128)",
-    "fields": []
-  },
-  {
-    "file_name": "239_giao_nhan_qdktbc.docx",
-    "display_name": "BB giao nhận QĐ Khởi tố bị can (Mẫu 239 TT128)",
-    "fields": []
-  },
-  {
-    "file_name": "239_giao_nhan_phe_chuan_qdktbc.docx",
-    "display_name": "BB giao nhận QĐ Phê chuẩn QĐ Khởi tố bị can (Mẫu 239 TT128)",
-    "fields": []
+    "file_name": "239_bien_ban_giao_nhan_cho_bi_can.docx",
+    "display_name": "Biên bản giao nhận cho bị can (Mẫu 239 TT128)",
+    "fields": [
+      {
+        "name": "ten_van_ban",
+        "label": "Tên văn bản",
+        "type": "text",
+        "placeholder": "Quyết định tạm giam..."
+      },
+      {
+        "name": "ngay_lap_bb",
+        "label": "Ngày lập biên bản",
+        "type": "date",
+        "placeholder": ""
+      },
+      {
+        "name": "ho_ten",
+        "label": "Tên",
+        "type": "text",
+        "placeholder": "Nguyễn Văn A"
+      },
+      {
+        "name": "chuc_danh",
+        "label": "Chức danh",
+        "type": "text",
+        "placeholder": "Điều tra viên / Phó trưởng CAP"
+      },
+      {
+        "name": "co_quan",
+        "label": "Cơ quan",
+        "type": "text",
+        "placeholder": "Cảnh sát điều tra Công an thành phố Hà Nội"
+      }
+    ]
   },
   {
     "file_name": "bao_cao_bat_giu.docx",
     "display_name": "Báo cáo bắt giữ",
-    "fields": []
-  },
-  {
-    "file_name": "bien_ban_tu_choi_bao_chua.docx",
-    "display_name": "Biên bản từ chối bào chữa",
     "fields": []
   },
   {
