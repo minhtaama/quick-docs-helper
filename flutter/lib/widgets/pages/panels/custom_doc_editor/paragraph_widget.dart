@@ -9,6 +9,7 @@ class DocParagraphWidget extends StatelessWidget {
   final TextEditingController? Function(String varName) getController;
   final Map<String, dynamic>? caseData;
   final Map<String, dynamic>? person;
+  final int? loopIndex;
   final VoidCallback? onContentChanged;
 
   const DocParagraphWidget({
@@ -17,10 +18,19 @@ class DocParagraphWidget extends StatelessWidget {
     required this.getController,
     this.caseData,
     this.person,
+    this.loopIndex,
     this.onContentChanged,
   });
 
-  String _resolveFieldValue(String varName) {
+  String _resolveFieldValue(String rawVarName) {
+    final varName = rawVarName.replaceAll(' ', '');
+    if (varName == 'loop.index') {
+      return '${loopIndex ?? 1}';
+    }
+    if (varName.startsWith('p.')) {
+      final prop = varName.substring(2);
+      return person?[prop]?.toString() ?? '';
+    }
     if (varName.startsWith('person.')) {
       final prop = varName.substring(7);
       return person?[prop]?.toString() ?? '';
@@ -53,6 +63,216 @@ class DocParagraphWidget extends StatelessWidget {
     );
   }
 
+  bool _isStaticRun(Map<String, dynamic> run) {
+    final runType = run['type'] as String? ?? 'text';
+    if (runType == 'text') return true;
+    if (runType == 'field') {
+      final varName = (run['name'] as String? ?? '').replaceAll(' ', '');
+      if (varName == 'loop.index' ||
+          varName.startsWith('person.') ||
+          varName.startsWith('p.') ||
+          varName.startsWith('case.')) {
+        return true;
+      }
+      if (getController(varName) == null &&
+          getController(run['name'] as String? ?? '') == null) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  InlineSpan _buildSpanFromRun(Map<String, dynamic> run) {
+    final runType = run['type'] as String? ?? 'text';
+    final isRunBold = run['bold'] == true;
+    final isRunItalic = run['italic'] == true;
+    final fSize = ((run['size'] as num?)?.toDouble() ?? 14.0) + 4.0;
+    final fFamily = run['font'] as String? ?? 'Times New Roman';
+    final isRunSubscript = run['subscript'] == true;
+    final isRunSuperscript = run['superscript'] == true;
+
+    final style = _docTextStyle(
+      font: fFamily,
+      fontSize: (isRunSubscript || isRunSuperscript) ? fSize * 0.75 : fSize,
+      bold: isRunBold,
+      italic: isRunItalic,
+      wordSpacing: -0.5,
+    );
+
+    if (runType == 'text') {
+      final text = run['text'] as String? ?? '';
+      return TextSpan(text: text, style: style);
+    } else if (runType == 'field') {
+      final rawName = run['name'] as String? ?? '';
+      final varName = rawName.replaceAll(' ', '');
+      if (varName == 'loop.index' ||
+          varName.startsWith('person.') ||
+          varName.startsWith('p.') ||
+          varName.startsWith('case.')) {
+        final val = _resolveFieldValue(varName);
+        final isPerson =
+            varName.startsWith('person.') || varName.startsWith('p.');
+        final display = val.isNotEmpty
+            ? val
+            : (isPerson ? '.....' : '....................');
+        return TextSpan(text: display, style: style);
+      }
+      return TextSpan(
+        text: ' {{ $rawName }} ',
+        style: style.copyWith(color: Colors.grey),
+      );
+    }
+    return const TextSpan(text: '');
+  }
+
+  bool _checkIsTrailing(int idx, List<Map<String, dynamic>> runs) {
+    for (int k = idx + 1; k < runs.length; k++) {
+      final r = runs[k];
+      final rType = r['type'] as String? ?? 'text';
+      if (rType == 'field') return false;
+      final txt = (r['text'] as String? ?? '').trim();
+      if (txt.isNotEmpty) return false;
+    }
+    return true;
+  }
+
+  (double, int) _calculatePrefixWidth(
+    int idx,
+    List<Map<String, dynamic>> runs,
+    double fli,
+  ) {
+    double width = fli > 0 ? fli : 0.0;
+    int fieldCount = 1;
+    for (int pIdx = 0; pIdx < idx; pIdx++) {
+      final pRun = runs[pIdx];
+      final pType = pRun['type'] as String? ?? 'text';
+      final pBold = pRun['bold'] == true;
+      final pItalic = pRun['italic'] == true;
+      final pSz = ((pRun['size'] as num?)?.toDouble() ?? 14.0) + 4.0;
+      final pFam = pRun['font'] as String? ?? 'Times New Roman';
+      final pSub = pRun['subscript'] == true;
+      final pSup = pRun['superscript'] == true;
+      final realSz = (pSub || pSup) ? pSz * 0.75 : pSz;
+
+      if (pType == 'text') {
+        final pText = pRun['text'] as String? ?? '';
+        width += DocEditorUtils.measureTextWidth(
+          pText,
+          _docTextStyle(
+            font: pFam,
+            fontSize: realSz,
+            bold: pBold,
+            italic: pItalic,
+            wordSpacing: -1.0,
+          ),
+        );
+      } else if (pType == 'field') {
+        final pName = (pRun['name'] as String? ?? '').replaceAll(' ', '');
+        if (_isStaticRun(pRun)) {
+          final val = _resolveFieldValue(pName);
+          final display = val.isNotEmpty ? val : '     ';
+          width += DocEditorUtils.measureTextWidth(
+            display,
+            _docTextStyle(
+              font: pFam,
+              fontSize: pSz,
+              bold: pBold,
+              italic: pItalic,
+              wordSpacing: -0.5,
+            ),
+          );
+        } else {
+          fieldCount++;
+          final isDate =
+              (pRun['field_info']?['type'] == 'date') ||
+              pRun['is_collapsed_date'] == true ||
+              pName.startsWith('ngay_');
+          width += isDate ? (130.0 + 8.0) : (140.0 + 8.0);
+        }
+      }
+    }
+    return (width, fieldCount);
+  }
+
+  InlineSpan _buildInteractiveSpan({
+    required Map<String, dynamic> run,
+    required int idx,
+    required List<Map<String, dynamic>> runs,
+    required double availableWidth,
+    required double fli,
+  }) {
+    final varName = run['name'] as String? ?? '';
+    final controller = getController(varName);
+    if (controller == null) return const TextSpan(text: '');
+
+    final fieldInfo = Map<String, dynamic>.from(
+      run['field_info'] as Map? ?? {},
+    );
+    final fType = fieldInfo['type'] as String? ?? 'text';
+    final fPlaceholder = fieldInfo['placeholder'] as String? ?? '...';
+    final fSize = ((run['size'] as num?)?.toDouble() ?? 14.0) + 4.0;
+    final isCollapsedDate = run['is_collapsed_date'] == true;
+    final fFamily = run['font'] as String? ?? 'Times New Roman';
+
+    if (fType == 'date' || isCollapsedDate || varName.startsWith('ngay_')) {
+      return WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: DateTimeInput(
+            isInline: true,
+            inlineFontSize: fSize - 1.5,
+            controller: controller,
+            label: fieldInfo['label'] as String? ?? varName,
+            hint: fPlaceholder.isNotEmpty ? fPlaceholder : 'dd/mm/yyyy',
+          ),
+        ),
+      );
+    }
+
+    // Trường hợp ô input nằm ở cuối đoạn văn bản -> tự động kéo giãn đến hết lề phải trang giấy A4
+    final isTrailing = _checkIsTrailing(idx, runs);
+    if (isTrailing) {
+      final (prefixWidth, fieldCount) = _calculatePrefixWidth(idx, runs, fli);
+      final remainingWidth =
+          availableWidth - prefixWidth - (fieldCount * 8.0) - 20.0;
+      if (remainingWidth >= 80.0) {
+        return WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: SizedBox(
+              width: remainingWidth,
+              child: CustomTextInput(
+                isInline: true,
+                inlineFontSize: fSize - 0.5,
+                controller: controller,
+                label: fieldInfo['label'] as String? ?? varName,
+                hint: fPlaceholder,
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    // Trường hợp ô input nằm ở giữa câu văn -> tự co giãn theo độ dài chữ thực tế để không bị ngắt dòng
+    return WidgetSpan(
+      alignment: PlaceholderAlignment.middle,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: _InlineDynamicTextInput(
+          controller: controller,
+          label: fieldInfo['label'] as String? ?? varName,
+          hint: fPlaceholder,
+          fontSize: fSize,
+          font: fFamily,
+          maxWidth: availableWidth,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final alignStr = element['align'] as String? ?? 'left';
@@ -62,9 +282,14 @@ class DocParagraphWidget extends StatelessWidget {
             .toList() ??
         [];
 
-    var wrapAlign = WrapAlignment.start;
-    if (alignStr == 'center') wrapAlign = WrapAlignment.center;
-    if (alignStr == 'right') wrapAlign = WrapAlignment.end;
+    TextAlign textAlign = TextAlign.left;
+    if (alignStr == 'center') {
+      textAlign = TextAlign.center;
+    } else if (alignStr == 'right') {
+      textAlign = TextAlign.right;
+    } else if (alignStr == 'justify') {
+      textAlign = TextAlign.justify;
+    }
 
     // Tiền xử lý runs để gộp cụm ngày tháng năm (từ {{ ngay_X }} đến {{ nam_X }}) thành 1 ô duy nhất
     final processedRuns = <Map<String, dynamic>>[];
@@ -80,7 +305,6 @@ class DocParagraphWidget extends StatelessWidget {
         final thangVar = 'thang_$dateSuffix';
         final namVar = 'nam_$dateSuffix';
 
-        // Kiểm tra xem phía sau có chuỗi chứa 'tháng', thangVar, 'năm', namVar không
         int j = i + 1;
         bool foundThang = false;
         bool foundNam = false;
@@ -99,7 +323,6 @@ class DocParagraphWidget extends StatelessWidget {
         }
 
         if (foundThang && foundNam) {
-          // Gộp cụm: chỉ thêm 1 run field ngày đại diện, bỏ qua các thẻ trung gian đến endIdx
           processedRuns.add({
             'type': 'field',
             'name': currentName,
@@ -135,251 +358,333 @@ class DocParagraphWidget extends StatelessWidget {
         builder: (context, constraints) {
           final double availableWidth = constraints.maxWidth;
 
-          final List<Widget> children = [];
-          if (fli > 0) {
-            children.add(SizedBox(width: fli));
-          }
+          // Kiểm tra xem đoạn văn có chứa trường textarea (nhiều dòng) hay không
+          final bool hasTextarea = processedRuns.any((r) {
+            if (_isStaticRun(r)) return false;
+            final fieldInfo = Map<String, dynamic>.from(
+              r['field_info'] as Map? ?? {},
+            );
+            return fieldInfo['type'] == 'textarea';
+          });
 
-          children.addAll(
-            processedRuns.asMap().entries.map<Widget>((entry) {
-              final idx = entry.key;
-              final run = entry.value;
-              final runType = run['type'] as String? ?? 'text';
-              final isRunBold = run['bold'] == true;
-              final isRunItalic = run['italic'] == true;
-              final fSize = ((run['size'] as num?)?.toDouble() ?? 14.0) + 4.0;
-              final fFamily = run['font'] as String? ?? 'Times New Roman';
+          if (hasTextarea) {
+            final List<Widget> colWidgets = [];
+            final inlineSpans = <InlineSpan>[];
 
-              if (runType == 'text') {
-                final text = run['text'] as String? ?? '';
-                final isRunSubscript = run['subscript'] == true;
-                final isRunSuperscript = run['superscript'] == true;
-                final textWidget = Text(
-                  text,
-                  style: _docTextStyle(
-                    font: fFamily,
-                    fontSize: (isRunSubscript || isRunSuperscript)
-                        ? fSize * 0.75
-                        : fSize,
-                    bold: isRunBold,
-                    italic: isRunItalic,
-                    wordSpacing: -1,
-                  ),
-                );
-                if (isRunSuperscript) {
-                  return Transform.translate(
-                    offset: const Offset(0, -6),
-                    child: textWidget,
-                  );
-                } else if (isRunSubscript) {
-                  return Transform.translate(
-                    offset: const Offset(0, 4),
-                    child: textWidget,
-                  );
-                }
-                return textWidget;
-              } else if (runType == 'field') {
-                final varName = run['name'] as String? ?? '';
+            if (fli > 0 && alignStr != 'center' && alignStr != 'right') {
+              inlineSpans.add(WidgetSpan(child: SizedBox(width: fli)));
+            }
 
-                // 1 & 2: Biến của person.* hoặc case.*
-                if (varName.startsWith('person.') ||
-                    varName.startsWith('case.')) {
-                  final val = _resolveFieldValue(varName);
-                  final isPerson = varName.startsWith('person.');
-                  final display = val.isNotEmpty
-                      ? ' $val '
-                      : (isPerson ? '     ' : ' .................... ');
-                  return Text(
-                    display,
-                    style: _docTextStyle(
-                      font: fFamily,
-                      fontSize: fSize,
-                      bold: isRunBold,
-                      italic: isRunItalic,
-                      wordSpacing: -0.5,
-                    ),
-                  );
-                }
-
-                // 3. Nếu là trường custom_fields
-                final controller = getController(varName);
-                if (controller == null) {
-                  return Text(
-                    ' {{ $varName }} ',
-                    style: _docTextStyle(
-                      font: fFamily,
-                      fontSize: fSize,
-                      color: Colors.grey,
-                      wordSpacing: -0.5,
-                    ),
-                  );
-                }
-
+            for (int idx = 0; idx < processedRuns.length; idx++) {
+              final run = processedRuns[idx];
+              if (_isStaticRun(run)) {
+                inlineSpans.add(_buildSpanFromRun(run));
+              } else {
                 final fieldInfo = Map<String, dynamic>.from(
                   run['field_info'] as Map? ?? {},
                 );
                 final fType = fieldInfo['type'] as String? ?? 'text';
-                final fPlaceholder =
-                    fieldInfo['placeholder'] as String? ?? '...';
-                final isCollapsedDate = run['is_collapsed_date'] == true;
+                final varName = run['name'] as String? ?? '';
+                final controller = getController(varName);
+                if (controller == null) continue;
 
-                if (fType == 'date' ||
-                    isCollapsedDate ||
-                    varName.startsWith('ngay_')) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: DateTimeInput(
-                      isInline: true,
-                      inlineFontSize: fSize - 1.5,
-                      controller: controller,
-                      label: fieldInfo['label'] as String? ?? varName,
-                      hint: fPlaceholder.isNotEmpty
-                          ? fPlaceholder
-                          : 'dd/mm/yyyy',
-                    ),
-                  );
-                } else if (fType == 'textarea') {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: CustomTextInput(
-                        isInline: true,
-                        inlineFontSize: fSize,
-                        controller: controller,
-                        label: fieldInfo['label'] as String? ?? varName,
-                        hint: fPlaceholder,
-                        minLines: 2,
-                        maxLines: 4,
+                if (fType == 'textarea') {
+                  if (inlineSpans.isNotEmpty) {
+                    colWidgets.add(
+                      SizedBox(
+                        width: double.infinity,
+                        child: Text.rich(
+                          TextSpan(children: List.from(inlineSpans)),
+                          textAlign: textAlign,
+                        ),
+                      ),
+                    );
+                    inlineSpans.clear();
+                  }
+                  final fSize =
+                      ((run['size'] as num?)?.toDouble() ?? 14.0) + 4.0;
+                  final fPlaceholder =
+                      fieldInfo['placeholder'] as String? ?? '...';
+                  colWidgets.add(
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: CustomTextInput(
+                          isInline: true,
+                          inlineFontSize: fSize - 2,
+                          controller: controller,
+                          label: fieldInfo['label'] as String? ?? varName,
+                          hint: fPlaceholder,
+                          minLines: 6,
+                          maxLines: 9999,
+                        ),
                       ),
                     ),
                   );
                 } else {
-                  // Ô text 1 dòng - Khởi tạo widget 1 lần duy nhất (DRY)
-                  final inputWidget = CustomTextInput(
-                    isInline: true,
-                    inlineFontSize: fSize - 0.5,
-                    controller: controller,
-                    label: fieldInfo['label'] as String? ?? varName,
-                    hint: fPlaceholder,
-                  );
-
-                  // Kiểm tra xem đây có phải là ô input ở cuối đoạn văn không
-                  final bool isTrailingField =
-                      (idx == processedRuns.length - 1) ||
-                      processedRuns
-                          .sublist(idx + 1)
-                          .every(
-                            (r) =>
-                                r['type'] == 'text' &&
-                                (r['text'] as String? ?? '').trim().isEmpty,
-                          );
-
-                  if (isTrailingField) {
-                    double prefixWidth = fli > 0 ? fli : 0.0;
-                    int fieldCount =
-                        1; // Tính cả ô input cuối này (có padding ngang 8px)
-                    for (int pIdx = 0; pIdx < idx; pIdx++) {
-                      final pRun = processedRuns[pIdx];
-                      final pType = pRun['type'] as String? ?? 'text';
-                      final pBold = pRun['bold'] == true;
-                      final pItalic = pRun['italic'] == true;
-                      final pSz =
-                          ((pRun['size'] as num?)?.toDouble() ?? 14.0) + 4.0;
-                      final pFam = pRun['font'] as String? ?? 'Times New Roman';
-
-                      if (pType == 'text') {
-                        final pText = pRun['text'] as String? ?? '';
-                        final pSub = pRun['subscript'] == true;
-                        final pSup = pRun['superscript'] == true;
-                        final realSz = (pSub || pSup) ? pSz * 0.75 : pSz;
-                        prefixWidth += DocEditorUtils.measureTextWidth(
-                          pText,
-                          _docTextStyle(
-                            font: pFam,
-                            fontSize: realSz,
-                            bold: pBold,
-                            italic: pItalic,
-                            wordSpacing: -1,
-                          ),
-                        );
-                      } else if (pType == 'field') {
-                        final pName = pRun['name'] as String? ?? '';
-                        if (pName.startsWith('person.') ||
-                            pName.startsWith('case.')) {
-                          final val = _resolveFieldValue(pName);
-                          final display = val.isNotEmpty ? ' $val ' : '     ';
-                          prefixWidth += DocEditorUtils.measureTextWidth(
-                            display,
-                            _docTextStyle(
-                              font: pFam,
-                              fontSize: pSz,
-                              bold: pBold,
-                              italic: pItalic,
-                              wordSpacing: -0.5,
-                            ),
-                          );
-                        } else {
-                          // Ô input trước đó (ví dụ ô ngày)
-                          fieldCount++;
-                          final fInfo = Map<String, dynamic>.from(
-                            pRun['field_info'] as Map? ?? {},
-                          );
-                          final fType = fInfo['type'] as String? ?? 'text';
-                          if (fType == 'date' ||
-                              pRun['is_collapsed_date'] == true ||
-                              pName.startsWith('ngay_')) {
-                            prefixWidth += (130.0 + 12.0);
-                          } else {
-                            prefixWidth += 140.0 + 12.0;
-                          }
-                        }
-                      }
-                    }
-
-                    // Tính remainingWidth trừ đi 2px theo yêu cầu để Wrap không bao giờ bị tràn sang dòng mới
-                    final double remainingWidth =
-                        availableWidth -
-                        prefixWidth -
-                        (fieldCount * 8.0) -
-                        12.0;
-                    if (remainingWidth >= 100.0) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: SizedBox(
-                          width: remainingWidth,
-                          child: inputWidget,
-                        ),
-                      );
-                    }
-                  }
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: IntrinsicWidth(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          minWidth: 140,
-                          maxWidth: 450,
-                        ),
-                        child: inputWidget,
-                      ),
+                  inlineSpans.add(
+                    _buildInteractiveSpan(
+                      run: run,
+                      idx: idx,
+                      runs: processedRuns,
+                      availableWidth: availableWidth,
+                      fli: fli,
                     ),
                   );
                 }
               }
+            }
 
-              return const SizedBox.shrink();
-            }),
-          );
+            if (inlineSpans.isNotEmpty) {
+              colWidgets.add(
+                SizedBox(
+                  width: double.infinity,
+                  child: Text.rich(
+                    TextSpan(children: inlineSpans),
+                    textAlign: textAlign,
+                  ),
+                ),
+              );
+            }
 
-          return Wrap(
-            alignment: wrapAlign,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: children,
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: colWidgets,
+            );
+          }
+
+          // Kiểm tra xem đoạn văn có trường text input nằm ở cuối dòng (như "Ông/bà: ...", "Tôi: ...", "Về việc: ...") hay không
+          int? trailingIdx;
+          for (int k = processedRuns.length - 1; k >= 0; k--) {
+            if (!_isStaticRun(processedRuns[k])) {
+              if (_checkIsTrailing(k, processedRuns)) {
+                final fInfo = Map<String, dynamic>.from(
+                  processedRuns[k]['field_info'] as Map? ?? {},
+                );
+                final fType = fInfo['type'] as String? ?? 'text';
+                final isDate =
+                    fType == 'date' ||
+                    processedRuns[k]['is_collapsed_date'] == true ||
+                    (processedRuns[k]['name'] as String? ?? '').startsWith(
+                      'ngay_',
+                    );
+                if (!isDate && fType != 'textarea') {
+                  trailingIdx = k;
+                }
+              }
+              break;
+            }
+          }
+
+          if (trailingIdx != null) {
+            final (prefixWidth, _) = _calculatePrefixWidth(
+              trailingIdx,
+              processedRuns,
+              fli,
+            );
+            if (prefixWidth < availableWidth - 60.0) {
+              final List<Widget> rowChildren = [];
+              if (fli > 0 && alignStr != 'center' && alignStr != 'right') {
+                rowChildren.add(SizedBox(width: fli));
+              }
+
+              final List<InlineSpan> prefixSpans = [];
+
+              void flushPrefixSpans() {
+                if (prefixSpans.isNotEmpty) {
+                  rowChildren.add(
+                    Text.rich(
+                      TextSpan(children: List.from(prefixSpans)),
+                      textAlign: textAlign,
+                    ),
+                  );
+                  prefixSpans.clear();
+                }
+              }
+
+              for (int k = 0; k < trailingIdx; k++) {
+                final r = processedRuns[k];
+                if (_isStaticRun(r)) {
+                  prefixSpans.add(_buildSpanFromRun(r));
+                } else {
+                  flushPrefixSpans();
+                  final varName = r['name'] as String? ?? '';
+                  final controller = getController(varName);
+                  if (controller != null) {
+                    final fieldInfo = Map<String, dynamic>.from(
+                      r['field_info'] as Map? ?? {},
+                    );
+                    final fType = fieldInfo['type'] as String? ?? 'text';
+                    final fPlaceholder =
+                        fieldInfo['placeholder'] as String? ?? '...';
+                    final fSize =
+                        ((r['size'] as num?)?.toDouble() ?? 14.0) + 4.0;
+                    final isCollapsedDate = r['is_collapsed_date'] == true;
+                    final fFamily = r['font'] as String? ?? 'Times New Roman';
+
+                    if (fType == 'date' ||
+                        isCollapsedDate ||
+                        varName.startsWith('ngay_')) {
+                      rowChildren.add(
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: DateTimeInput(
+                            isInline: true,
+                            inlineFontSize: fSize - 1.5,
+                            controller: controller,
+                            label: fieldInfo['label'] as String? ?? varName,
+                            hint: fPlaceholder.isNotEmpty
+                                ? fPlaceholder
+                                : 'dd/mm/yyyy',
+                          ),
+                        ),
+                      );
+                    } else {
+                      rowChildren.add(
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: _InlineDynamicTextInput(
+                            controller: controller,
+                            label: fieldInfo['label'] as String? ?? varName,
+                            hint: fPlaceholder,
+                            fontSize: fSize,
+                            font: fFamily,
+                            maxWidth: availableWidth,
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                }
+              }
+
+              flushPrefixSpans();
+
+              final trailingRun = processedRuns[trailingIdx];
+              final tVarName = trailingRun['name'] as String? ?? '';
+              final tController = getController(tVarName);
+              final tFieldInfo = Map<String, dynamic>.from(
+                trailingRun['field_info'] as Map? ?? {},
+              );
+              final tPlaceholder =
+                  tFieldInfo['placeholder'] as String? ?? '...';
+              final tSize =
+                  ((trailingRun['size'] as num?)?.toDouble() ?? 14.0) + 4.0;
+
+              if (tController != null) {
+                rowChildren.add(
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 4.0),
+                      child: CustomTextInput(
+                        isInline: true,
+                        inlineFontSize: tSize - 0.5,
+                        controller: tController,
+                        label: tFieldInfo['label'] as String? ?? tVarName,
+                        hint: tPlaceholder,
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              return SizedBox(
+                width: double.infinity,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: rowChildren,
+                ),
+              );
+            }
+          }
+
+          // Toàn bộ các runs còn lại (đoạn văn dài nhiều dòng có trường nhập inline ở giữa)
+          final spans = <InlineSpan>[];
+
+          if (fli > 0 && alignStr != 'center' && alignStr != 'right') {
+            spans.add(WidgetSpan(child: SizedBox(width: fli)));
+          }
+
+          for (int idx = 0; idx < processedRuns.length; idx++) {
+            final run = processedRuns[idx];
+            if (_isStaticRun(run)) {
+              spans.add(_buildSpanFromRun(run));
+            } else {
+              spans.add(
+                _buildInteractiveSpan(
+                  run: run,
+                  idx: idx,
+                  runs: processedRuns,
+                  availableWidth: availableWidth,
+                  fli: fli,
+                ),
+              );
+            }
+          }
+
+          return SizedBox(
+            width: double.infinity,
+            child: Text.rich(TextSpan(children: spans), textAlign: textAlign),
           );
         },
       ),
+    );
+  }
+}
+
+/// Widget ô nhập text inline tự động co giãn theo độ dài văn bản thực tế
+class _InlineDynamicTextInput extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String? hint;
+  final double fontSize;
+  final String font;
+  final double maxWidth;
+
+  const _InlineDynamicTextInput({
+    required this.controller,
+    required this.label,
+    this.hint,
+    required this.fontSize,
+    required this.font,
+    required this.maxWidth,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final currentText = controller.text;
+        final measureSample = currentText.isNotEmpty
+            ? currentText
+            : ((hint != null && hint!.isNotEmpty) ? hint! : label);
+
+        final textWidth = DocEditorUtils.measureTextWidth(
+          measureSample,
+          TextStyle(
+            fontFamily: font,
+            fontFamilyFallback: DocEditorUtils.fontFallback,
+            fontSize: fontSize,
+          ),
+        );
+
+        final maxAllowed = (maxWidth - 20.0).clamp(120.0, 550.0);
+        final calculatedWidth = (textWidth + 24.0).clamp(120.0, maxAllowed);
+
+        return SizedBox(
+          width: calculatedWidth,
+          child: CustomTextInput(
+            isInline: true,
+            inlineFontSize: fontSize - 0.5,
+            controller: controller,
+            label: label,
+            hint: hint,
+          ),
+        );
+      },
     );
   }
 }

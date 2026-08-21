@@ -1,6 +1,7 @@
 import io
 import json
 import os
+import re
 import sys
 import hashlib
 import shutil
@@ -218,10 +219,6 @@ class CustomDocxService(BaseDocxService):
                             context[key] = d
                             context[f"thang_{suffix}"] = m
                             context[f"nam_{suffix}"] = y
-                            context[f"ngay_{suffix}"] = d
-                            context[f"{suffix}_ngay"] = d
-                            context[f"{suffix}_thang"] = m
-                            context[f"{suffix}_nam"] = y
                             context[f"{key}_full"] = val
                             if time_part and ":" in time_part:
                                 tp = time_part.split(":")
@@ -239,32 +236,8 @@ class CustomDocxService(BaseDocxService):
                                 context["gio"] = tp[0].strip()
                                 context["phut"] = tp[1].strip()
 
-                        # 3. Trường hợp biến kết thúc bằng "_ngay" (ví dụ: thoi_diem_ngay -> prefix = "thoi_diem")
-                        elif key.endswith("_ngay"):
-                            prefix = key[:-5]
-                            context[key] = d
-                            context[f"{prefix}_thang"] = m
-                            context[f"{prefix}_nam"] = y
-                            context[f"{key}_full"] = val
-                            if time_part and ":" in time_part:
-                                tp = time_part.split(":")
-                                context[f"{prefix}_gio"] = tp[0].strip()
-                                context[f"{prefix}_phut"] = tp[1].strip()
-
-                        # 4. Trường hợp biến ngày tự do khác (ví dụ: thoi_gian_lap)
                         else:
                             context[key] = val
-                            context[f"ngay_{key}"] = d
-                            context[f"thang_{key}"] = m
-                            context[f"nam_{key}"] = y
-                            context[f"{key}_ngay"] = d
-                            context[f"{key}_thang"] = m
-                            context[f"{key}_nam"] = y
-                            context[f"{key}_full"] = val
-                            if time_part and ":" in time_part:
-                                tp = time_part.split(":")
-                                context[f"gio_{key}"] = tp[0].strip()
-                                context[f"phut_{key}"] = tp[1].strip()
                     else:
                         context[key] = val
                 else:
@@ -384,9 +357,9 @@ class CustomDocxService(BaseDocxService):
             part_styles = char_styles[pos:pos + part_len]
             pos += part_len
 
-            tag_match = re.match(r'\{\{\s*([a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)*)\s*\}\}', part)
+            tag_match = re.match(r'\{\{\s*([a-zA-Z0-9_\.\s]+?)\s*\}\}', part)
             if tag_match:
-                var_name = tag_match.group(1).strip()
+                var_name = tag_match.group(1).replace(" ", "")
                 field_info = fields_map.get(var_name, {})
                 is_bold = any(s[0] for s in part_styles) if part_styles else False
                 is_italic = any(s[1] for s in part_styles) if part_styles else False
@@ -459,6 +432,41 @@ class CustomDocxService(BaseDocxService):
             "left_indent": li
         }
 
+    def _parse_text_to_runs(self, text: str, fields_map: dict[str, Any]) -> list[dict[str, Any]]:
+        parts = re.split(r'(\{\{[^{}]+\}\})', text)
+        runs_out: list[dict[str, Any]] = []
+        for part in parts:
+            if not part:
+                continue
+            tag_match = re.match(r'\{\{\s*([a-zA-Z0-9_\.\s]+?)\s*\}\}', part)
+            if tag_match:
+                var_name = tag_match.group(1).replace(" ", "")
+                field_info = fields_map.get(var_name, {})
+                runs_out.append({
+                    "type": "field",
+                    "name": var_name,
+                    "tag": part,
+                    "bold": False,
+                    "italic": False,
+                    "size": 13.0,
+                    "font": 'Times New Roman',
+                    "subscript": False,
+                    "superscript": False,
+                    "field_info": field_info
+                })
+            else:
+                runs_out.append({
+                    "type": "text",
+                    "text": part,
+                    "bold": False,
+                    "italic": False,
+                    "size": 13.0,
+                    "font": 'Times New Roman',
+                    "subscript": False,
+                    "superscript": False
+                })
+        return runs_out
+
     def get_template_layout(self, template_filename: str, level: str = "case") -> dict[str, Any]:
         """
         Bóc tách cấu trúc tài liệu DOCX (đoạn văn, bảng biểu, căn lề, biến Jinja2) 
@@ -483,77 +491,134 @@ class CustomDocxService(BaseDocxService):
         active_loop_var = None
         active_item_var = None
         active_loop_lines: list[str] = []
+        active_loop_paragraphs: list[Any] = []
 
         for child in doc.element.body:
             if child.tag.endswith('p'):
                 p = docx.text.paragraph.Paragraph(child, doc)
                 raw_text = p.text.strip()
 
-                # Kiểm tra thẻ mở vòng lặp for: {% for item in loop_var %}
-                for_match = re.search(r'\{%\s*for\s+(\w+)\s+in\s+([a-zA-Z0-9_]+)\s*%\}', raw_text)
+                # Nếu paragraph chứa cả {% for ... %} hoặc {%p for ... %} và {% endfor %} hoặc {%p endfor %} trong cùng 1 paragraph
+                if ('{% for' in raw_text or '{%p for' in raw_text) and ('{% endfor' in raw_text or '{%p endfor' in raw_text):
+                    for_match = re.search(r'\{%p?\s*for\s+(\w+)\s+in\s+([a-zA-Z0-9_\.]+)\s*%\}', raw_text)
+                    if for_match:
+                        item_var = for_match.group(1)
+                        loop_var = for_match.group(2)
+                        inner_lines = []
+                        is_inside = False
+                        for line in p.text.split('\n'):
+                            line_s = line.strip()
+                            if '{% for' in line_s or '{%p for' in line_s:
+                                is_inside = True
+                                continue
+                            if '{% endfor' in line_s or '{%p endfor' in line_s:
+                                is_inside = False
+                                break
+                            if is_inside and line_s:
+                                inner_lines.append(line)
+
+                        if loop_var == "case.con_nguoi_list":
+                            fake_paras = []
+                            for il in inner_lines:
+                                fake_paras.append({
+                                    "type": "paragraph",
+                                    "align": "left",
+                                    "bold": False,
+                                    "runs": self._parse_text_to_runs(il, fields_map),
+                                    "space_before": 0.0,
+                                    "space_after": 2.0,
+                                    "first_line_indent": 0.0,
+                                    "left_indent": 0.0
+                                })
+                            elements.append({
+                                "type": "case_persons_loop",
+                                "item_var": item_var,
+                                "loop_var": loop_var,
+                                "paragraphs": fake_paras
+                            })
+                            continue
+
+                # Kiểm tra thẻ mở vòng lặp for: {% for item in loop_var %} hoặc {%p for item in loop_var %}
+                for_match = re.search(r'\{%p?\s*for\s+(\w+)\s+in\s+([a-zA-Z0-9_\.]+)\s*%\}', raw_text)
                 if for_match:
                     active_item_var = for_match.group(1)
                     active_loop_var = for_match.group(2)
                     active_loop_lines = []
+                    active_loop_paragraphs = []
                     continue
 
-                if '{% endfor %}' in raw_text:
+                if '{% endfor' in raw_text or '{%p endfor' in raw_text:
                     if active_loop_var:
-                        # Phân tích nội dung bên trong vòng lặp để bóc tách các trường item.*
-                        subfields = []
-                        for line in active_loop_lines:
-                            found = re.findall(rf'\{{\{{\s*{active_item_var}\.([a-zA-Z0-9_]+)\s*\}}\}}', line)
-                            for f in found:
-                                if f not in subfields:
-                                    subfields.append(f)
-
-                        field_meta = fields_map.get(active_loop_var, {})
-
-                        # CHỈ coi là list/table/persons_section khi loop_var có trong fields_map hoặc khai báo rõ ràng
-                        if subfields and (active_loop_var in fields_map or field_meta.get("type") in ["list", "table", "input_list", "input_table"]):
-                            schema = field_meta.get("item_schema")
-                            if not schema:
-                                schema = [
-                                    {
-                                        "name": sub,
-                                        "label": "Hỏi" if "hoi" in sub.lower() else ("Đáp" if "dap" in sub.lower() or "tra_loi" in sub.lower() else sub.replace("_", " ").title()),
-                                        "type": "textarea"
-                                    }
-                                    for sub in subfields
+                        # 1. Trường hợp lặp danh sách đối tượng vụ án (CHỈ DUY NHẤT case.con_nguoi_list)
+                        if active_loop_var == "case.con_nguoi_list":
+                            elements.append({
+                                "type": "case_persons_loop",
+                                "item_var": active_item_var,
+                                "loop_var": active_loop_var,
+                                "paragraphs": [
+                                    self._parse_paragraph(lp, fields_map)
+                                    for lp in active_loop_paragraphs
+                                    if lp.text.strip()
                                 ]
-                            meta_type = field_meta.get("type", "input_list")
-                            list_type = "input_table" if meta_type in ["table", "input_table"] else "input_list"
-                            elements.append({
-                                "type": list_type,
-                                "name": active_loop_var,
-                                "field_info": {
-                                    "name": active_loop_var,
-                                    "label": field_meta.get("label", active_loop_var.replace("_", " ").title()),
-                                    "type": list_type,
-                                    "item_schema": schema
-                                },
-                                "headers": [col.get("label", col.get("name", "")) for col in schema]
                             })
+                        else:
+                            # Phân tích nội dung bên trong vòng lặp để bóc tách các trường item.*
+                            subfields = []
+                            for line in active_loop_lines:
+                                found = re.findall(rf'\{{\{{\s*{active_item_var}\.([a-zA-Z0-9_]+)\s*\}}\}}', line)
+                                for f in found:
+                                    if f not in subfields:
+                                        subfields.append(f)
 
-                        elif active_loop_var in fields_map or field_meta.get("type") in ["persons", "input_persons", "persons_section"]:
-                            # Danh sách đối tượng (persons) khi có trong metadata
-                            elements.append({
-                                "type": "input_persons",
-                                "name": active_loop_var,
-                                "field_info": field_meta or {
+                            field_meta = fields_map.get(active_loop_var, {})
+
+                            # CHỈ coi là list/table/persons_section khi loop_var có trong fields_map hoặc khai báo rõ ràng
+                            if subfields and (active_loop_var in fields_map or field_meta.get("type") in ["list", "table", "input_list", "input_table"]):
+                                schema = field_meta.get("item_schema")
+                                if not schema:
+                                    schema = [
+                                        {
+                                            "name": sub,
+                                            "label": "Hỏi" if "hoi" in sub.lower() else ("Đáp" if "dap" in sub.lower() or "tra_loi" in sub.lower() else sub.replace("_", " ").title()),
+                                            "type": "textarea"
+                                        }
+                                        for sub in subfields
+                                    ]
+                                meta_type = field_meta.get("type", "input_list")
+                                list_type = "input_table" if meta_type in ["table", "input_table"] else "input_list"
+                                elements.append({
+                                    "type": list_type,
                                     "name": active_loop_var,
-                                    "label": active_loop_var.replace("_", " ").title(),
-                                    "type": "input_persons"
-                                }
-                            })
+                                    "field_info": {
+                                        "name": active_loop_var,
+                                        "label": field_meta.get("label", active_loop_var.replace("_", " ").title()),
+                                        "type": list_type,
+                                        "item_schema": schema
+                                    },
+                                    "headers": [col.get("label", col.get("name", "")) for col in schema]
+                                })
+
+                            elif active_loop_var in fields_map or field_meta.get("type") in ["persons", "input_persons", "persons_section"]:
+                                # Danh sách đối tượng (persons) khi có trong metadata
+                                elements.append({
+                                    "type": "input_persons",
+                                    "name": active_loop_var,
+                                    "field_info": field_meta or {
+                                        "name": active_loop_var,
+                                        "label": active_loop_var.replace("_", " ").title(),
+                                        "type": "input_persons"
+                                    }
+                                })
                     active_loop_var = None
                     active_item_var = None
                     active_loop_lines = []
+                    active_loop_paragraphs = []
                     continue
 
-                # Nếu đang trong vòng lặp thì thu thập các dòng text để phân tích
+                # Nếu đang trong vòng lặp thì thu thập các dòng text và paragraph để phân tích
                 if active_loop_var:
                     active_loop_lines.append(raw_text)
+                    active_loop_paragraphs.append(p)
                     continue
 
                 # Bóc tách đoạn văn bình thường
@@ -569,7 +634,7 @@ class CustomDocxService(BaseDocxService):
                 for row in tbl.rows:
                     row_cells = [cell.text.strip() for cell in row.cells]
                     row_text = " ".join(row_cells)
-                    loop_match = re.search(r'\{%tr\s+for\s+\w+\s+in\s+([a-zA-Z0-9_]+)\s*%\}', row_text) or re.search(r'\{%\s*for\s+\w+\s+in\s+([a-zA-Z0-9_]+)\s*%\}', row_text)
+                    loop_match = re.search(r'\{%tr\s+for\s+\w+\s+in\s+([a-zA-Z0-9_\.]+)\s*%\}', row_text) or re.search(r'\{%\s*for\s+\w+\s+in\s+([a-zA-Z0-9_\.]+)\s*%\}', row_text)
                     if loop_match:
                         table_var_name = loop_match.group(1)
                         break

@@ -46,6 +46,42 @@ class LayoutElementBuilder extends StatelessWidget {
           onContentChanged: onContentChanged,
         );
 
+      case 'case_persons_loop':
+        final rawParagraphs =
+            (element['paragraphs'] as List?)
+                ?.map((e) => Map<String, dynamic>.from(e as Map))
+                .toList() ??
+            [];
+        final persons = availablePersons.isNotEmpty
+            ? availablePersons
+            : ((caseData?['con_nguoi_list'] as List?)
+                    ?.map((e) => Map<String, dynamic>.from(e as Map))
+                    .toList() ??
+                [<String, dynamic>{}]);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: persons.asMap().entries.map((entry) {
+            final pIdx = entry.key;
+            final pData = entry.value;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: rawParagraphs.map((pEl) {
+                return DocParagraphWidget(
+                  element: pEl,
+                  getController: getController,
+                  caseData: caseData,
+                  person: pData,
+                  loopIndex: pIdx + 1,
+                  onContentChanged: onContentChanged,
+                );
+              }).toList(),
+            );
+          }).toList(),
+        );
+
       case 'static_table':
         return StaticTableWidget(
           element: element,
