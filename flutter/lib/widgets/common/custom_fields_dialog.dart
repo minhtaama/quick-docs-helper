@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_button.dart';
+import 'dropdown_input.dart';
 import 'text_input.dart';
 
 class CustomFieldsDialog extends StatefulWidget {
@@ -26,7 +27,7 @@ class CustomFieldsDialog extends StatefulWidget {
 
 class _CustomFieldsDialogState extends State<CustomFieldsDialog> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _titleController;
+  late TextEditingController _titleController;
   final Map<String, TextEditingController> _textControllers = {};
   final Map<String, dynamic> _complexValues = {};
 
@@ -41,10 +42,10 @@ class _CustomFieldsDialogState extends State<CustomFieldsDialog> {
 
     for (final field in widget.fields) {
       final name = field['name'] as String? ?? '';
-      final type = field['type'] as String? ?? 'text';
+      final type = field['type'] as String? ?? 'input_text';
       final initVal = widget.initialValues[name];
 
-      if (type == 'table' || type == 'list' || type == 'persons') {
+      if (type == 'input_table' || type == 'input_list' || type == 'input_persons') {
         if (initVal is List) {
           _complexValues[name] = List.from(initVal);
         } else {
@@ -172,11 +173,11 @@ class _CustomFieldsDialogState extends State<CustomFieldsDialog> {
   Widget _buildFieldWidget(Map<String, dynamic> field) {
     final name = field['name'] as String? ?? '';
     final label = field['label'] as String? ?? name;
-    final type = field['type'] as String? ?? 'text';
+    final type = field['type'] as String? ?? 'input_text';
     final placeholder = field['placeholder'] as String? ?? '';
 
     switch (type) {
-      case 'textarea':
+      case 'input_textarea':
         final controller = _textControllers[name]!;
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
@@ -189,7 +190,7 @@ class _CustomFieldsDialogState extends State<CustomFieldsDialog> {
           ),
         );
 
-      case 'date':
+      case 'input_date':
         final controller = _textControllers[name]!;
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
@@ -200,7 +201,20 @@ class _CustomFieldsDialogState extends State<CustomFieldsDialog> {
           ),
         );
 
-      case 'persons':
+      case 'input_dropdown':
+        final controller = _textControllers[name]!;
+        final options = (field['options'] as List?) ?? [];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: CustomDropdownInput(
+            controller: controller,
+            label: label,
+            hint: placeholder.isNotEmpty ? placeholder : null,
+            options: options,
+          ),
+        );
+
+      case 'input_persons':
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: _PersonsField(
@@ -211,8 +225,8 @@ class _CustomFieldsDialogState extends State<CustomFieldsDialog> {
           ),
         );
 
-      case 'table':
-      case 'list':
+      case 'input_table':
+      case 'input_list':
         final itemSchema = (field['item_schema'] as List?)
                 ?.map((e) => Map<String, dynamic>.from(e as Map))
                 .toList() ??
@@ -232,7 +246,7 @@ class _CustomFieldsDialogState extends State<CustomFieldsDialog> {
           ),
         );
 
-      case 'text':
+      case 'input_text':
       default:
         final controller = _textControllers[name]!;
         return Padding(

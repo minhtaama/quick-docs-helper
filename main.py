@@ -9,6 +9,7 @@ from src.config import Config
 from src.api.case_router import router as case_router
 from src.api.custom_doc_router import router as custom_doc_router
 from src.api.generate_router import router as generate_router
+from src.api.bundle_router import router as bundle_router
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -53,6 +54,7 @@ app.add_middleware(
 app.include_router(case_router)
 app.include_router(custom_doc_router)
 app.include_router(generate_router)
+app.include_router(bundle_router)
 
 # 2. Đăng ký StaticFiles tại gốc "/" với html=True để phục vụ trọn bộ Flutter Web
 static_dir = os.path.join(os.path.dirname(__file__), "static")

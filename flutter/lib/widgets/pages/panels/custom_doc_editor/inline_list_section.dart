@@ -213,13 +213,13 @@ class _InlineListSectionState extends State<InlineListSection> {
                     ...widget.itemSchema.map((col) {
                       final cName = col['name'] as String? ?? '';
                       final cLabel = col['label']?.toString() ?? cName;
-                      final cType = col['type'] as String? ?? 'text';
+                      final cType = col['type'] as String? ?? 'input_text';
                       final cPlaceholder =
                           col['placeholder']?.toString() ??
                           'Nhập ${cLabel.toLowerCase()}...';
                       final ctrl = ctrlMap[cName]!;
 
-                      final bool isMultiLine = cType == 'textarea';
+                      final bool isMultiLine = cType == 'input_textarea';
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 10),

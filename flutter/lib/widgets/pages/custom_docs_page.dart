@@ -7,6 +7,7 @@ import '../common/app_button.dart';
 import '../common/panel.dart';
 import '../common/sidebar_page.dart';
 import 'panels/custom_doc_editor/custom_doc_editor_panel.dart';
+import 'panels/custom_doc_editor/bundle_doc_editor_panel.dart';
 import '../common/app_dialog.dart';
 import 'sidebars/custom_doc_sidebar.dart';
 
@@ -35,8 +36,10 @@ class CustomDocsPage extends StatefulWidget {
 
 class _CustomDocsPageState extends State<CustomDocsPage> {
   List<Map<String, dynamic>> _templates = [];
+  List<Map<String, dynamic>> _bundles = [];
   List<Map<String, dynamic>> _createdCustomDocs = [];
   Map<String, dynamic>? _selectedCreatedCustomDoc;
+  Map<String, dynamic>? _activeBundle;
   bool _isLoading = true;
   bool _isDownloading = false;
   bool _isEditingMode = false;
@@ -75,15 +78,21 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
         caseId: widget.caseId,
         personId: _personId,
       ),
+      if (widget.isCaseLevel)
+        BundleApiService.instance.getAll()
+      else
+        Future.value(<Map<String, dynamic>>[]),
     ]);
 
     final templates = futures[0];
     final docs = futures[1];
+    final bundles = futures[2];
 
     if (mounted) {
       setState(() {
         _templates = templates;
         _createdCustomDocs = docs;
+        _bundles = bundles;
         _isLoading = false;
         if (widget.initialDocId != null) {
           final matchedDoc = _createdCustomDocs.firstWhere(
@@ -476,12 +485,47 @@ class _CustomDocsPageState extends State<CustomDocsPage> {
         onSelectDoc: _onSelectCreatedCustomDoc,
         onCreateNewDoc: _createNewDoc,
         onDeleteDoc: _deleteDoc,
+        bundles: _bundles,
+        selectedBundle: _activeBundle,
+        onSelectBundle: (b) {
+          setState(() {
+            _activeBundle = b;
+            _isEditingMode = false;
+            _activeEditingDoc = null;
+            _selectedCreatedCustomDoc = null;
+          });
+        },
       ),
       child: _buildPanelWidget(context),
     );
   }
 
   Widget _buildPanelWidget(BuildContext context) {
+    // 0. Chế độ Soạn thảo trọn Bộ hồ sơ (Bundle)
+    if (_activeBundle != null) {
+      final bundleId = _activeBundle!['id'] as String? ?? '';
+      final bundleName = _activeBundle!['name'] as String? ?? 'Bộ tài liệu';
+      return BundleDocEditorPanel(
+        key: ValueKey('bundle-editor-$bundleId'),
+        caseId: widget.caseId,
+        bundleId: bundleId,
+        bundleName: bundleName,
+        caseData: widget.caseData,
+        availablePersons: _availablePersons,
+        onCancel: () {
+          setState(() {
+            _activeBundle = null;
+          });
+        },
+        onSavedSuccess: () {
+          setState(() {
+            _activeBundle = null;
+          });
+          _loadData();
+        },
+      );
+    }
+
     // 1. Chế độ Soạn thảo trên Tờ văn bản A4 tương tác
     if (_isEditingMode && _activeTemplate != null) {
       final templateFile = _activeTemplate!['file_name'] as String? ?? '';

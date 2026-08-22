@@ -494,3 +494,138 @@ class CustomDocApiService extends BaseApiService {
     }
   }
 }
+
+/// Service quản lý giao tiếp API cho các Gói tài liệu (Document Bundles)
+class BundleApiService extends BaseApiService {
+  BundleApiService._internal();
+  static final BundleApiService _instance = BundleApiService._internal();
+  factory BundleApiService() => _instance;
+  static BundleApiService get instance => _instance;
+
+  @override
+  Future<List<Map<String, dynamic>>> getAll({String? caseId}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${BaseApiService.baseUrl}/api/v1/bundles'),
+      );
+      if (response.statusCode == 200) {
+        final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is List) {
+          return decoded
+              .where((e) => e != null)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('BundleApiService.getAll error: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getById(String id, {String? caseId}) async {
+    return null;
+  }
+
+  @override
+  Future<bool> delete(String id, {String? caseId}) async {
+    return false;
+  }
+
+  /// Lấy cấu trúc layout chi tiết của toàn bộ các tờ A4 trong Bundle cho một Case
+  Future<Map<String, dynamic>?> getBundleLayout({
+    required String caseId,
+    required String bundleId,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          '${BaseApiService.baseUrl}/api/v1/cases/$caseId/bundles/$bundleId/layout',
+        ),
+      );
+      if (response.statusCode == 200) {
+        final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is Map) {
+          return Map<String, dynamic>.from(decoded);
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('BundleApiService.getBundleLayout error: $e');
+      return null;
+    }
+  }
+
+  /// Lấy lịch sử tạo Bundle của Case
+  Future<List<Map<String, dynamic>>> getBundleHistory({
+    required String caseId,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          '${BaseApiService.baseUrl}/api/v1/cases/$caseId/bundles/history',
+        ),
+      );
+      if (response.statusCode == 200) {
+        final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is List) {
+          return decoded
+              .where((e) => e != null)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('BundleApiService.getBundleHistory error: $e');
+      return [];
+    }
+  }
+
+  /// Render, lưu 2 chiều và tải trọn gói Bundle dạng ZIP
+  Future<bool> renderAndDownloadBundle({
+    required String caseId,
+    required String bundleId,
+    required Map<String, dynamic> documentsData,
+    String? bundleInstanceId,
+    String? defaultZipName,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse(
+          '${BaseApiService.baseUrl}/api/v1/cases/$caseId/bundles/$bundleId/render',
+        ),
+        headers: {'Content-Type': 'application/json; charset=utf-8'},
+        body: jsonEncode({
+          'documents_data': documentsData,
+          if (bundleInstanceId != null) 'bundle_instance_id': bundleInstanceId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final Uint8List bytes = response.bodyBytes;
+        final defaultName = defaultZipName ?? 'bundle_documents.zip';
+        final filename = extractFilenameFromHeader(
+          response.headers,
+          defaultName,
+        );
+        if (kIsWeb) {
+          final blob = html.Blob([bytes], 'application/zip');
+          final url = html.Url.createObjectUrlFromBlob(blob);
+          html.AnchorElement(href: url)
+            ..setAttribute("download", filename)
+            ..click();
+          html.Url.revokeObjectUrl(url);
+        }
+        return true;
+      } else {
+        throw Exception('Lỗi sinh bundle (${response.statusCode})');
+      }
+    } catch (e) {
+      debugPrint('BundleApiService.renderAndDownloadBundle error: $e');
+      rethrow;
+    }
+  }
+}

@@ -86,16 +86,12 @@ class _CustomDocEditorPanelState extends State<CustomDocEditorPanel> {
     // Khởi tạo controllers cho các trường trong metadata
     for (final field in widget.fields) {
       final name = field['name'] as String? ?? '';
-      final type = field['type'] as String? ?? 'text';
+      final type = field['type'] as String? ?? 'input_text';
       final initVal = widget.initialValues[name];
 
-      if (type == 'table' ||
-          type == 'list' ||
-          type == 'input_table' ||
+      if (type == 'input_table' ||
           type == 'input_list' ||
-          type == 'persons' ||
-          type == 'input_persons' ||
-          type == 'persons_section') {
+          type == 'input_persons') {
         if (initVal is List) {
           _complexValues[name] = List.from(initVal);
         } else {

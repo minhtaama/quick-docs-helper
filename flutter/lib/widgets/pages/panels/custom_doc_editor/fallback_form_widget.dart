@@ -19,7 +19,7 @@ class FallbackFormWidget extends StatelessWidget {
       children: fields.map((field) {
         final name = field['name'] as String? ?? '';
         final label = field['label'] as String? ?? name;
-        final type = field['type'] as String? ?? 'text';
+        final type = field['type'] as String? ?? 'input_text';
         final ctrl = getController(name);
 
         if (ctrl != null) {
@@ -28,8 +28,8 @@ class FallbackFormWidget extends StatelessWidget {
             child: CustomTextInput(
               controller: ctrl,
               label: label,
-              minLines: type == 'textarea' ? 3 : 1,
-              maxLines: type == 'textarea' ? 5 : 1,
+              minLines: type == 'input_textarea' ? 3 : 1,
+              maxLines: type == 'input_textarea' ? 5 : 1,
             ),
           );
         }

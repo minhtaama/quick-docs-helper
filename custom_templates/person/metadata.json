@@ -6,60 +6,146 @@
       {
         "name": "ngay_lap_bb",
         "label": "Ngày lập biên bản",
-        "type": "date",
+        "type": "input_date",
         "placeholder": "19/08/2026"
       },
       {
         "name": "noi_lap_bien_ban",
         "label": "Địa điểm lập biên bản",
-        "type": "text",
+        "type": "input_text",
         "placeholder": "Trụ sở Công an..."
       },
       {
         "name": "ten_dieu_tra_vien",
         "label": "Tôi",
-        "type": "text",
+        "type": "input_text",
         "placeholder": ""
       },
       {
         "name": "thuoc_co_quan",
         "label": "Thuộc cơ quan",
-        "type": "text",
+        "type": "input_text",
         "placeholder": "Cơ quan Cảnh sát điều tra Công an thành phố Hà Nội"
       },
       {
         "name": "can_bo_ghi_loi_khai",
         "label": "Cán bộ ghi lời khai",
-        "type": "text",
+        "type": "input_text",
         "placeholder": ""
       },
       {
         "name": "tu_cach_tham_gia_to_tung",
         "label": "Tư cách tham gia tố tụng",
-        "type": "text",
-        "placeholder": "Người tố giác, báo tin về tội phạm, kiến nghị khởi tố (Điều 56); người bị tố giác, người bị kiến nghị khởi tố (Điều 57); người bị giữ trong trường hợp khẩn cấp, người bị bắt (Điều 58); người bị tạm giữ (Điều 59); bị hại (Điều 62); nguyên đơn dân sự (Điều 63); bị đơn dân sự (Điều 64); người có quyền lợi, nghĩa vụ có liên quan đến vụ án (Điều 65); người làm chứng (Điều 66); người chứng kiến (Điều 67); người đại diện theo pháp luật của pháp nhân (Điều 435, Điều 442)."
+        "type": "input_dropdown",
+        "placeholder": "Chọn tư cách tham gia...",
+        "options": [
+          {
+            "label": "Người tố giác, báo tin về tội phạm, kiến nghị khởi tố",
+            "value": "Người tố giác, báo tin về tội phạm, kiến nghị khởi tố",
+            "linked_fields": {
+              "dieu_blhs": "56"
+            }
+          },
+          {
+            "label": "Người bị tố giác, người bị kiến nghị khởi tố",
+            "value": "Người bị tố giác, người bị kiến nghị khởi tố",
+            "linked_fields": {
+              "dieu_blhs": "57"
+            }
+          },
+          {
+            "label": "Người bị giữ trong trường hợp khẩn cấp, người bị bắt",
+            "value": "Người bị giữ trong trường hợp khẩn cấp, người bị bắt",
+            "linked_fields": {
+              "dieu_blhs": "58"
+            }
+          },
+          {
+            "label": "Người bị tạm giữ",
+            "value": "Người bị tạm giữ",
+            "linked_fields": {
+              "dieu_blhs": "59"
+            }
+          },
+          {
+            "label": "Bị can",
+            "value": "Bị can",
+            "linked_fields": {
+              "dieu_blhs": "60"
+            }
+          },
+          {
+            "label": "Bị hại",
+            "value": "Bị hại",
+            "linked_fields": {
+              "dieu_blhs": "62"
+            }
+          },
+          {
+            "label": "Nguyên đơn dân sự",
+            "value": "Nguyên đơn dân sự",
+            "linked_fields": {
+              "dieu_blhs": "63"
+            }
+          },
+          {
+            "label": "Bị đơn dân sự",
+            "value": "Bị đơn dân sự",
+            "linked_fields": {
+              "dieu_blhs": "64"
+            }
+          },
+          {
+            "label": "Người có quyền lợi, nghĩa vụ có liên quan đến vụ án",
+            "value": "Người có quyền lợi, nghĩa vụ có liên quan đến vụ án",
+            "linked_fields": {
+              "dieu_blhs": "65"
+            }
+          },
+          {
+            "label": "Người làm chứng",
+            "value": "Người làm chứng",
+            "linked_fields": {
+              "dieu_blhs": "66"
+            }
+          },
+          {
+            "label": "Người chứng kiến",
+            "value": "Người chứng kiến",
+            "linked_fields": {
+              "dieu_blhs": "67"
+            }
+          },
+          {
+            "label": "Người đại diện theo pháp luật của pháp nhân",
+            "value": "Người đại diện theo pháp luật của pháp nhân",
+            "linked_fields": {
+              "dieu_blhs": "435, Điều 442"
+            }
+          }
+        ]
       },
       {
         "name": "dieu_blhs",
         "label": "Điều",
-        "type": "text",
+        "type": "input_text",
         "placeholder": ""
       },
       {
         "name": "hoi_va_dap",
         "label": "Hỏi và Đáp",
-        "type": "list",
+        "type": "input_list",
         "item_schema": [
           {
             "name": "cau_hoi",
             "label": "Hỏi",
-            "type": "textarea",
+            "type": "input_textarea",
             "placeholder": "Nhập câu hỏi"
           },
           {
             "name": "cau_tra_loi",
             "label": "Đáp",
-            "type": "textarea",
+            "type": "input_textarea",
             "placeholder": "Nhập câu đáp"
           }
         ]
@@ -67,7 +153,7 @@
       {
         "name": "ngay_ket_thuc",
         "label": "Ngày kết thúc",
-        "type": "date",
+        "type": "input_date",
         "placeholder": "19/08/2026"
       }
     ]
@@ -89,31 +175,31 @@
       {
         "name": "ten_van_ban",
         "label": "Tên văn bản",
-        "type": "text",
+        "type": "input_text",
         "placeholder": "Quyết định tạm giam..."
       },
       {
         "name": "ngay_lap_bb",
         "label": "Ngày lập biên bản",
-        "type": "date",
+        "type": "input_date",
         "placeholder": ""
       },
       {
         "name": "ho_ten",
         "label": "Tên",
-        "type": "text",
+        "type": "input_text",
         "placeholder": "Nguyễn Văn A"
       },
       {
         "name": "chuc_danh",
         "label": "Chức danh",
-        "type": "text",
+        "type": "input_text",
         "placeholder": "Điều tra viên / Phó trưởng CAP"
       },
       {
         "name": "co_quan",
         "label": "Cơ quan",
-        "type": "text",
+        "type": "input_text",
         "placeholder": "Cảnh sát điều tra Công an thành phố Hà Nội"
       }
     ]

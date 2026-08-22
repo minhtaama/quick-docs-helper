@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../common/date_time_input.dart';
+import '../../../common/dropdown_input.dart';
 import '../../../common/text_input.dart';
 import 'editor_utils.dart';
 
@@ -21,6 +22,19 @@ class DocParagraphWidget extends StatelessWidget {
     this.loopIndex,
     this.onContentChanged,
   });
+
+  void _handleLinkedFields(dynamic item) {
+    if (item is Map && item['linked_fields'] is Map) {
+      final linkedMap = Map<String, dynamic>.from(item['linked_fields'] as Map);
+      linkedMap.forEach((targetVar, targetVal) {
+        final targetController = getController(targetVar);
+        if (targetController != null) {
+          targetController.text = targetVal?.toString() ?? '';
+        }
+      });
+      onContentChanged?.call();
+    }
+  }
 
   String _resolveFieldValue(String rawVarName) {
     final varName = rawVarName.replaceAll(' ', '');
@@ -183,11 +197,20 @@ class DocParagraphWidget extends StatelessWidget {
           );
         } else {
           fieldCount++;
+          final fInfo = Map<String, dynamic>.from(pRun['field_info'] as Map? ?? {});
+          final fType = fInfo['type'] as String? ?? '';
           final isDate =
-              (pRun['field_info']?['type'] == 'date') ||
+              fType == 'input_date' ||
               pRun['is_collapsed_date'] == true ||
               pName.startsWith('ngay_');
-          width += isDate ? (130.0 + 8.0) : (140.0 + 8.0);
+          final isDropdown = fType == 'input_dropdown';
+          if (isDate) {
+            width += (130.0 + 8.0);
+          } else if (isDropdown) {
+            width += (160.0 + 8.0);
+          } else {
+            width += (140.0 + 8.0);
+          }
         }
       }
     }
@@ -208,13 +231,13 @@ class DocParagraphWidget extends StatelessWidget {
     final fieldInfo = Map<String, dynamic>.from(
       run['field_info'] as Map? ?? {},
     );
-    final fType = fieldInfo['type'] as String? ?? 'text';
+    final fType = fieldInfo['type'] as String? ?? 'input_text';
     final fPlaceholder = fieldInfo['placeholder'] as String? ?? '...';
     final fSize = ((run['size'] as num?)?.toDouble() ?? 14.0) + 4.0;
     final isCollapsedDate = run['is_collapsed_date'] == true;
     final fFamily = run['font'] as String? ?? 'Times New Roman';
 
-    if (fType == 'date' || isCollapsedDate || varName.startsWith('ngay_')) {
+    if (fType == 'input_date' || isCollapsedDate || varName.startsWith('ngay_')) {
       return WidgetSpan(
         alignment: PlaceholderAlignment.middle,
         child: Padding(
@@ -225,6 +248,25 @@ class DocParagraphWidget extends StatelessWidget {
             controller: controller,
             label: fieldInfo['label'] as String? ?? varName,
             hint: fPlaceholder.isNotEmpty ? fPlaceholder : 'dd/mm/yyyy',
+          ),
+        ),
+      );
+    }
+
+    if (fType == 'input_dropdown') {
+      final options = (fieldInfo['options'] as List?) ?? [];
+      return WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: CustomDropdownInput(
+            isInline: true,
+            inlineFontSize: fSize - 0.5,
+            controller: controller,
+            label: fieldInfo['label'] as String? ?? varName,
+            hint: fPlaceholder,
+            options: options,
+            onItemSelected: _handleLinkedFields,
           ),
         ),
       );
@@ -329,7 +371,7 @@ class DocParagraphWidget extends StatelessWidget {
             'is_collapsed_date': true,
             'field_info':
                 currentRun['field_info'] ??
-                {'type': 'date', 'name': currentName},
+                {'type': 'input_date', 'name': currentName},
           });
           i = endIdx + 1;
           continue;
@@ -358,13 +400,14 @@ class DocParagraphWidget extends StatelessWidget {
         builder: (context, constraints) {
           final double availableWidth = constraints.maxWidth;
 
-          // Kiểm tra xem đoạn văn có chứa trường textarea (nhiều dòng) hay không
+          // Kiểm tra xem đoạn văn có chứa trường input_textarea (nhiều dòng) hay không
           final bool hasTextarea = processedRuns.any((r) {
             if (_isStaticRun(r)) return false;
             final fieldInfo = Map<String, dynamic>.from(
               r['field_info'] as Map? ?? {},
             );
-            return fieldInfo['type'] == 'textarea';
+            final t = fieldInfo['type'] as String? ?? '';
+            return t == 'input_textarea';
           });
 
           if (hasTextarea) {
@@ -383,12 +426,12 @@ class DocParagraphWidget extends StatelessWidget {
                 final fieldInfo = Map<String, dynamic>.from(
                   run['field_info'] as Map? ?? {},
                 );
-                final fType = fieldInfo['type'] as String? ?? 'text';
+                final fType = fieldInfo['type'] as String? ?? 'input_text';
                 final varName = run['name'] as String? ?? '';
                 final controller = getController(varName);
                 if (controller == null) continue;
 
-                if (fType == 'textarea') {
+                if (fType == 'input_textarea') {
                   if (inlineSpans.isNotEmpty) {
                     colWidgets.add(
                       SizedBox(
@@ -455,7 +498,7 @@ class DocParagraphWidget extends StatelessWidget {
             );
           }
 
-          // Kiểm tra xem đoạn văn có trường text input nằm ở cuối dòng (như "Ông/bà: ...", "Tôi: ...", "Về việc: ...") hay không
+          // Kiểm tra xem đoạn văn có trường input nằm ở cuối dòng (như "Ông/bà: ...", "Tôi: ...", "Về việc: ...") hay không
           int? trailingIdx;
           for (int k = processedRuns.length - 1; k >= 0; k--) {
             if (!_isStaticRun(processedRuns[k])) {
@@ -463,14 +506,14 @@ class DocParagraphWidget extends StatelessWidget {
                 final fInfo = Map<String, dynamic>.from(
                   processedRuns[k]['field_info'] as Map? ?? {},
                 );
-                final fType = fInfo['type'] as String? ?? 'text';
+                final fType = fInfo['type'] as String? ?? 'input_text';
                 final isDate =
-                    fType == 'date' ||
+                    fType == 'input_date' ||
                     processedRuns[k]['is_collapsed_date'] == true ||
                     (processedRuns[k]['name'] as String? ?? '').startsWith(
                       'ngay_',
                     );
-                if (!isDate && fType != 'textarea') {
+                if (!isDate && fType != 'input_textarea') {
                   trailingIdx = k;
                 }
               }
@@ -516,7 +559,7 @@ class DocParagraphWidget extends StatelessWidget {
                     final fieldInfo = Map<String, dynamic>.from(
                       r['field_info'] as Map? ?? {},
                     );
-                    final fType = fieldInfo['type'] as String? ?? 'text';
+                    final fType = fieldInfo['type'] as String? ?? 'input_text';
                     final fPlaceholder =
                         fieldInfo['placeholder'] as String? ?? '...';
                     final fSize =
@@ -524,7 +567,7 @@ class DocParagraphWidget extends StatelessWidget {
                     final isCollapsedDate = r['is_collapsed_date'] == true;
                     final fFamily = r['font'] as String? ?? 'Times New Roman';
 
-                    if (fType == 'date' ||
+                    if (fType == 'input_date' ||
                         isCollapsedDate ||
                         varName.startsWith('ngay_')) {
                       rowChildren.add(
@@ -538,6 +581,21 @@ class DocParagraphWidget extends StatelessWidget {
                             hint: fPlaceholder.isNotEmpty
                                 ? fPlaceholder
                                 : 'dd/mm/yyyy',
+                          ),
+                        ),
+                      );
+                    } else if (fType == 'input_dropdown') {
+                      rowChildren.add(
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: CustomDropdownInput(
+                            isInline: true,
+                            inlineFontSize: fSize - 0.5,
+                            controller: controller,
+                            label: fieldInfo['label'] as String? ?? varName,
+                            hint: fPlaceholder,
+                            options: (fieldInfo['options'] as List?) ?? [],
+                            onItemSelected: _handleLinkedFields,
                           ),
                         ),
                       );
@@ -568,26 +626,46 @@ class DocParagraphWidget extends StatelessWidget {
               final tFieldInfo = Map<String, dynamic>.from(
                 trailingRun['field_info'] as Map? ?? {},
               );
+              final tType = tFieldInfo['type'] as String? ?? 'input_text';
               final tPlaceholder =
                   tFieldInfo['placeholder'] as String? ?? '...';
               final tSize =
                   ((trailingRun['size'] as num?)?.toDouble() ?? 14.0) + 4.0;
 
               if (tController != null) {
-                rowChildren.add(
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 4.0),
-                      child: CustomTextInput(
-                        isInline: true,
-                        inlineFontSize: tSize - 0.5,
-                        controller: tController,
-                        label: tFieldInfo['label'] as String? ?? tVarName,
-                        hint: tPlaceholder,
+                if (tType == 'input_dropdown') {
+                  rowChildren.add(
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 4.0),
+                        child: CustomDropdownInput(
+                          isInline: true,
+                          inlineFontSize: tSize - 0.5,
+                          controller: tController,
+                          label: tFieldInfo['label'] as String? ?? tVarName,
+                          hint: tPlaceholder,
+                          options: (tFieldInfo['options'] as List?) ?? [],
+                          onItemSelected: _handleLinkedFields,
+                        ),
                       ),
                     ),
-                  ),
-                );
+                  );
+                } else {
+                  rowChildren.add(
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 4.0),
+                        child: CustomTextInput(
+                          isInline: true,
+                          inlineFontSize: tSize - 0.5,
+                          controller: tController,
+                          label: tFieldInfo['label'] as String? ?? tVarName,
+                          hint: tPlaceholder,
+                        ),
+                      ),
+                    ),
+                  );
+                }
               }
 
               return SizedBox(

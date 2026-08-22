@@ -3,7 +3,7 @@ import '../../common/app_button.dart';
 import '../../common/app_card.dart';
 import '../../common/app_container.dart';
 
-/// Sidebar danh sách các văn bản bên trái trong CustomDocsPage
+/// Sidebar danh sách các văn bản và gói tài liệu (Bundle) bên trái trong CustomDocsPage
 class CustomDocSidebar extends StatelessWidget {
   final List<Map<String, dynamic>> customDocs;
   final Map<String, dynamic>? selectedDoc;
@@ -12,6 +12,9 @@ class CustomDocSidebar extends StatelessWidget {
   final ValueChanged<Map<String, dynamic>> onDeleteDoc;
   final bool isCreatingNew;
   final String? activeTemplateTitle;
+  final List<Map<String, dynamic>> bundles;
+  final Map<String, dynamic>? selectedBundle;
+  final ValueChanged<Map<String, dynamic>>? onSelectBundle;
 
   const CustomDocSidebar({
     super.key,
@@ -22,6 +25,9 @@ class CustomDocSidebar extends StatelessWidget {
     required this.onDeleteDoc,
     this.isCreatingNew = false,
     this.activeTemplateTitle,
+    this.bundles = const [],
+    this.selectedBundle,
+    this.onSelectBundle,
   });
 
   @override
@@ -46,6 +52,86 @@ class CustomDocSidebar extends StatelessWidget {
               fontSize: 13.5,
             ),
           ),
+          if (bundles.isNotEmpty && onSelectBundle != null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: PopupMenuButton<Map<String, dynamic>>(
+                tooltip: 'Chọn gói tài liệu cần xuất trọn bộ',
+                offset: const Offset(0, 40),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(color: Colors.grey.shade300),
+                ),
+                onSelected: (b) => onSelectBundle!(b),
+                itemBuilder: (context) {
+                  return bundles.map((b) {
+                    final bName = b['name'] as String? ?? 'Bộ tài liệu';
+                    final bDesc = b['description'] as String? ?? '';
+                    return PopupMenuItem<Map<String, dynamic>>(
+                      value: b,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.folder_zip_outlined, size: 18, color: primaryColor),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  bName,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (bDesc.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              bDesc,
+                              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  }).toList();
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.amber.shade400, width: 1.0),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.folder_zip, size: 18, color: Colors.amber.shade900),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          selectedBundle != null
+                              ? 'Bộ: ${selectedBundle!['name']}'
+                              : 'Xuất theo Bộ tài liệu (Bundle)',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.amber.shade900,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Icon(Icons.arrow_drop_down, color: Colors.amber.shade900),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
           if (isCreatingNew) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -154,10 +240,11 @@ class CustomDocSidebar extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final doc = customDocs[index];
                       final isSelected =
-                          !isCreatingNew && selectedDoc?['id'] == doc['id'];
+                          !isCreatingNew && selectedBundle == null && selectedDoc?['id'] == doc['id'];
                       final title =
                           doc['title'] as String? ?? 'Văn bản chưa đặt tên';
                       final createdAt = doc['created_at'] as String? ?? '';
+                      final bundleName = doc['bundle_name'] as String?;
 
                       return AppCard(
                         isSelected: isSelected,
@@ -193,6 +280,27 @@ class CustomDocSidebar extends StatelessWidget {
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
+                                  if (bundleName != null && bundleName.isNotEmpty) ...[
+                                    const SizedBox(height: 3),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.shade50,
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: Colors.blue.shade200, width: 0.5),
+                                      ),
+                                      child: Text(
+                                        'Bộ: $bundleName',
+                                        style: TextStyle(
+                                          fontSize: 10.5,
+                                          color: Colors.blue.shade700,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                   const SizedBox(height: 4),
                                   Text(
                                     createdAt.isNotEmpty

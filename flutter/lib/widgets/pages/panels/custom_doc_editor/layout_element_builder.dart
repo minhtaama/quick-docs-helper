@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'inline_list_section.dart';
-import 'inline_persons_section.dart';
 import 'inline_table_section.dart';
 import 'paragraph_widget.dart';
 import 'static_table_widget.dart';
@@ -46,7 +45,7 @@ class LayoutElementBuilder extends StatelessWidget {
           onContentChanged: onContentChanged,
         );
 
-      case 'case_persons_loop':
+      case 'input_persons':
         final rawParagraphs =
             (element['paragraphs'] as List?)
                 ?.map((e) => Map<String, dynamic>.from(e as Map))
@@ -91,30 +90,7 @@ class LayoutElementBuilder extends StatelessWidget {
           onContentChanged: onContentChanged,
         );
 
-      case 'input_persons':
-      case 'persons':
-      case 'persons_section':
-        final name = element['name'] as String? ?? '';
-        final fieldInfo = Map<String, dynamic>.from(
-          element['field_info'] as Map? ?? {},
-        );
-        final label =
-            fieldInfo['label'] as String? ??
-            (name.isNotEmpty ? name : '<Không có dữ liệu label>');
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: InlinePersonsSection(
-            label: label,
-            availablePersons: availablePersons,
-            selectedPersonIds: List<String>.from(complexValues[name] ?? []),
-            onChanged: (ids) {
-              onComplexValueChanged(name, ids);
-            },
-          ),
-        );
-
       case 'input_list':
-      case 'list':
         final name = element['name'] as String? ?? '';
         final fieldInfo = Map<String, dynamic>.from(
           element['field_info'] as Map? ?? {},
@@ -146,7 +122,6 @@ class LayoutElementBuilder extends StatelessWidget {
         );
 
       case 'input_table':
-      case 'table':
         final name = element['name'] as String? ?? '';
         final fieldInfo = Map<String, dynamic>.from(
           element['field_info'] as Map? ?? {},

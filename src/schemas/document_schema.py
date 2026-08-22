@@ -23,6 +23,9 @@ class CustomDocumentData(BaseModel):
     template_file: str = ""
     title: str = ""
     custom_fields: dict[str, Any] = Field(default_factory=dict)
+    bundle_id: Optional[str] = None
+    bundle_instance_id: Optional[str] = None
+    bundle_name: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     updated_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
@@ -82,16 +85,6 @@ class CaseCreate(BaseModel):
     ten_tom_tat: str = ""
     ten_day_du: str = ""
 
-    @model_validator(mode="before")
-    @classmethod
-    def handle_legacy_keys(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            if "ten_vu" in data and not data.get("ten_tom_tat"):
-                data["ten_tom_tat"] = data["ten_vu"]
-            if "mo_ta" in data and not data.get("ten_day_du"):
-                data["ten_day_du"] = data["mo_ta"]
-        return data
-
 class CaseData(BaseModel):
     """
     Schema chứa thông tin tổng thể của một vụ án/vụ việc
@@ -103,13 +96,4 @@ class CaseData(BaseModel):
     updated_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     con_nguoi_list: list[PersonData] = []
     custom_documents: list[CustomDocumentData] = []
-
-    @model_validator(mode="before")
-    @classmethod
-    def handle_legacy_keys(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            if "ten_vu" in data and not data.get("ten_tom_tat"):
-                data["ten_tom_tat"] = data["ten_vu"]
-            if "mo_ta" in data and not data.get("ten_day_du"):
-                data["ten_day_du"] = data["mo_ta"]
-        return data
+    bundles: list[dict[str, Any]] = []

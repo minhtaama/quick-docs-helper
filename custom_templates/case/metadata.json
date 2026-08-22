@@ -6,67 +6,67 @@
       {
         "name": "ve_viec",
         "label": "Nội dung làm việc",
-        "type": "text",
+        "type": "input_text",
         "placeholder": "Nhập tóm tắt nội dung làm việc"
       },
       {
         "name": "ngay_lap_bb",
         "label": "Ngày lập biên bản",
-        "type": "date",
+        "type": "input_date",
         "placeholder": ""
       },
       {
         "name": "nguoi_0",
         "label": "Tên",
-        "type": "text",
+        "type": "input_text",
         "placeholder": "Nguyễn Văn A"
       },
       {
         "name": "chuc_danh",
         "label": "Chức danh",
-        "type": "text",
+        "type": "input_text",
         "placeholder": "Điều tra viên / Phó trưởng CAP"
       },
       {
         "name": "co_quan",
         "label": "Cơ quan",
-        "type": "text",
+        "type": "input_text",
         "placeholder": "Cảnh sát điều tra Công an thành phố Hà Nội"
       },
       {
         "name": "nguoi_1",
         "label": "Tên",
-        "type": "text",
+        "type": "input_text",
         "placeholder": "Phạm Văn B"
       },
       {
         "name": "nguoi_2",
         "label": "Tên",
-        "type": "text",
+        "type": "input_text",
         "placeholder": "Trần Văn C"
       },
       {
         "name": "nguoi_3",
         "label": "Tên",
-        "type": "text",
+        "type": "input_text",
         "placeholder": "Dương Văn D"
       },
       {
         "name": "noi_dung_lv",
         "label": "Nội dung",
-        "type": "textarea",
+        "type": "input_textarea",
         "placeholder": "Nhập nội dung làm việc"
       },
       {
         "name": "ket_qua_lv",
         "label": "Kết quả làm việc",
-        "type": "textarea",
+        "type": "input_textarea",
         "placeholder": "Nhập kết quả làm việc"
       },
       {
         "name": "nguoi_tham_gia",
         "label": "Chức danh người đại diện",
-        "type": "text",
+        "type": "input_text",
         "placeholder": "Người tham gia"
       }
     ]
@@ -83,7 +83,7 @@
       {
         "name": "noi_nhan",
         "label": "Phân trại/Trại tạm giam",
-        "type": "text",
+        "type": "input_text",
         "placeholder": "Trại tạm giam số 2, Công an thành phố Hà Nội"
       }
     ]

@@ -116,27 +116,53 @@ Trên giao diện tương tác, hệ thống tự động gộp cụm `ngày {{ 
       {
         "name": "ngay_lap_bb",
         "label": "Ngày lập biên bản",
-        "type": "date",
+        "type": "input_date",
         "placeholder": "19/08/2026"
       },
       {
         "name": "noi_lap_bien_ban",
         "label": "Địa điểm lập biên bản",
-        "type": "text",
+        "type": "input_text",
         "placeholder": "Trụ sở Công an..."
       },
       {
-        "name": "ten_dieu_tra_vien",
-        "label": "Cán bộ điều tra",
-        "type": "text"
+        "name": "tu_cach_tham_gia_to_tung",
+        "label": "Tư cách tham gia tố tụng",
+        "type": "input_dropdown",
+        "options": [
+          {
+            "label": "Bị can",
+            "value": "Bị can",
+            "linked_fields": {
+              "dieu_blhs": "60",
+              "quyen_nghia_vu": "Quy định tại Điều 60 BLTTHS"
+            }
+          },
+          {
+            "label": "Bị hại",
+            "value": "Bị hại",
+            "linked_fields": {
+              "dieu_blhs": "62",
+              "quyen_nghia_vu": "Quy định tại Điều 62 BLTTHS"
+            }
+          },
+          {
+            "label": "Người làm chứng",
+            "value": "Người làm chứng",
+            "linked_fields": {
+              "dieu_blhs": "66",
+              "quyen_nghia_vu": "Quy định tại Điều 66 BLTTHS"
+            }
+          }
+        ]
       },
       {
         "name": "hoi_va_dap",
         "label": "Hỏi và Đáp",
-        "type": "list",
+        "type": "input_list",
         "item_schema": [
-          { "name": "cau_hoi", "label": "Hỏi", "type": "textarea" },
-          { "name": "cau_tra_loi", "label": "Đáp", "type": "textarea" }
+          { "name": "cau_hoi", "label": "Hỏi", "type": "input_textarea" },
+          { "name": "cau_tra_loi", "label": "Đáp", "type": "input_textarea" }
         ]
       }
     ]
@@ -144,25 +170,75 @@ Trên giao diện tương tác, hệ thống tự động gộp cụm `ngày {{ 
 ]
 ```
 
-#### B. Bảng các kiểu dữ liệu (`type`) trong `metadata.json`:
+#### B. Hệ thống chuẩn hóa các kiểu dữ liệu (`input_*`) trong `metadata.json`:
 
-| Kiểu `type` | Quy ước đặt tên | Mô tả & Cách hiển thị |
+| Kiểu `type` chuẩn | Quy ước đặt tên | Mô tả & Cách hiển thị |
 | :--- | :--- | :--- |
-| **`text`** | Tự do (`ten_dieu_tra_vien`) | Ô nhập văn bản một dòng. |
-| **`textarea`** | Tự do (`noi_dung_khai_bao`) | Ô nhập văn bản nhiều dòng (tự động co giãn chiều cao theo nội dung). |
-| **`date`** | **Bắt buộc tiền tố `ngay_`** (`ngay_lap_bb`) | Ô chọn ngày tháng với lịch, tự tách thành `ngay_...`, `thang_...`, `nam_...`. |
-| **`persons` / `input_persons`** | Tự do (`danh_sach_nhan_chung`) | Danh sách chọn người liên quan từ vụ án (lưu danh sách `person_id`, tự chuyển thành list full object). |
-| **`list` / `table` / `input_list` / `input_table`** | Tự do (`hoi_va_dap`) | Danh sách/Bảng hỏi đáp nhiều dòng. Cấu hình các cột con bên trong qua `item_schema`. |
+| **`input_text`** | Tự do (`ten_dieu_tra_vien`) | Ô nhập văn bản một dòng. Tự động co giãn theo độ rộng thực tế hoặc mở rộng hết lề phải nếu ở cuối dòng. |
+| **`input_textarea`** | Tự do (`noi_dung_khai_bao`) | Khung nhập văn bản nhiều dòng (mặc định tối thiểu 6 dòng, tự động mở rộng theo nội dung). |
+| **`input_dropdown`** | Tự do (`tu_cach_tham_gia`) | Menu chọn nhanh giá trị inline (font Times New Roman). Hỗ trợ thuộc tính `linked_fields` để tự động điền các trường liên quan khi người dùng chọn. |
+| **`input_date`** | **Bắt buộc tiền tố `ngay_`** (`ngay_lap_bb`) | Ô chọn ngày tháng inline kèm lịch, tự động bóc tách thành `ngay_...`, `thang_...`, `nam_...`. |
+| **`input_persons`** | Tự do | Lặp danh sách đối tượng vụ án trên trang A4 theo từng đối tượng. |
+| **`input_list` / `input_table`** | Tự do (`hoi_va_dap`) | Danh sách / Bảng động nhiều dòng. Cấu hình các cột con bên trong qua `item_schema`. |
 
 ---
 
-### 3.4. Danh Mục Biến Hệ Thống Có Sẵn Trong Custom Document
+### 3.4. Hướng Dẫn Cấu Hình Gói Tài Liệu Hồ Sơ (Document Bundles)
+
+Tính năng **Document Bundle** cho phép kết hợp và sinh trọn gói nhiều văn bản A4 (cả cấp Vụ án lẫn cấp Đối tượng) trong một lần thao tác, tự động đồng bộ các trường dữ liệu chung và tải về trọn bộ file nén `.ZIP`.
+
+#### A. Cấu trúc file cấu hình `custom_templates/bundles.json`
+
+```json
+[
+  {
+    "id": "bundle_tiep_nhan_ban_dau",
+    "name": "Bộ hồ sơ tiếp nhận giải quyết ban đầu",
+    "description": "Gồm Biên bản tiếp nhận, Biên bản làm việc, Công văn và Biên bản lấy lời khai",
+    "items": [
+      {
+        "template": "case/bien_ban_lam_viec.docx",
+        "scope": "case",
+        "preset_values": {
+          "noi_dung_lam_viec": "Làm việc về nội dung tiếp nhận tố giác tội phạm"
+        }
+      },
+      {
+        "template": "case/cv_mang_may_tinh.docx",
+        "scope": "case"
+      },
+      {
+        "template": "person/bien_ban_ghi_loi_khai.docx",
+        "scope": "person",
+        "for_each": "isdt"
+      },
+      {
+        "template": "person/ly_lich_bi_can.docx",
+        "scope": "person",
+        "for_each": "isdt"
+      }
+    ]
+  }
+]
+```
+
+#### B. Quy tắc cấu hình các mục (`items`) trong Bundle:
+* **`scope: "case"`**: Sinh đúng 1 văn bản A4 ở cấp vụ án.
+* **`scope: "person"`**: Tự động mở rộng thành các trang A4 tương ứng với từng người trong vụ án dựa theo tham số `for_each`:
+  * `"for_each": "all"`: Mở rộng cho tất cả đối tượng trong vụ án.
+  * `"for_each": "isdt"`: Chỉ mở rộng cho các đối tượng là Đối tượng chính (`isdt == true`).
+  * `"for_each": "not_isdt"`: Chỉ mở rộng cho các cá nhân không phải đối tượng chính (`isdt == false`, ví dụ: người làm chứng, bị hại).
+* **`preset_values`**: Giá trị mặc định điền sẵn cho các trường cụ thể trong văn bản đó.
+
+---
+
+### 3.5. Danh Mục Biến Hệ Thống Có Sẵn Trong Custom Document
 
 Trong bất kỳ file Word của Custom Document nào, bạn có thể sử dụng trực tiếp các biến có sẵn sau mà không cần khai báo lại trong `metadata.json`:
 
 #### A. Thông tin Đối tượng cá nhân chính (`person.*`) *(Dành cho `custom_templates/person/`)*
 
-* **Cơ bản**: `{{ person.ho_ten }}`, `{{ person.gioi_tinh }}`
+* **Cơ bản**: `{{ person.ho_ten }}`, `{{ person.gioi_tinh }}`, `{{ person.isdt }}`
 * **Ngày sinh**: `{{ person.ngay_sinh }}`, `{{ person.thang_sinh }}`, `{{ person.nam_sinh }}`
 * **Nơi sinh & Quê quán**: `{{ person.noi_sinh }}`, `{{ person.que_quan }}`, `{{ person.quoc_tich }}`, `{{ person.dan_toc }}`, `{{ person.ton_giao }}`
 * **CCCD / CMND**: `{{ person.cccd }}`, `{{ person.ngay_cccd }}`, `{{ person.noi_cap_cccd }}`
@@ -179,14 +255,14 @@ Trong bất kỳ file Word của Custom Document nào, bạn có thể sử dụ
 * `{{ case.created_at }}`: Ngày lập hồ sơ
 * `{{ case.con_nguoi_list }}`: Danh sách toàn bộ đối tượng trong vụ án (Cú pháp chuẩn duy nhất).
 
-#### C. Cú pháp vòng lặp Danh sách đối tượng vụ án & Danh sách động trong Word
+#### C. Cú pháp vòng lặp Danh sách đối tượng vụ án & Lọc Đối tượng trong Word
 
 > [!IMPORTANT]
 > **Quy tắc chống khoảng cách / dòng trống thừa (`{%p for %}`)**:
 > Khi viết vòng lặp cho các đoạn văn bản (như danh sách bị can trong vụ án, danh sách quan hệ gia đình, tiền án tiền sự, hỏi đáp...), **BẮT BUỘC** phải dùng cú pháp thẻ đoạn văn: `{%p for ... %}` và `{%p endfor %}`.
 > Tiền tố `p` giúp `docxtpl` tự động xóa bỏ hoàn toàn dòng chứa thẻ mở và thẻ đóng sau khi render, giúp văn bản liền mạch tuyệt đối và không bị sinh ra dòng trống thừa.
 
-* **1. Lặp danh sách đối tượng / bị can trong vụ án (`case.con_nguoi_list`)**:
+* **1. Lặp toàn bộ đối tượng trong vụ án (`case.con_nguoi_list`)**:
 ```jinja2
 {%p for p in case.con_nguoi_list %}
 {{ loop.index }}. Họ và tên: {{ p.ho_ten }}	Giới tính: {{ p.gioi_tinh }}
@@ -198,7 +274,21 @@ Nơi ở hiện tại: {{ p.noi_o_hien_tai }}
 {%p endfor %}
 ```
 
-* **2. Lặp danh sách động / Bảng hỏi đáp (`hoi_va_dap`)**:
+* **2. Lọc chỉ lấy Đối tượng chính (`isdt == true`) trong Word**:
+```jinja2
+{%p for p in case.con_nguoi_list if p.isdt %}
+{{ loop.index }}. Bị can: {{ p.ho_ten }} - CCCD: {{ p.cccd }}
+{%p endfor %}
+```
+
+* **3. Lọc chỉ lấy Người liên quan / Không phải đối tượng chính (`isdt == false`) trong Word**:
+```jinja2
+{%p for p in case.con_nguoi_list if not p.isdt %}
+{{ loop.index }}. Người làm chứng / Bị hại: {{ p.ho_ten }} - CCCD: {{ p.cccd }}
+{%p endfor %}
+```
+
+* **4. Lặp danh sách động / Bảng hỏi đáp (`hoi_va_dap`)**:
 ```jinja2
 {%p for item in hoi_va_dap %}
 Hỏi: {{ item.cau_hoi }}
@@ -206,11 +296,11 @@ Hỏi: {{ item.cau_hoi }}
 {%p endfor %}
 ```
 
-* **3. Vòng lặp bảng danh sách đối tượng dạng Table trong Word (Cú pháp `{%tr for %}`)**:
+* **5. Vòng lặp bảng danh sách đối tượng dạng Table trong Word (Cú pháp `{%tr for %}`)**:
 
 | STT | Họ và tên | Ngày sinh | Số CCCD | Nơi ở hiện nay |
 | :---: | :--- | :---: | :---: | :--- |
-| `{%tr for p in case.con_nguoi_list %}` | | | | |
+| `{%tr for p in case.con_nguoi_list if p.isdt %}` | | | | |
 | `{{ loop.index }}` | `{{ p.ho_ten }}` | `{{ p.ngay_sinh }}/{{ p.thang_sinh }}/{{ p.nam_sinh }}` | `{{ p.cccd }}` | `{{ p.noi_o_hien_tai }}` |
 | `{%tr endfor %}` | | | | |
 

@@ -244,7 +244,7 @@ class _InlineTableSectionState extends State<InlineTableSection> {
                         ),
                         ...widget.itemSchema.map((col) {
                           final cName = col['name'] as String? ?? '';
-                          final cType = col['type'] as String? ?? 'text';
+                          final cType = col['type'] as String? ?? 'input_text';
                           final ctrl = ctrlMap[cName]!;
 
                           return Expanded(
@@ -266,8 +266,8 @@ class _InlineTableSectionState extends State<InlineTableSection> {
                                 controller: ctrl,
                                 label: '',
                                 hint: 'Nhập...',
-                                minLines: cType == 'textarea' ? 2 : 1,
-                                maxLines: cType == 'textarea' ? 3 : 1,
+                                minLines: cType == 'input_textarea' ? 2 : 1,
+                                maxLines: cType == 'input_textarea' ? 3 : 1,
                               ),
                             ),
                           );

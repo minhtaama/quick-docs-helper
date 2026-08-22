@@ -531,7 +531,7 @@ class CustomDocxService(BaseDocxService):
                                     "left_indent": 0.0
                                 })
                             elements.append({
-                                "type": "case_persons_loop",
+                                "type": "input_persons",
                                 "item_var": item_var,
                                 "loop_var": loop_var,
                                 "paragraphs": fake_paras
@@ -552,7 +552,7 @@ class CustomDocxService(BaseDocxService):
                         # 1. Trường hợp lặp danh sách đối tượng vụ án (CHỈ DUY NHẤT case.con_nguoi_list)
                         if active_loop_var == "case.con_nguoi_list":
                             elements.append({
-                                "type": "case_persons_loop",
+                                "type": "input_persons",
                                 "item_var": active_item_var,
                                 "loop_var": active_loop_var,
                                 "paragraphs": [
@@ -572,20 +572,20 @@ class CustomDocxService(BaseDocxService):
 
                             field_meta = fields_map.get(active_loop_var, {})
 
-                            # CHỈ coi là list/table/persons_section khi loop_var có trong fields_map hoặc khai báo rõ ràng
-                            if subfields and (active_loop_var in fields_map or field_meta.get("type") in ["list", "table", "input_list", "input_table"]):
+                            # CHỈ coi là list/table khi loop_var có trong fields_map hoặc khai báo rõ ràng
+                            if subfields and (active_loop_var in fields_map or field_meta.get("type") in ["input_list", "input_table"]):
                                 schema = field_meta.get("item_schema")
                                 if not schema:
                                     schema = [
                                         {
                                             "name": sub,
                                             "label": "Hỏi" if "hoi" in sub.lower() else ("Đáp" if "dap" in sub.lower() or "tra_loi" in sub.lower() else sub.replace("_", " ").title()),
-                                            "type": "textarea"
+                                            "type": "input_textarea"
                                         }
                                         for sub in subfields
                                     ]
                                 meta_type = field_meta.get("type", "input_list")
-                                list_type = "input_table" if meta_type in ["table", "input_table"] else "input_list"
+                                list_type = "input_table" if meta_type == "input_table" else "input_list"
                                 elements.append({
                                     "type": list_type,
                                     "name": active_loop_var,
@@ -598,7 +598,7 @@ class CustomDocxService(BaseDocxService):
                                     "headers": [col.get("label", col.get("name", "")) for col in schema]
                                 })
 
-                            elif active_loop_var in fields_map or field_meta.get("type") in ["persons", "input_persons", "persons_section"]:
+                            elif active_loop_var in fields_map or field_meta.get("type") == "input_persons":
                                 # Danh sách đối tượng (persons) khi có trong metadata
                                 elements.append({
                                     "type": "input_persons",
@@ -642,7 +642,7 @@ class CustomDocxService(BaseDocxService):
                 field_meta = fields_map.get(table_var_name, {}) if table_var_name else {}
 
                 # CHỈ hiển thị giao diện nhập dữ liệu bảng khi CÓ jinja2 syntax VÀ CÓ field trong metadata
-                if table_var_name and (table_var_name in fields_map or field_meta.get("type") in ["table", "input_table"]):
+                if table_var_name and (table_var_name in fields_map or field_meta.get("type") == "input_table"):
                     table_rows = []
                     for row in tbl.rows:
                         row_cells = [cell.text.strip() for cell in row.cells]

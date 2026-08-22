@@ -1,0 +1,40 @@
+[
+  {
+    "id": "bundle_tiep_nhan_ban_dau",
+    "name": "Bộ hồ sơ tiếp nhận ban đầu",
+    "description": "Gồm công văn vụ án, biên bản làm việc và biên bản ghi lời khai cho từng đối tượng",
+    "items": [
+      {
+        "template": "case/bien_ban_lam_viec.docx",
+        "scope": "case",
+        "preset_values": {
+          "ve_viec": "Làm việc tiếp nhận nguồn tin tội phạm"
+        }
+      },
+      {
+        "template": "case/cv_mang_may_tinh.docx",
+        "scope": "case"
+      },
+      {
+        "template": "person/140_bien_ban_ghi_loi_khai.docx",
+        "scope": "person",
+        "for_each": "all",
+        "preset_values": {}
+      },
+      {
+        "template": "person/210_ly_lich_bi_can.docx",
+        "scope": "person",
+        "for_each": "isdt",
+        "preset_values": {}
+      },
+      {
+        "template": "person/239_bien_ban_giao_nhan_cho_bi_can.docx",
+        "scope": "person",
+        "for_each": "isdt",
+        "preset_values": {
+          "ten_van_ban": "Quyết định khởi tố bị can"
+        }
+      }
+    ]
+  }
+]
